@@ -1,0 +1,179 @@
+// Package main 服务入口
+// 五常同城本地生活服务平台 - 后端服务入口
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"wuchang-tongcheng/internal/core/middleware"
+	"wuchang-tongcheng/internal/core/plugin"
+	"wuchang-tongcheng/internal/core/response"
+	"wuchang-tongcheng/internal/core/router"
+	"wuchang-tongcheng/internal/pkg/config"
+	"wuchang-tongcheng/internal/pkg/database"
+	"wuchang-tongcheng/internal/pkg/logger"
+	redispkg "wuchang-tongcheng/internal/pkg/redis"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+var (
+	// 版本信息
+	Version   = "0.1.0"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
+func main() {
+	// 解析命令行参数
+	configPath := flag.String("config", "./configs/config.yaml", "配置文件路径")
+	showVersion := flag.Bool("version", false, "显示版本信息")
+	flag.Parse()
+
+	// 显示版本信息
+	if *showVersion {
+		fmt.Printf("五常同城服务 v%s\n", Version)
+		fmt.Printf("Build Time: %s\n", BuildTime)
+		fmt.Printf("Git Commit: %s\n", GitCommit)
+		return
+	}
+
+	// 1. 加载配置
+	fmt.Println("正在加载配置...")
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		fmt.Printf("加载配置失败: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("配置加载成功")
+
+	// 2. 初始化日志
+	fmt.Println("正在初始化日志...")
+	if err := logger.Init(&cfg.Logger); err != nil {
+		fmt.Printf("初始化日志失败: %v\n", err)
+		os.Exit(1)
+	}
+	defer logger.Sync()
+	logger.Info("日志初始化成功")
+
+	// 3. 设置Gin模式
+	gin.SetMode(cfg.Server.Mode)
+
+	// 4. 初始化数据库
+	logger.Info("正在初始化数据库...")
+	if err := database.Init(&cfg.Database); err != nil {
+		logger.Fatal("数据库初始化失败", zap.Error(err))
+	}
+	defer database.Close()
+	logger.Info("数据库初始化成功")
+
+	// 5. 初始化Redis
+	logger.Info("正在初始化Redis...")
+	if err := redispkg.Init(&cfg.Redis); err != nil {
+		logger.Fatal("Redis初始化失败", zap.Error(err))
+	}
+	defer redispkg.Close()
+	logger.Info("Redis初始化成功")
+
+	// 6. 初始化路由
+	logger.Info("正在初始化路由...")
+	r := router.NewRouter()
+
+	// 注册全局中间件
+	r.Use(middleware.CORS())
+	r.Use(middleware.Logger(logger.GetLogger()))
+	r.Use(middleware.Recovery(logger.GetLogger()))
+	r.Use(middleware.Region())
+	r.Use(middleware.Auth())
+
+	// 注册健康检查路由
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, response.Success(gin.H{
+			"status":  "ok",
+			"version": Version,
+			"time":    time.Now().Format("2006-01-02 15:04:05"),
+		}))
+	})
+
+	// 注册根路由
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, response.Success(gin.H{
+			"name":    "五常同城本地生活服务平台",
+			"version": Version,
+			"docs":    "/api/v1/docs",
+		}))
+	})
+
+	// 7. 初始化插件
+	logger.Info("正在初始化插件...")
+	pluginManager := plugin.GetManager()
+
+	// TODO: 在这里注册业务模块插件
+	// 示例：pluginManager.Register(user.NewPlugin())
+	// 示例：pluginManager.Register(region.NewPlugin())
+	// 示例：pluginManager.Register(permission.NewPlugin())
+
+	// 初始化所有插件
+	ctx := context.Background()
+	if err := pluginManager.InitAll(ctx); err != nil {
+		logger.Fatal("插件初始化失败", zap.Error(err))
+	}
+	logger.Infof("已加载 %d 个插件", len(pluginManager.List()))
+
+	// 注册插件路由
+	rootGroup := r.Group("")
+	pluginManager.RegisterAllRoutes(rootGroup)
+
+	// 404处理
+	r.Engine().NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusOK, response.NotFound("请求的接口不存在"))
+	})
+
+	// 8. 启动服务
+	addr := cfg.Server.GetAddr()
+	logger.Infof("服务启动中，监听地址: %s", addr)
+	logger.Infof("服务版本: v%s", Version)
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r.Engine(),
+	}
+
+	// 优雅启动
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("服务启动失败", zap.Error(err))
+		}
+	}()
+
+	logger.Info("服务启动成功！")
+
+	// 等待中断信号
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logger.Info("正在关闭服务...")
+
+	// 优雅关闭
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 关闭插件
+	if err := pluginManager.CloseAll(); err != nil {
+		logger.Error("插件关闭失败", zap.Error(err))
+	}
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Fatal("服务强制关闭", zap.Error(err))
+	}
+
+	logger.Info("服务已正常关闭")
+}

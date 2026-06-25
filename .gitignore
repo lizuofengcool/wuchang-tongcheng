@@ -1,0 +1,66 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+*.log
+
+# 编译产物
+/bin/
+/dist/
+/build/
+
+# 依赖目录
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 配置文件（敏感信息）
+backend/configs/config.yaml
+backend/configs/*.local.yaml
+
+# 日志文件
+backend/logs/
+*.log
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 测试覆盖率
+coverage.out
+coverage.html
+
+# 文档构建
+docs/_build/
+site/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.bak
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker数据卷（如果本地挂载）
+data/
+postgres_data/
+redis_data/

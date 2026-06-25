@@ -1,0 +1,70 @@
+# 五常同城项目配置文件模板
+# 复制此文件为 config.yaml 并修改相应配置
+
+# 服务配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug"  # debug, release, test
+
+# 数据库配置
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres123"
+  dbname: "wuchang_tongcheng"
+  sslmode: "disable"
+  timezone: "Asia/Shanghai"
+  # 连接池配置
+  max_open_conns: 100
+  max_idle_conns: 10
+  max_lifetime: 3600  # 秒
+
+# Redis配置
+redis:
+  host: "localhost"
+  port: 6379
+  password: "redis123"
+  db: 0
+  pool_size: 10
+  default_expiration: 3600  # 秒
+
+# 日志配置
+logger:
+  level: "info"  # debug, info, warn, error
+  filename: "./logs/app.log"
+  max_size: 100       # MB
+  max_backups: 3
+  max_age: 30         # 天
+  compress: false
+  console: true
+
+# RabbitMQ配置
+rabbitmq:
+  host: "localhost"
+  port: 5672
+  user: "admin"
+  password: "admin123"
+  vhost: "/wuchang"
+
+# Elasticsearch配置
+elasticsearch:
+  addresses:
+    - "http://localhost:9200"
+  username: ""
+  password: ""
+
+# 对象存储配置
+storage:
+  type: "qiniu"  # qiniu, local, minio
+  access_key: "your-access-key"
+  secret_key: "your-secret-key"
+  bucket: "wuchang-tongcheng"
+  domain: "https://cdn.example.com"
+  region: "cn-east-1"
+
+# 地图服务配置
+map:
+  type: "amap"  # amap, baidu
+  key: "your-map-api-key"
