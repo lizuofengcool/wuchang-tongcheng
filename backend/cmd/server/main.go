@@ -16,8 +16,10 @@ import (
 	"wuchang-tongcheng/internal/core/plugin"
 	"wuchang-tongcheng/internal/core/response"
 	"wuchang-tongcheng/internal/core/router"
+	user "wuchang-tongcheng/internal/modules/user"
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
+	jwtpkg "wuchang-tongcheng/internal/pkg/jwt"
 	"wuchang-tongcheng/internal/pkg/logger"
 	redispkg "wuchang-tongcheng/internal/pkg/redis"
 
@@ -83,7 +85,12 @@ func main() {
 	defer redispkg.Close()
 	logger.Info("Redis初始化成功")
 
-	// 6. 初始化路由
+	// 6. 初始化JWT
+	logger.Info("正在初始化JWT...")
+	jwtpkg.Init(cfg.JWT.Secret, cfg.JWT.Expire)
+	logger.Info("JWT初始化成功")
+
+	// 7. 初始化路由
 	logger.Info("正在初始化路由...")
 	r := router.NewRouter()
 
@@ -112,14 +119,12 @@ func main() {
 		}))
 	})
 
-	// 7. 初始化插件
+	// 8. 初始化插件
 	logger.Info("正在初始化插件...")
 	pluginManager := plugin.GetManager()
 
-	// TODO: 在这里注册业务模块插件
-	// 示例：pluginManager.Register(user.NewPlugin())
-	// 示例：pluginManager.Register(region.NewPlugin())
-	// 示例：pluginManager.Register(permission.NewPlugin())
+	// 注册业务模块插件
+	pluginManager.Register(user.NewPlugin())
 
 	// 初始化所有插件
 	ctx := context.Background()

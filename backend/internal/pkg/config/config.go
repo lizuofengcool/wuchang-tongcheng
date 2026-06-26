@@ -15,10 +15,18 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	Logger   LoggerConfig   `mapstructure:"logger"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
 	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
 	ES       ESConfig       `mapstructure:"elasticsearch"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Map      MapConfig      `mapstructure:"map"`
+}
+
+// JWTConfig JWT配置
+type JWTConfig struct {
+	Secret string `mapstructure:"secret"` // 签名密钥
+	Expire int    `mapstructure:"expire"` // 过期时间（小时）
+	Issuer string `mapstructure:"issuer"` // 签发者
 }
 
 // ServerConfig 服务配置

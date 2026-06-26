@@ -40,6 +40,41 @@ func (r *Router) Use(middleware ...gin.HandlerFunc) {
 	r.engine.Use(middleware...)
 }
 
+// GET 注册GET请求
+func (r *Router) GET(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.GET(relativePath, handlers...)
+}
+
+// POST 注册POST请求
+func (r *Router) POST(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.POST(relativePath, handlers...)
+}
+
+// PUT 注册PUT请求
+func (r *Router) PUT(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.PUT(relativePath, handlers...)
+}
+
+// DELETE 注册DELETE请求
+func (r *Router) DELETE(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.DELETE(relativePath, handlers...)
+}
+
+// PATCH 注册PATCH请求
+func (r *Router) PATCH(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.PATCH(relativePath, handlers...)
+}
+
+// Any 注册所有HTTP方法
+func (r *Router) Any(relativePath string, handlers ...gin.HandlerFunc) {
+	r.engine.Any(relativePath, handlers...)
+}
+
+// GroupFunc 返回原生 gin.RouterGroup 用于更灵活的路由注册
+func (r *Router) GroupFunc(relativePath string, handlers ...gin.HandlerFunc) *gin.RouterGroup {
+	return r.engine.Group(relativePath, handlers...)
+}
+
 // Run 启动HTTP服务
 func (r *Router) Run(addr string) error {
 	return r.engine.Run(addr)

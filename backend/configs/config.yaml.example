@@ -40,6 +40,12 @@ logger:
   compress: false
   console: true
 
+# JWT配置
+jwt:
+  secret: "wuchang-tongcheng-secret-key-change-in-production"
+  expire: 24  # 过期时间（小时）
+  issuer: "wuchang-tongcheng"
+
 # RabbitMQ配置
 rabbitmq:
   host: "localhost"

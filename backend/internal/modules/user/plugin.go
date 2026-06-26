@@ -1,17 +1,23 @@
 // Package user 用户模块插件
-// 示例插件模板，所有业务模块插件都应遵循此结构
+// 实现用户注册、登录、个人信息管理等业务
 package user
 
 import (
 	"context"
 
 	"wuchang-tongcheng/internal/core/plugin"
+	"wuchang-tongcheng/internal/modules/user/handler"
+	"wuchang-tongcheng/internal/modules/user/model"
+	"wuchang-tongcheng/internal/modules/user/repository"
+	"wuchang-tongcheng/internal/modules/user/service"
+	"wuchang-tongcheng/internal/pkg/database"
 )
 
 // Plugin 用户模块插件
 type Plugin struct {
 	name    string
 	version string
+	handler *handler.Handler
 }
 
 // NewPlugin 创建用户模块插件
@@ -34,31 +40,35 @@ func (p *Plugin) Version() string {
 
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
-	// TODO: 初始化用户模块
-	// - 初始化数据库表
-	// - 初始化缓存
-	// - 注册消息队列消费者
-	// - 初始化定时任务
+	db := database.GetDB()
+
+	// 自动迁移用户表
+	if err := db.AutoMigrate(&model.User{}); err != nil {
+		return err
+	}
+
+	// 初始化依赖链: repository -> service -> handler
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	p.handler = handler.NewHandler(userService)
 
 	return nil
 }
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
-	// TODO: 注册用户模块路由
-	// 示例：
-	// router.GET("/info", p.GetUserInfo)
-	// router.POST("/login", p.Login)
-	// router.POST("/register", p.Register)
+	// 公开接口（无需登录）
+	router.POST("/register", p.handler.Register)
+	router.POST("/login", p.handler.Login)
+
+	// 需要登录的接口
+	router.GET("/info", p.handler.GetUserInfo)
+	router.PUT("/profile", p.handler.UpdateProfile)
+	router.PUT("/password", p.handler.ChangePassword)
 }
 
 // Close 关闭插件
 func (p *Plugin) Close() error {
-	// TODO: 清理资源
-	// - 关闭数据库连接
-	// - 关闭消息队列连接
-	// - 停止定时任务
-
 	return nil
 }
 
