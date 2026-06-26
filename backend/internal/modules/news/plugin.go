@@ -1,0 +1,64 @@
+// Package news 同城头条模块插件
+// 提供本地资讯/同城头条的发布、浏览、管理
+package news
+
+import (
+	"context"
+
+	"wuchang-tongcheng/internal/core/plugin"
+	"wuchang-tongcheng/internal/modules/news/handler"
+	"wuchang-tongcheng/internal/modules/news/model"
+	"wuchang-tongcheng/internal/modules/news/repository"
+	"wuchang-tongcheng/internal/modules/news/service"
+	"wuchang-tongcheng/internal/pkg/database"
+)
+
+// Plugin 同城头条模块插件
+type Plugin struct {
+	name    string
+	version string
+	handler *handler.Handler
+}
+
+// NewPlugin 创建同城头条模块插件
+func NewPlugin() *Plugin {
+	return &Plugin{name: "news", version: "1.0.0"}
+}
+
+// Name 返回插件名称
+func (p *Plugin) Name() string { return p.name }
+
+// Version 返回插件版本号
+func (p *Plugin) Version() string { return p.version }
+
+// Init 初始化插件
+func (p *Plugin) Init(ctx context.Context) error {
+	db := database.GetDB()
+
+	// 自动迁移头条表
+	if err := db.AutoMigrate(&model.News{}); err != nil {
+		return err
+	}
+
+	// 初始化依赖链
+	newsRepo := repository.NewNewsRepository(db)
+	newsService := service.NewNewsService(newsRepo)
+	p.handler = handler.NewHandler(newsService)
+
+	return nil
+}
+
+// RegisterRoutes 注册插件路由
+func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
+	router.POST("", p.handler.Create)
+	router.PUT("/:id", p.handler.Update)
+	router.DELETE("/:id", p.handler.Delete)
+	router.GET("/:id", p.handler.GetByID)
+	router.GET("", p.handler.List)
+}
+
+// Close 关闭插件
+func (p *Plugin) Close() error { return nil }
+
+// 确保Plugin实现了plugin.Plugin接口
+var _ plugin.Plugin = (*Plugin)(nil)

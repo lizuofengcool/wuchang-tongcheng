@@ -16,6 +16,9 @@ import (
 	"wuchang-tongcheng/internal/core/plugin"
 	"wuchang-tongcheng/internal/core/response"
 	"wuchang-tongcheng/internal/core/router"
+	category "wuchang-tongcheng/internal/modules/category"
+	news "wuchang-tongcheng/internal/modules/news"
+	region "wuchang-tongcheng/internal/modules/region"
 	user "wuchang-tongcheng/internal/modules/user"
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
@@ -125,6 +128,9 @@ func main() {
 
 	// 注册业务模块插件
 	pluginManager.Register(user.NewPlugin())
+	pluginManager.Register(region.NewPlugin())
+	pluginManager.Register(category.NewPlugin())
+	pluginManager.Register(news.NewPlugin())
 
 	// 初始化所有插件
 	ctx := context.Background()
