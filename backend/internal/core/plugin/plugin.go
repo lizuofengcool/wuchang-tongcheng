@@ -4,6 +4,7 @@ package plugin
 
 import (
 	"context"
+	"io"
 	"sync"
 )
 
@@ -64,6 +65,18 @@ type Context interface {
 	Writer() ResponseWriter
 	// Request 获取请求对象
 	Request() *Request
+	// FormFile 获取上传的文件（multipart/form-data）
+	FormFile() (FileHeader, error)
+}
+
+// FileHeader 上传文件信息
+type FileHeader interface {
+	// Filename 原始文件名
+	Filename() string
+	// Size 文件大小（字节）
+	Size() int64
+	// Open 打开文件读取流，用完需Close
+	Open() (io.ReadCloser, error)
 }
 
 // ResponseWriter 响应写入器接口

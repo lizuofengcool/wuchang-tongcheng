@@ -3,6 +3,8 @@
 package router
 
 import (
+	"io"
+	"mime/multipart"
 	"net/http"
 
 	"wuchang-tongcheng/internal/core/plugin"
@@ -209,9 +211,38 @@ func (ctx *Context) Request() *plugin.Request {
 	return nil
 }
 
+// FormFile 获取上传的文件
+func (ctx *Context) FormFile() (plugin.FileHeader, error) {
+	fh, err := ctx.c.FormFile("file")
+	if err != nil {
+		return nil, err
+	}
+	return &fileHeader{fh: fh}, nil
+}
+
 // GinContext 获取原始Gin上下文
 func (ctx *Context) GinContext() *gin.Context {
 	return ctx.c
+}
+
+// fileHeader 适配 gin 的 *multipart.FileHeader 到 plugin.FileHeader 接口
+type fileHeader struct {
+	fh *multipart.FileHeader
+}
+
+// Filename 原始文件名
+func (h *fileHeader) Filename() string { return h.fh.Filename }
+
+// Size 文件大小
+func (h *fileHeader) Size() int64 { return h.fh.Size }
+
+// Open 打开文件
+func (h *fileHeader) Open() (io.ReadCloser, error) {
+	f, err := h.fh.Open()
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 // responseWriter 响应写入器适配器

@@ -17,7 +17,9 @@ import (
 	"wuchang-tongcheng/internal/core/response"
 	"wuchang-tongcheng/internal/core/router"
 	category "wuchang-tongcheng/internal/modules/category"
+	file "wuchang-tongcheng/internal/modules/file"
 	news "wuchang-tongcheng/internal/modules/news"
+	permission "wuchang-tongcheng/internal/modules/permission"
 	region "wuchang-tongcheng/internal/modules/region"
 	user "wuchang-tongcheng/internal/modules/user"
 	"wuchang-tongcheng/internal/pkg/config"
@@ -113,6 +115,9 @@ func main() {
 		}))
 	})
 
+	// 静态文件服务（上传的文件访问）
+	r.Engine().Static("/uploads", "./uploads")
+
 	// 注册根路由
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Success(gin.H{
@@ -131,6 +136,8 @@ func main() {
 	pluginManager.Register(region.NewPlugin())
 	pluginManager.Register(category.NewPlugin())
 	pluginManager.Register(news.NewPlugin())
+	pluginManager.Register(permission.NewPlugin())
+	pluginManager.Register(file.NewPlugin())
 
 	// 初始化所有插件
 	ctx := context.Background()
