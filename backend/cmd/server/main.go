@@ -21,6 +21,7 @@ import (
 	news "wuchang-tongcheng/internal/modules/news"
 	permission "wuchang-tongcheng/internal/modules/permission"
 	region "wuchang-tongcheng/internal/modules/region"
+	setting "wuchang-tongcheng/internal/modules/setting"
 	user "wuchang-tongcheng/internal/modules/user"
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
@@ -138,6 +139,7 @@ func main() {
 	pluginManager.Register(news.NewPlugin())
 	pluginManager.Register(permission.NewPlugin())
 	pluginManager.Register(file.NewPlugin())
+	pluginManager.Register(setting.NewPlugin())
 
 	// 初始化所有插件
 	ctx := context.Background()
