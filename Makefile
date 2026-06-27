@@ -134,16 +134,20 @@ config:
 	fi
 
 # 数据库迁移
+# 说明：本项目使用 GORM AutoMigrate，启动服务即自动建表 + seed.Run() 写入种子数据。
+# PostGIS 扩展由 deploy/initdb/01-extensions.sql 在首次建库时安装。
+# 执行 make migrate 会启动服务一次（完成 AutoMigrate + seed 后可 Ctrl+C 停止 HTTP 服务）。
 .PHONY: migrate
 migrate:
-	@echo "正在执行数据库迁移..."
-	@echo "TODO: 实现数据库迁移功能"
+	@echo "正在执行数据库迁移（AutoMigrate + 种子数据）..."
+	@echo "PostGIS 扩展请确保 deploy/initdb/01-extensions.sql 已在首次建库时执行"
+	cd $(BACKEND_DIR) && $(GO) run $(CMD_DIR)/main.go
 
-# 生成Swagger文档
+# 生成Swagger文档（需要先安装：go install github.com/swaggo/swag/cmd/swag@latest）
 .PHONY: swagger
 swagger:
 	@echo "正在生成Swagger文档..."
-	@echo "TODO: 实现Swagger文档生成"
+	cd $(BACKEND_DIR) && swag init -g cmd/server/main.go -o docs
 
 # 热重载开发模式（需要air工具）
 .PHONY: dev

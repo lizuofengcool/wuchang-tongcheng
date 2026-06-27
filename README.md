@@ -210,6 +210,9 @@ docker-compose up -d
   - ws Hub 连接管理（单用户多连接、注册/注销事件循环、定向推送/广播）
   - /ws 升级端点（JWT query token 鉴权 + 读写泵 + ping 保活）
   - 点赞实时通知作者（fire-and-forget，不在线丢弃，不通知自己）
+- v0.8.0 - 数据库初始化与工程脚本（D16）
+  - deploy/initdb/01-extensions.sql（PostGIS 扩展，docker-compose 挂载点补齐）
+  - Makefile migrate 目标（AutoMigrate + seed 说明）、swagger 目标（swag init）
 
 ## 功能完成度（对照规划）
 
@@ -240,10 +243,10 @@ docker-compose up -d
 - ✅ 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
 - ✅ Redis 业务缓存（cache-aside：region/category 树 30min + news 列表 60s，写操作 SCAN+DEL 按前缀失效，Redis 不可用全链路降级走 DB）
 - ✅ WebSocket 实时通知（Hub 单用户多连接 + JWT 鉴权 /ws 端点 + 定向推送/广播，点赞实时通知作者，不在线 fire-and-forget 丢弃）
+- ✅ 数据库初始化脚本（deploy/initdb PostGIS 扩展 + Makefile migrate/swagger 目标补齐）
 
 ### 未实现（待开发）
-- ❌ 高德地图 API
-- ❌ 数据库迁移 scripts、PostGIS 空间查询
+- ❌ 高德地图 API、PostGIS 空间查询业务接入
 - ❌ 第三方登录、手机验证码登录
 - ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
 
