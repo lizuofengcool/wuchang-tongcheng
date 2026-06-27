@@ -1,5 +1,6 @@
 // Package storage 对象存储抽象层
-// 支持 local 本地存储，预留 minio/qiniu 实现
+// 已实现 local（本地磁盘）和 minio（S3 协议，兼容 AWS S3 / 阿里云 OSS / 腾讯云 COS）
+// 七牛云 Kodo 可通过 minio + S3 兼容端点复用，或独立实现
 package storage
 
 import (
@@ -35,10 +36,15 @@ func Init(cfg *config.StorageConfig) error {
 		}
 		storage = s
 	case "minio":
-		// 预留MinIO实现（生产环境对接）
-		return errors.New("minio storage not implemented yet, use local")
+		// MinIO（S3 协议）实现，兼容 AWS S3 / 阿里云 OSS / 腾讯云 COS
+		s, err := NewMinIOStorage(cfg)
+		if err != nil {
+			return err
+		}
+		storage = s
 	case "qiniu":
-		return errors.New("qiniu storage not implemented yet, use local")
+		// 七牛云 Kodo（可复用 S3 兼容端点，或独立实现）
+		return errors.New("qiniu storage not implemented yet, use local or minio")
 	default:
 		return fmt.Errorf("unsupported storage type: %s", cfg.Type)
 	}

@@ -63,12 +63,12 @@ elasticsearch:
 
 # 对象存储配置
 storage:
-  type: "qiniu"  # qiniu, local, minio
-  access_key: "your-access-key"
-  secret_key: "your-secret-key"
-  bucket: "wuchang-tongcheng"
-  domain: "https://cdn.example.com"
-  region: "cn-east-1"
+  type: "local"  # local（本地磁盘）| minio（S3协议，兼容AWS S3/阿里云OSS/腾讯云COS）| qiniu（未实现）
+  access_key: "your-access-key"     # minio: access key
+  secret_key: "your-secret-key"    # minio: secret key
+  bucket: "wuchang-tongcheng"       # local: 存储目录(默认./uploads)；minio: 桶名
+  domain: "http://localhost:9000"  # local: 访问域名(默认http://localhost:8080)；minio: 服务端点
+  region: "us-east-1"               # minio: 区域（本地MinIO可用us-east-1）
 
 # 地图服务配置
 map:
