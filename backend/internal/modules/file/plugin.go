@@ -5,9 +5,12 @@ package file
 import (
 	"context"
 
+	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
+	coreRouter "wuchang-tongcheng/internal/core/router"
 	"wuchang-tongcheng/internal/modules/file/handler"
 	"wuchang-tongcheng/internal/modules/file/model"
+	"wuchang-tongcheng/internal/modules/file/repository"
 	"wuchang-tongcheng/internal/modules/file/service"
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
@@ -49,7 +52,8 @@ func (p *Plugin) Init(ctx context.Context) error {
 	}
 
 	// 初始化依赖链
-	fileService := service.NewFileService(db)
+	fileRepo := repository.NewFileRepository(db)
+	fileService := service.NewFileService(fileRepo)
 	p.handler = handler.NewHandler(fileService)
 
 	return nil
@@ -57,7 +61,9 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
-	router.POST("/upload", p.handler.Upload)
+	router.POST("/upload", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Upload)
+	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("file:read")), p.handler.List)
+	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("file:delete")), p.handler.Delete)
 }
 
 // Close 关闭插件

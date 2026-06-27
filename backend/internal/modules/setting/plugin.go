@@ -5,7 +5,9 @@ package setting
 import (
 	"context"
 
+	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
+	coreRouter "wuchang-tongcheng/internal/core/router"
 	"wuchang-tongcheng/internal/modules/setting/handler"
 	"wuchang-tongcheng/internal/modules/setting/model"
 	"wuchang-tongcheng/internal/modules/setting/repository"
@@ -50,13 +52,13 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
-	router.POST("", p.handler.Create)
-	router.PUT("/:id", p.handler.Update)
-	router.DELETE("/:id", p.handler.Delete)
-	router.GET("/:id", p.handler.GetByID)
-	router.GET("/group/:group", p.handler.GetByGroup)
-	router.GET("", p.handler.GetAll)
-	router.PUT("/batch", p.handler.BatchUpdate)
+	router.POST("", coreRouter.WrapGin(middleware.RequirePermission("setting:create")), p.handler.Create)
+	router.PUT("/:id", coreRouter.WrapGin(middleware.RequirePermission("setting:update")), p.handler.Update)
+	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("setting:delete")), p.handler.Delete)
+	router.GET("/:id", coreRouter.WrapGin(middleware.RequirePermission("setting:read")), p.handler.GetByID)
+	router.GET("/group/:group", coreRouter.WrapGin(middleware.RequirePermission("setting:read")), p.handler.GetByGroup)
+	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("setting:read")), p.handler.GetAll)
+	router.PUT("/batch", coreRouter.WrapGin(middleware.RequirePermission("setting:update")), p.handler.BatchUpdate)
 }
 
 // Close 关闭插件

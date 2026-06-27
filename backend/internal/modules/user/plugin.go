@@ -5,7 +5,9 @@ package user
 import (
 	"context"
 
+	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
+	coreRouter "wuchang-tongcheng/internal/core/router"
 	"wuchang-tongcheng/internal/modules/user/handler"
 	"wuchang-tongcheng/internal/modules/user/model"
 	"wuchang-tongcheng/internal/modules/user/repository"
@@ -62,19 +64,20 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.POST("/login", p.handler.Login)
 
 	// 需要登录的接口
-	router.GET("/info", p.handler.GetUserInfo)
-	router.PUT("/profile", p.handler.UpdateProfile)
-	router.PUT("/password", p.handler.ChangePassword)
+	auth := coreRouter.WrapGin(middleware.AuthRequired())
+	router.GET("/info", auth, p.handler.GetUserInfo)
+	router.PUT("/profile", auth, p.handler.UpdateProfile)
+	router.PUT("/password", auth, p.handler.ChangePassword)
 
-	// 管理后台接口（需要登录）
+	// 管理后台接口（需要登录 + 权限）
 	admin := router.Group("/admin")
-	admin.GET("/users", p.handler.ListUsers)
-	admin.POST("/users", p.handler.AdminCreateUser)
-	admin.GET("/users/:id", p.handler.AdminGetUser)
-	admin.PUT("/users/:id", p.handler.AdminUpdateUser)
-	admin.PUT("/users/:id/status", p.handler.UpdateUserStatus)
-	admin.PUT("/users/:id/password", p.handler.ResetPassword)
-	admin.DELETE("/users/:id", p.handler.DeleteUser)
+	admin.GET("/users", coreRouter.WrapGin(middleware.RequirePermission("user:read")), p.handler.ListUsers)
+	admin.POST("/users", coreRouter.WrapGin(middleware.RequirePermission("user:create")), p.handler.AdminCreateUser)
+	admin.GET("/users/:id", coreRouter.WrapGin(middleware.RequirePermission("user:read")), p.handler.AdminGetUser)
+	admin.PUT("/users/:id", coreRouter.WrapGin(middleware.RequirePermission("user:update")), p.handler.AdminUpdateUser)
+	admin.PUT("/users/:id/status", coreRouter.WrapGin(middleware.RequirePermission("user:update")), p.handler.UpdateUserStatus)
+	admin.PUT("/users/:id/password", coreRouter.WrapGin(middleware.RequirePermission("user:reset_password")), p.handler.ResetPassword)
+	admin.DELETE("/users/:id", coreRouter.WrapGin(middleware.RequirePermission("user:delete")), p.handler.DeleteUser)
 }
 
 // Close 关闭插件

@@ -173,6 +173,61 @@ func (h *Handler) ListPermissions(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(list))
 }
 
+// GetPermissionByID 获取权限详情
+func (h *Handler) GetPermissionByID(ctx plugin.Context) {
+	id, err := parseID(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的权限ID"))
+		return
+	}
+	// 复用 ListPermissions 后筛选
+	list, err := h.service.ListPermissions()
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodePermissionError, err.Error()))
+		return
+	}
+	for _, p := range list {
+		if p.ID == id {
+			ctx.JSON(http.StatusOK, response.Success(p))
+			return
+		}
+	}
+	ctx.JSON(http.StatusOK, response.Fail(utils.CodePermissionNotFound, "权限不存在"))
+}
+
+// UpdatePermission 更新权限
+func (h *Handler) UpdatePermission(ctx plugin.Context) {
+	if getUserID(ctx) == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+	id, err := parseID(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的权限ID"))
+		return
+	}
+	var req dto.UpdatePermissionRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("参数错误"))
+		return
+	}
+	fields := map[string]interface{}{}
+	if req.Name != "" {
+		fields["name"] = req.Name
+	}
+	fields["path"] = req.Path
+	fields["method"] = req.Method
+	fields["sort"] = req.Sort
+	if req.Status == 0 || req.Status == 1 {
+		fields["status"] = req.Status
+	}
+	if err := h.service.UpdatePermission(id, fields); err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodePermissionError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("更新成功", nil))
+}
+
 // AssignRoles 给用户分配角色
 func (h *Handler) AssignRoles(ctx plugin.Context) {
 	if getUserID(ctx) == 0 {
@@ -224,6 +279,24 @@ func (h *Handler) MyPermissions(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(perms))
 }
 
+// MyAuth 查询当前用户的授权概览（权限码 + 角色码），供前端指令使用
+func (h *Handler) MyAuth(ctx plugin.Context) {
+	userID := getUserID(ctx)
+	if userID == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+	perms, roles, err := h.service.GetMyAuth(userID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodePermissionError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(dto.MyAuthResponse{
+		Permissions: perms,
+		Roles:       roles,
+	}))
+}
+
 // UserRoles 查询用户的角色
 func (h *Handler) UserRoles(ctx plugin.Context) {
 	if getUserID(ctx) == 0 {
@@ -242,4 +315,23 @@ func (h *Handler) UserRoles(ctx plugin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, response.Success(roles))
+}
+
+// RolePermissions 查询角色已分配的权限（用于前端回显）
+func (h *Handler) RolePermissions(ctx plugin.Context) {
+	if getUserID(ctx) == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+	id, err := parseID(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的角色ID"))
+		return
+	}
+	perms, err := h.service.GetPermissionsByRoleID(id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodePermissionError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(perms))
 }

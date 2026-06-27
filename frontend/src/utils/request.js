@@ -5,16 +5,21 @@ import router from '@/router'
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 15000
 })
 
-// 请求拦截器：自动注入 JWT token
+// 请求拦截器：自动注入 JWT token 与地区ID（X-Region-ID）
 service.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
+    }
+    // 地区数据隔离：注入当前选中的地区ID
+    const regionId = localStorage.getItem('currentRegionId')
+    if (regionId) {
+      config.headers['X-Region-ID'] = regionId
     }
     return config
   },
@@ -49,6 +54,10 @@ service.interceptors.response.use(
         ElMessage.error('禁止访问')
       } else if (status === 500) {
         ElMessage.error('服务器内部错误')
+        // 跳转 500 错误页（避免重复跳转）
+        if (router.currentRoute.value.path !== '/500') {
+          router.push('/500')
+        }
       } else {
         ElMessage.error(`请求错误 (${status})`)
       }

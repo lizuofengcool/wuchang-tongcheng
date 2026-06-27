@@ -47,25 +47,29 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
+            <el-button type="warning" link size="small" @click="openEdit(row)">编辑</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </div>
 
-    <!-- 新建权限 -->
-    <el-dialog v-model="dialogVisible" title="新建权限" width="520px">
+    <!-- 新建/编辑权限 -->
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑权限' : '新建权限'" width="520px">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="权限名称" prop="name">
           <el-input v-model="form.name" placeholder="如 用户管理" />
         </el-form-item>
-        <el-form-item label="权限编码" prop="code">
+        <el-form-item v-if="!isEdit" label="权限编码" prop="code">
           <el-input v-model="form.code" placeholder="如 system:user:list" />
         </el-form-item>
+        <el-form-item v-else label="权限编码">
+          <el-input :model-value="form.code" disabled />
+        </el-form-item>
         <el-form-item label="类型" prop="type">
-          <el-radio-group v-model="form.type">
+          <el-radio-group v-model="form.type" :disabled="isEdit">
             <el-radio :value="1">菜单</el-radio>
             <el-radio :value="2">按钮</el-radio>
             <el-radio :value="3">接口</el-radio>
@@ -105,7 +109,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { listPermissions, createPermission, deletePermission } from '@/api/permission'
+import { listPermissions, createPermission, updatePermission, deletePermission } from '@/api/permission'
 
 const loading = ref(false)
 const search = ref('')
@@ -137,11 +141,13 @@ const loadPerms = async () => {
   }
 }
 
-// ===== 新建 =====
+// ===== 新建/编辑 =====
 const dialogVisible = ref(false)
+const isEdit = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
 const form = reactive({
+  id: 0,
   name: '',
   code: '',
   type: 3,
@@ -158,7 +164,9 @@ const formRules = {
 }
 
 const openCreate = () => {
+  isEdit.value = false
   Object.assign(form, {
+    id: 0,
     name: '',
     code: '',
     type: 3,
@@ -171,23 +179,50 @@ const openCreate = () => {
   dialogVisible.value = true
 }
 
+const openEdit = (row) => {
+  isEdit.value = true
+  Object.assign(form, {
+    id: row.id,
+    name: row.name || '',
+    code: row.code || '',
+    type: row.type || 3,
+    parent_id: row.parent_id || 0,
+    path: row.path || '',
+    method: row.method || '',
+    sort: row.sort || 0,
+    status: row.status ?? 1
+  })
+  dialogVisible.value = true
+}
+
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return
     submitting.value = true
     try {
-      await createPermission({
-        name: form.name,
-        code: form.code,
-        type: form.type,
-        parent_id: form.parent_id,
-        path: form.path,
-        method: form.method,
-        sort: form.sort,
-        status: form.status
-      })
-      ElMessage.success('创建成功')
+      if (isEdit.value) {
+        await updatePermission(form.id, {
+          name: form.name,
+          path: form.path,
+          method: form.method,
+          sort: form.sort,
+          status: form.status
+        })
+        ElMessage.success('更新成功')
+      } else {
+        await createPermission({
+          name: form.name,
+          code: form.code,
+          type: form.type,
+          parent_id: form.parent_id,
+          path: form.path,
+          method: form.method,
+          sort: form.sort,
+          status: form.status
+        })
+        ElMessage.success('创建成功')
+      }
       dialogVisible.value = false
       await loadPerms()
     } catch (e) {

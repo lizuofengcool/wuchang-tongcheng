@@ -146,6 +146,18 @@ func convertHandlers(handlers ...plugin.HandlerFunc) []gin.HandlerFunc {
 	return result
 }
 
+// WrapGin 将 gin.HandlerFunc 中间件转换为 plugin.HandlerFunc，便于插件路由复用现有 gin 中间件
+// 用法：router.POST("/admin/users", router.WrapGin(middleware.AuthRequired()), p.handler.Create)
+func WrapGin(mw gin.HandlerFunc) plugin.HandlerFunc {
+	return func(ctx plugin.Context) {
+		c, ok := ctx.(*Context)
+		if !ok {
+			return
+		}
+		mw(c.GinContext())
+	}
+}
+
 // Context 上下文适配器，实现plugin.Context接口
 type Context struct {
 	c *gin.Context

@@ -7,6 +7,7 @@ import (
 
 	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
+	coreRouter "wuchang-tongcheng/internal/core/router"
 	"wuchang-tongcheng/internal/modules/permission/handler"
 	"wuchang-tongcheng/internal/modules/permission/model"
 	"wuchang-tongcheng/internal/modules/permission/repository"
@@ -54,31 +55,39 @@ func (p *Plugin) Init(ctx context.Context) error {
 	// 注入权限校验器到中间件层（解耦中间件与业务模块的循环依赖）
 	// 这样其他模块的路由可以用 middleware.RequirePermission("xxx") 做权限控制
 	middleware.SetPermissionChecker(svc.HasPermission)
+	// 注入角色编码查询器，用于超级管理员（admin 角色）直通权限校验
+	middleware.SetRoleCodeFetcher(svc.GetRoleCodesByUserID)
 
 	return nil
 }
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
+	auth := coreRouter.WrapGin(middleware.AuthRequired())
+
 	// 角色管理
-	router.POST("/roles", p.handler.CreateRole)
-	router.PUT("/roles/:id", p.handler.UpdateRole)
-	router.DELETE("/roles/:id", p.handler.DeleteRole)
-	router.GET("/roles/:id", p.handler.GetRoleByID)
-	router.GET("/roles", p.handler.ListRoles)
-	router.GET("/users/:id/roles", p.handler.UserRoles)
+	router.POST("/roles", coreRouter.WrapGin(middleware.RequirePermission("role:create")), p.handler.CreateRole)
+	router.PUT("/roles/:id", coreRouter.WrapGin(middleware.RequirePermission("role:update")), p.handler.UpdateRole)
+	router.DELETE("/roles/:id", coreRouter.WrapGin(middleware.RequirePermission("role:delete")), p.handler.DeleteRole)
+	router.GET("/roles/:id", coreRouter.WrapGin(middleware.RequirePermission("role:read")), p.handler.GetRoleByID)
+	router.GET("/roles", coreRouter.WrapGin(middleware.RequirePermission("role:read")), p.handler.ListRoles)
+	router.GET("/users/:id/roles", coreRouter.WrapGin(middleware.RequirePermission("role:read")), p.handler.UserRoles)
+	router.GET("/roles/:id/permissions", coreRouter.WrapGin(middleware.RequirePermission("role:read")), p.handler.RolePermissions)
 
 	// 权限管理
-	router.POST("/permissions", p.handler.CreatePermission)
-	router.DELETE("/permissions/:id", p.handler.DeletePermission)
-	router.GET("/permissions", p.handler.ListPermissions)
+	router.POST("/permissions", coreRouter.WrapGin(middleware.RequirePermission("permission:create")), p.handler.CreatePermission)
+	router.PUT("/permissions/:id", coreRouter.WrapGin(middleware.RequirePermission("permission:update")), p.handler.UpdatePermission)
+	router.DELETE("/permissions/:id", coreRouter.WrapGin(middleware.RequirePermission("permission:delete")), p.handler.DeletePermission)
+	router.GET("/permissions", coreRouter.WrapGin(middleware.RequirePermission("permission:read")), p.handler.ListPermissions)
+	router.GET("/permissions/:id", coreRouter.WrapGin(middleware.RequirePermission("permission:read")), p.handler.GetPermissionByID)
 
 	// 分配
-	router.POST("/assign-roles", p.handler.AssignRoles)          // 给用户分配角色
-	router.POST("/assign-permissions", p.handler.AssignPermissions) // 给角色分配权限
+	router.POST("/assign-roles", coreRouter.WrapGin(middleware.RequirePermission("permission:assign")), p.handler.AssignRoles)            // 给用户分配角色
+	router.POST("/assign-permissions", coreRouter.WrapGin(middleware.RequirePermission("permission:assign")), p.handler.AssignPermissions) // 给角色分配权限
 
-	// 当前用户权限
-	router.GET("/my-permissions", p.handler.MyPermissions)
+	// 当前用户权限（仅需登录）
+	router.GET("/my-permissions", auth, p.handler.MyPermissions)
+	router.GET("/my-auth", auth, p.handler.MyAuth)
 }
 
 // Close 关闭插件

@@ -4,11 +4,13 @@ package handler
 import (
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
 	"wuchang-tongcheng/internal/core/response"
+	"wuchang-tongcheng/internal/modules/file/dto"
 	"wuchang-tongcheng/internal/modules/file/service"
 	"wuchang-tongcheng/internal/pkg/utils"
 )
@@ -65,6 +67,33 @@ func (h *Handler) Upload(ctx plugin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, response.SuccessWithMessage("上传成功", record))
+}
+
+// List 文件列表
+func (h *Handler) List(ctx plugin.Context) {
+	var req dto.ListFilesRequest
+	_ = ctx.Bind(&req)
+	pagination, list, err := h.service.List(&req)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
+}
+
+// Delete 删除文件
+func (h *Handler) Delete(ctx plugin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的文件ID"))
+		return
+	}
+	if err := h.service.Delete(uint(id)); err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("删除成功", nil))
 }
 
 // guessMIME 根据扩展名简单推断MIME类型

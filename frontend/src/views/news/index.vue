@@ -104,7 +104,31 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面图" prop="cover_image">
-          <el-input v-model="form.cover_image" placeholder="封面图URL，如 /uploads/xxx.jpg" />
+          <div class="cover-uploader">
+            <el-upload
+              class="cover-uploader-trigger"
+              :show-file-list="false"
+              :before-upload="beforeCoverUpload"
+              :http-request="handleCoverUpload"
+              accept="image/*"
+            >
+              <div v-if="form.cover_image" class="cover-preview">
+                <img :src="form.cover_image" alt="封面图" />
+                <div class="cover-mask">点击替换</div>
+              </div>
+              <div v-else class="cover-placeholder">
+                <el-icon size="28"><Plus /></el-icon>
+                <span>上传封面</span>
+              </div>
+            </el-upload>
+            <el-input
+              v-model="form.cover_image"
+              placeholder="或直接填写图片URL"
+              style="flex:1; margin-left: 12px"
+              clearable
+            />
+          </div>
+          <div class="form-tip">建议尺寸 16:9，单张不超过 5MB</div>
         </el-form-item>
         <el-form-item label="摘要" prop="summary">
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
@@ -113,7 +137,7 @@
           <el-input v-model="form.tags" placeholder="多个标签用英文逗号分隔" />
         </el-form-item>
         <el-form-item label="内容" prop="content">
-          <el-input v-model="form.content" type="textarea" :rows="8" placeholder="支持纯文本/HTML" />
+          <RichTextEditor v-model="form.content" :min-height="320" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -136,6 +160,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { listNews, createNews, updateNews, deleteNews } from '@/api/news'
 import { getCategoryTree } from '@/api/category'
+import { uploadFile } from '@/api/file'
+import { newsStatusText as statusText, newsStatusTagType as statusTag, formatTime } from '@/utils/format'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 
 const loading = ref(false)
 const search = ref('')
@@ -145,10 +172,6 @@ const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const list = ref([])
-
-const statusText = (s) => ({ 0: '草稿', 1: '已发布', 2: '已下架' }[s] || '-')
-const statusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'warning' }[s] || 'info')
-const formatTime = (t) => (t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '-')
 
 // 分类树 + 扁平化
 const categoryTree = ref([])
@@ -215,6 +238,35 @@ const form = reactive({
 })
 const formRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }]
+}
+
+// ===== 封面上传 =====
+const coverUploading = ref(false)
+const beforeCoverUpload = (file) => {
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('仅支持图片格式')
+    return false
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('封面图不能超过 5MB')
+    return false
+  }
+  return true
+}
+const handleCoverUpload = async (options) => {
+  const { file } = options
+  coverUploading.value = true
+  try {
+    const res = await uploadFile(file)
+    if (res.data?.file_url) {
+      form.cover_image = res.data.file_url
+      ElMessage.success('封面上传成功')
+    }
+  } catch (e) {
+    // 错误已由 request 拦截器提示
+  } finally {
+    coverUploading.value = false
+  }
 }
 
 const openCreate = () => {
@@ -334,5 +386,62 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+}
+.cover-uploader {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.cover-uploader-trigger {
+  flex-shrink: 0;
+}
+.cover-preview,
+.cover-placeholder {
+  width: 160px;
+  height: 90px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background: #fafafa;
+  cursor: pointer;
+}
+.cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.cover-preview:hover .cover-mask {
+  opacity: 1;
+}
+.cover-placeholder {
+  flex-direction: column;
+  color: #909399;
+  font-size: 12px;
+  gap: 4px;
+}
+.cover-placeholder:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
 }
 </style>

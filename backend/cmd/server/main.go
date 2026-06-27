@@ -24,6 +24,7 @@ import (
 	setting "wuchang-tongcheng/internal/modules/setting"
 	user "wuchang-tongcheng/internal/modules/user"
 	"wuchang-tongcheng/internal/pkg/config"
+	"wuchang-tongcheng/internal/pkg/seed"
 	"wuchang-tongcheng/internal/pkg/database"
 	jwtpkg "wuchang-tongcheng/internal/pkg/jwt"
 	"wuchang-tongcheng/internal/pkg/logger"
@@ -147,6 +148,13 @@ func main() {
 		logger.Fatal("插件初始化失败", zap.Error(err))
 	}
 	logger.Infof("已加载 %d 个插件", len(pluginManager.List()))
+
+	// 初始化种子数据（幂等）：默认地区、权限码、admin 角色、admin 账号
+	if err := seed.Run(database.GetDB()); err != nil {
+		logger.Error("种子数据初始化失败", zap.Error(err))
+	} else {
+		logger.Info("种子数据初始化完成")
+	}
 
 	// 注册插件路由
 	rootGroup := r.Group("")

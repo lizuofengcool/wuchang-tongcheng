@@ -53,6 +53,15 @@ type CreatePermissionRequest struct {
 	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
+// UpdatePermissionRequest 更新权限请求
+type UpdatePermissionRequest struct {
+	Name   string `json:"name" binding:"max=50"`
+	Path   string `json:"path" binding:"max=255"`
+	Method string `json:"method" binding:"max=20"`
+	Sort   int    `json:"sort"`
+	Status int    `json:"status" binding:"omitempty,oneof=0 1"`
+}
+
 // AssignRolesRequest 给用户分配角色
 type AssignRolesRequest struct {
 	UserID  uint   `json:"user_id" binding:"required"`
@@ -63,4 +72,10 @@ type AssignRolesRequest struct {
 type AssignPermissionsRequest struct {
 	RoleID        uint   `json:"role_id" binding:"required"`
 	PermissionIDs []uint `json:"permission_ids" binding:"required"`
+}
+
+// MyAuthResponse 当前登录用户的权限/角色编码集合（供前端指令使用）
+type MyAuthResponse struct {
+	Permissions []string `json:"permissions"`
+	Roles       []string `json:"roles"`
 }

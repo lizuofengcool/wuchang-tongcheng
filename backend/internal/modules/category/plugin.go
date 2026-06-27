@@ -5,7 +5,9 @@ package category
 import (
 	"context"
 
+	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
+	coreRouter "wuchang-tongcheng/internal/core/router"
 	"wuchang-tongcheng/internal/modules/category/handler"
 	"wuchang-tongcheng/internal/modules/category/model"
 	"wuchang-tongcheng/internal/modules/category/repository"
@@ -50,12 +52,12 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
-	router.POST("", p.handler.Create)
-	router.PUT("/:id", p.handler.Update)
-	router.DELETE("/:id", p.handler.Delete)
-	router.GET("/:id", p.handler.GetByID)
-	router.GET("/children", p.handler.GetByParentID)
-	router.GET("/tree", p.handler.GetTree)
+	router.POST("", coreRouter.WrapGin(middleware.RequirePermission("category:create")), p.handler.Create)
+	router.PUT("/:id", coreRouter.WrapGin(middleware.RequirePermission("category:update")), p.handler.Update)
+	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("category:delete")), p.handler.Delete)
+	router.GET("/:id", coreRouter.WrapGin(middleware.RequirePermission("category:read")), p.handler.GetByID)
+	router.GET("/children", coreRouter.WrapGin(middleware.RequirePermission("category:read")), p.handler.GetByParentID)
+	router.GET("/tree", coreRouter.WrapGin(middleware.RequirePermission("category:read")), p.handler.GetTree)
 }
 
 // Close 关闭插件

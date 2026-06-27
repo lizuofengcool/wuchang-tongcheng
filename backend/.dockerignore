@@ -1,0 +1,14 @@
+# 后端 .dockerignore
+bin/
+logs/
+*.log
+*.exe
+*.out
+*.test
+*.prof
+.idea/
+.vscode/
+.DS_Store
+coverage.out
+coverage.html
+vendor/

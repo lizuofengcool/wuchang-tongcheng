@@ -16,12 +16,22 @@
           text-color="#bfcbd9"
           active-text-color="#409eff"
         >
-          <template v-for="route in menuRoutes" :key="route.path">
-            <el-menu-item :index="route.path">
-              <el-icon v-if="route.meta?.icon">
-                <component :is="route.meta.icon" />
-              </el-icon>
-              <template #title>{{ route.meta?.title }}</template>
+          <template v-for="item in menuItems" :key="item.path">
+            <!-- 分组菜单 -->
+            <el-sub-menu v-if="item.children" :index="item.path">
+              <template #title>
+                <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
+                <span>{{ item.title }}</span>
+              </template>
+              <el-menu-item v-for="c in item.children" :key="c.path" :index="c.path">
+                <el-icon v-if="c.icon"><component :is="c.icon" /></el-icon>
+                <template #title>{{ c.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <!-- 普通菜单 -->
+            <el-menu-item v-else :index="item.path">
+              <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
+              <template #title>{{ item.title }}</template>
             </el-menu-item>
           </template>
         </el-menu>
@@ -44,6 +54,22 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
+          <!-- 地区选择器 -->
+          <el-tree-select
+            v-model="regionStore.currentRegionId"
+            :data="regionStore.regionTree"
+            :props="{ value: 'id', label: 'name', children: 'children' }"
+            check-strictly
+            node-key="id"
+            placeholder="选择地区"
+            size="small"
+            class="region-select"
+            @change="onRegionChange"
+          >
+            <template #prefix>
+              <el-icon><Location /></el-icon>
+            </template>
+          </el-tree-select>
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="32" :src="userStore.avatar">
@@ -81,32 +107,58 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useRegionStore } from '@/stores/region'
 import { constantRoutes } from '@/router'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const regionStore = useRegionStore()
 
 const isCollapse = ref(false)
 
-// 从根布局的 children 中筛选出菜单项（hidden 除外）
-const menuRoutes = computed(() => {
+// 从路由派生菜单：非 system/* 的作为顶级菜单，system/* 归入"系统管理"分组
+const menuItems = computed(() => {
   const root = constantRoutes.find((r) => r.path === '/')
   if (!root || !root.children) return []
-  return root.children
+  const top = []
+  const systemChildren = []
+  root.children
     .filter((r) => !r.meta?.hidden)
-    .map((r) => ({
-      path: '/' + r.path,
-      meta: r.meta
-    }))
+    .forEach((r) => {
+      const item = {
+        path: '/' + r.path,
+        title: r.meta?.title,
+        icon: r.meta?.icon
+      }
+      if (r.path.startsWith('system/')) {
+        systemChildren.push(item)
+      } else {
+        top.push(item)
+      }
+    })
+  if (systemChildren.length) {
+    top.push({
+      path: '/system',
+      title: '系统管理',
+      icon: 'Setting',
+      children: systemChildren
+    })
+  }
+  return top
 })
 
 const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => route.meta?.title || '')
+
+const onRegionChange = (val) => {
+  regionStore.setCurrentRegion(val)
+  ElMessage.success(`已切换地区：${regionStore.currentRegionName}`)
+}
 
 const handleCommand = async (cmd) => {
   if (cmd === 'profile') {
@@ -126,6 +178,12 @@ const handleCommand = async (cmd) => {
     }
   }
 }
+
+onMounted(() => {
+  if (!regionStore.loaded) {
+    regionStore.loadTree()
+  }
+})
 </script>
 
 <style scoped>
@@ -194,6 +252,11 @@ const handleCommand = async (cmd) => {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.region-select {
+  width: 180px;
 }
 
 .user-info {

@@ -103,7 +103,8 @@ import {
   updateRole,
   deleteRole,
   listPermissions,
-  assignPermissions
+  assignPermissions,
+  getRolePermissions
 } from '@/api/permission'
 
 const loading = ref(false)
@@ -237,14 +238,23 @@ const openAssignPerms = async (row) => {
   selectedPermIds.value = []
   permSearch.value = ''
   permVisible.value = true
+  // 并行加载所有权限 + 角色已分配的权限（用于回显）
+  const tasks = []
   if (allPerms.value.length === 0) {
-    try {
-      const res = await listPermissions()
-      allPerms.value = res.data || []
-    } catch (e) {
-      allPerms.value = []
-    }
+    tasks.push(
+      listPermissions()
+        .then((res) => (allPerms.value = res.data || []))
+        .catch(() => (allPerms.value = []))
+    )
   }
+  tasks.push(
+    getRolePermissions(row.id)
+      .then((res) => {
+        selectedPermIds.value = (res.data || []).map((p) => p.id)
+      })
+      .catch(() => (selectedPermIds.value = []))
+  )
+  await Promise.all(tasks)
 }
 
 const handleAssign = async () => {

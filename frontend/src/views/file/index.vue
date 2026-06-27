@@ -84,6 +84,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Document, Delete } from '@element-plus/icons-vue'
 import { uploadFile } from '@/api/file'
+import { formatSize, formatTime } from '@/utils/format'
 
 const uploadRef = ref(null)
 const fileList = ref([])
@@ -93,14 +94,6 @@ const progress = ref(0)
 const currentFileName = ref('')
 
 const isImage = (type) => type === 'image' || (type && type.startsWith('image'))
-const formatSize = (b) => {
-  if (!b) return '0 B'
-  if (b < 1024) return b + ' B'
-  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB'
-  if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB'
-  return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB'
-}
-const formatTime = (t) => (t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '-')
 
 const customUpload = async (options) => {
   const { file } = options

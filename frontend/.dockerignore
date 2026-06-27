@@ -1,0 +1,9 @@
+# 前端 .dockerignore
+node_modules/
+dist/
+*.log
+.idea/
+.vscode/
+.DS_Store
+.env.local
+.env.*.local

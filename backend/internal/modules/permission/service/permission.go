@@ -40,6 +40,10 @@ type PermissionService interface {
 	GetRoleCodesByUserID(userID uint) ([]string, error)
 	// 校验
 	HasPermission(userID uint, permCode string) (bool, error)
+	// 当前用户授权概览（权限码 + 角色码）
+	GetMyAuth(userID uint) ([]string, []string, error)
+	// 角色已分配的权限
+	GetPermissionsByRoleID(roleID uint) ([]dto.PermissionInfo, error)
 }
 
 type permissionService struct {
@@ -276,4 +280,30 @@ func (s *permissionService) HasPermission(userID uint, permCode string) (bool, e
 		}
 	}
 	return false, nil
+}
+
+// GetMyAuth 获取当前用户的权限码与角色码（供前端指令）
+func (s *permissionService) GetMyAuth(userID uint) ([]string, []string, error) {
+	perms, err := s.repo.FindPermissionCodesByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	roles, err := s.repo.FindRoleCodesByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return perms, roles, nil
+}
+
+// GetPermissionsByRoleID 获取角色已分配的权限列表（用于前端回显）
+func (s *permissionService) GetPermissionsByRoleID(roleID uint) ([]dto.PermissionInfo, error) {
+	perms, err := s.repo.FindPermissionsByRoleID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.PermissionInfo, 0, len(perms))
+	for i := range perms {
+		result = append(result, *toPermInfo(&perms[i]))
+	}
+	return result, nil
 }

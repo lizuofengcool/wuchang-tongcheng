@@ -89,6 +89,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { listRoles, listPermissions, myPermissions } from '@/api/permission'
+import { listUsers } from '@/api/user'
 
 const userStore = useUserStore()
 const today = computed(() => {
@@ -101,11 +102,15 @@ const stats = ref({ users: 0, roles: 0, permissions: 0, myPermissions: 0 })
 
 const loadStats = async () => {
   try {
-    const [rolesRes, permsRes, myRes] = await Promise.all([
+    // 用户总数：取分页 total，page_size=1 节省开销
+    const usersReq = listUsers({ page: 1, page_size: 1 }).catch(() => ({ data: { total: 0 } }))
+    const [rolesRes, permsRes, myRes, usersRes] = await Promise.all([
       listRoles(),
       listPermissions(),
-      myPermissions().catch(() => ({ data: [] }))
+      myPermissions().catch(() => ({ data: [] })),
+      usersReq
     ])
+    stats.value.users = usersRes.data?.total || 0
     stats.value.roles = rolesRes.data?.length || 0
     stats.value.permissions = permsRes.data?.length || 0
     stats.value.myPermissions = myRes.data?.length || 0

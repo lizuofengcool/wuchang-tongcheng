@@ -162,6 +162,7 @@ import {
   deleteUser
 } from '@/api/user'
 import { listRoles, assignRoles, getUserRoles } from '@/api/permission'
+import { formatTime } from '@/utils/format'
 
 const loading = ref(false)
 const search = ref('')
@@ -172,7 +173,6 @@ const total = ref(0)
 const users = ref([])
 
 const genderText = (g) => ({ 0: '未知', 1: '男', 2: '女' }[g] || '未知')
-const formatTime = (t) => (t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '-')
 
 const onSearch = () => {
   page.value = 1

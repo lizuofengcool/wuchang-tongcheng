@@ -8,8 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"wuchang-tongcheng/internal/modules/file/dto"
 	"wuchang-tongcheng/internal/modules/file/model"
+	"wuchang-tongcheng/internal/modules/file/repository"
 	"wuchang-tongcheng/internal/pkg/storage"
+	"wuchang-tongcheng/internal/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -18,6 +21,7 @@ var (
 	ErrFileEmpty       = errors.New("文件为空")
 	ErrFileTypeInvalid = errors.New("不支持的文件类型")
 	ErrFileTooLarge    = errors.New("文件过大")
+	ErrFileNotFound    = errors.New("文件不存在")
 )
 
 // 允许的文件扩展名
@@ -36,15 +40,17 @@ const maxFileSize = 50 * 1024 * 1024
 // FileService 文件业务逻辑接口
 type FileService interface {
 	Upload(regionID uint, userID uint, filename string, mimeType string, size int64, reader io.Reader) (*model.FileUpload, error)
+	List(req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error)
+	Delete(id uint) error
 }
 
 type fileService struct {
-	db *gorm.DB
+	repo repository.FileRepository
 }
 
 // NewFileService 创建文件服务
-func NewFileService(db *gorm.DB) FileService {
-	return &fileService{db: db}
+func NewFileService(repo repository.FileRepository) FileService {
+	return &fileService{repo: repo}
 }
 
 // Upload 上传文件
@@ -81,11 +87,36 @@ func (s *fileService) Upload(regionID uint, userID uint, filename string, mimeTy
 	}
 	record.RegionID = regionID
 
-	if err := s.db.Create(record).Error; err != nil {
+	if err := s.repo.Create(record); err != nil {
 		// 数据库写入失败，尝试回滚已保存的文件
 		_ = storage.Delete(url)
 		return nil, fmt.Errorf("记录文件信息失败: %w", err)
 	}
 
 	return record, nil
+}
+
+// List 文件列表
+func (s *fileService) List(req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error) {
+	pagination := utils.NewPagination(req.Page, req.PageSize)
+	list, total, err := s.repo.List(pagination, req.FileType, req.Keyword)
+	if err != nil {
+		return nil, nil, err
+	}
+	pagination.Total = total
+	return pagination, list, nil
+}
+
+// Delete 删除文件（同时删除存储文件）
+func (s *fileService) Delete(id uint) error {
+	record, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrFileNotFound
+		}
+		return err
+	}
+	// 删除存储文件（失败不阻塞记录删除）
+	_ = storage.GetStorage().Delete(record.FileURL)
+	return s.repo.Delete(id)
 }
