@@ -14,10 +14,12 @@
 - **搜索引擎**: Elasticsearch 8（基础设施已部署，代码集成待补齐）
 - **消息队列**: RabbitMQ（基础设施已部署，代码集成待补齐）
 - **实时通信**: WebSocket（规划中，待开发）
-- **对象存储**: 已实现 LocalStorage；MinIO/七牛云Kodo 待补齐
+- **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）；七牛云Kodo 待补齐
 - **地图服务**: 高德地图API（规划中，待开发）
 - **鉴权**: JWT + RBAC（用户-角色-权限，超级管理员直通）
-- **API文档**: Swagger（待补齐）
+- **API文档**: Swagger（gin-swagger + swaggo/swag，已集成）
+- **限流防刷**: 基于 Redis INCR 的固定窗口限流（登录 5/min、新闻读取 60/min、点赞 30/min），Redis 不可用时优雅降级
+- **CI/CD**: GitHub Actions（backend go vet/build/test、frontend npm build、tag 触发 docker publish 推送 GHCR）
 
 ### 前端
 - **管理后台**: Vue 3 + Vite + Element Plus + Pinia（当前已实现）
@@ -187,28 +189,30 @@ docker-compose up -d
 - ✅ 插件化后端骨架（7 个业务模块均含 model/dto/repository/service/handler/plugin.go）
 - ✅ RBAC 权限模型（用户-角色-权限，超级管理员直通，路由级权限校验）
 - ✅ JWT 鉴权 + AuthRequired/RequirePermission 中间件全链路打通
-- ✅ 地区数据隔离（中间件 + RegionBaseModel，news/category/setting 读取链路已生效）
+- ✅ 地区数据隔离（中间件 + RegionBaseModel，全链路：news/category/setting 读取 + file.List + user 读写）
 - ✅ 种子数据（31 个权限码、5 个地区、admin 超管账号）
-- ✅ Vue3 管理后台（login/dashboard/profile + 7 个业务管理页）
+- ✅ Vue3 管理后台（login/dashboard/profile + 7 个业务管理页 + news 详情页）
 - ✅ 前端权限指令 v-permission/v-role、路由守卫 meta.permission
 - ✅ 富文本编辑器组件（contenteditable + 图片上传）
 - ✅ 前后端 Docker 多阶段构建 + Nginx 反代 + .env 配置
+- ✅ Swagger API 文档（gin-swagger + swaggo/swag，路由 /swagger/index.html）
+- ✅ MinIO 对象存储（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS；自动建桶 + 公开读策略 + 按日期分目录）
+- ✅ news 点赞 API（幂等 toggle，NewsLike 表 user_id+news_id 唯一索引）+ 前端详情页
+- ✅ setting 值类型反序列化（string/number/bool/json 四类型，写入校验 + 读取解析）
+- ✅ category/region 层级深度限制（MaxLevel=3，Level 按 ParentID 自动计算）
+- ✅ 限流防刷（基于 Redis INCR 固定窗口，登录 5/min、news 读取 60/min、点赞 30/min，Redis 不可用优雅降级）
+- ✅ 后端单元测试（utils/setting/user 共 28 个用例，覆盖纯函数无 DB/Redis 依赖）
+- ✅ GitHub Actions CI/CD（backend CI、frontend CI、docker-publish 推送 GHCR）
 
 ### 部分实现
-- ⚠️ 对象存储：仅 LocalStorage，MinIO/七牛云为 stub
-- ⚠️ Redis：封装完整但无业务模块调用
-- ⚠️ setting 值类型：4 种类型仅作元数据标记，读取未反序列化
-- ⚠️ news：状态流转 + 浏览量累加已实现，但无评论/点赞 API、无前端详情页
-- ⚠️ region 隔离：news/category/setting 已生效，file.List 和 user 读写未隔离
-- ⚠️ category/region：有树形结构但无层级深度限制
+- ⚠️ Redis：封装完整，目前仅限流中间件接入，业务缓存（hot key/会话/列表）待补齐
 
 ### 未实现（待开发）
 - ❌ PC 门户站（Next.js）、小程序端（Uni-app）
 - ❌ RabbitMQ 集成、Elasticsearch 集成、WebSocket、高德地图
-- ❌ Swagger API 文档、数据库迁移 scripts
-- ❌ PostGIS 空间查询
+- ❌ 数据库迁移 scripts、PostGIS 空间查询
 - ❌ 第三方登录、手机验证码登录
-- ❌ 单元测试、CI/CD 流水线
+- ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
 
 ## 许可证
 
