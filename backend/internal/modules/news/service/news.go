@@ -15,6 +15,7 @@ import (
 	"wuchang-tongcheng/internal/pkg/es"
 	rediscache "wuchang-tongcheng/internal/pkg/redis"
 	"wuchang-tongcheng/internal/pkg/utils"
+	wspkg "wuchang-tongcheng/internal/pkg/ws"
 
 	"gorm.io/gorm"
 )
@@ -299,7 +300,21 @@ func (s *newsService) Like(userID, newsID uint) (*dto.LikeResponse, error) {
 	}
 	_ = s.newsRepo.IncrLikeCount(newsID)
 	news.LikeCount++
-	return &dto.LikeResponse{Liked: true, LikeCount: news.LikeCount}, nil
+	resp := &dto.LikeResponse{Liked: true, LikeCount: news.LikeCount}
+
+	// 实时通知作者（fire-and-forget：作者不在线则丢弃，不自己通知自己）
+	if hub := wspkg.GetHub(); hub != nil && news.AuthorID != 0 && news.AuthorID != userID {
+		hub.SendToUser(news.AuthorID, &wspkg.Message{
+			Type: wspkg.TypeLike,
+			Data: wspkg.LikeNotification{
+				NewsID:    newsID,
+				NewsTitle: news.Title,
+				Liked:     true,
+				LikeCount: news.LikeCount,
+			},
+		})
+	}
+	return resp, nil
 }
 
 // LikeStatus 查询当前用户对该头条的点赞状态

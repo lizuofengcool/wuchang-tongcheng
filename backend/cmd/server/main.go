@@ -31,6 +31,7 @@ import (
 	"wuchang-tongcheng/internal/pkg/logger"
 	mqpkg "wuchang-tongcheng/internal/pkg/mq"
 	redispkg "wuchang-tongcheng/internal/pkg/redis"
+	wspkg "wuchang-tongcheng/internal/pkg/ws"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -125,6 +126,11 @@ func main() {
 		logger.Info("Elasticsearch初始化成功")
 	}
 
+	// 5.3 初始化WebSocket Hub（无外部依赖，总是启动，用于实时通知推送）
+	wspkg.Init()
+	defer wspkg.Close()
+	logger.Info("WebSocket Hub初始化成功")
+
 	// 6. 初始化JWT
 	logger.Info("正在初始化JWT...")
 	jwtpkg.Init(cfg.JWT.Secret, cfg.JWT.Expire)
@@ -152,6 +158,9 @@ func main() {
 
 	// 静态文件服务（上传的文件访问）
 	r.Engine().Static("/uploads", "./uploads")
+
+	// WebSocket 实时通知端点（鉴权：?token=<JWT>）
+	r.GET("/ws", middleware.WebSocketHandler())
 
 	// 注册根路由
 	r.GET("/", func(c *gin.Context) {

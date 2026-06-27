@@ -13,7 +13,7 @@
 - **缓存**: Redis 7（已封装，限流 + 业务缓存接入：region/category 树 30min TTL、news 列表 60s TTL，写操作按前缀失效，Redis 不可用降级走 DB）
 - **搜索引擎**: Elasticsearch 8（已集成：news 全文检索 multi_match + 异步索引，ES 不可用降级 DB LIKE）
 - **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
-- **实时通信**: WebSocket（规划中，待开发）
+- **实时通信**: WebSocket（已实现：Hub 连接管理 + JWT 鉴权升级端点 /ws，单用户多连接定向推送 + 全局广播，点赞实时通知作者）
 - **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）；七牛云Kodo 待补齐
 - **地图服务**: 高德地图API（规划中，待开发）
 - **鉴权**: JWT + RBAC（用户-角色-权限，超级管理员直通）
@@ -206,6 +206,10 @@ docker-compose up -d
   - cache-aside 助手（GetJSON/SetJSON/DelByPrefix，Redis 不可用降级 miss）
   - region/category 树缓存（30min TTL，写操作 SCAN+DEL 按前缀失效）
   - news 列表缓存（60s TTL，仅 keyword 为空的热点 feed）
+- v0.7.0 - WebSocket 实时通知（D15）
+  - ws Hub 连接管理（单用户多连接、注册/注销事件循环、定向推送/广播）
+  - /ws 升级端点（JWT query token 鉴权 + 读写泵 + ping 保活）
+  - 点赞实时通知作者（fire-and-forget，不在线丢弃，不通知自己）
 
 ## 功能完成度（对照规划）
 
@@ -235,9 +239,10 @@ docker-compose up -d
 - ✅ PC门户站 Next.js 14（首页 ISR 60s、头条列表/详情、分类页、搜索、点赞组件，SSR try/catch 容错降级）
 - ✅ 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
 - ✅ Redis 业务缓存（cache-aside：region/category 树 30min + news 列表 60s，写操作 SCAN+DEL 按前缀失效，Redis 不可用全链路降级走 DB）
+- ✅ WebSocket 实时通知（Hub 单用户多连接 + JWT 鉴权 /ws 端点 + 定向推送/广播，点赞实时通知作者，不在线 fire-and-forget 丢弃）
 
 ### 未实现（待开发）
-- ❌ WebSocket 实时通信、高德地图 API
+- ❌ 高德地图 API
 - ❌ 数据库迁移 scripts、PostGIS 空间查询
 - ❌ 第三方登录、手机验证码登录
 - ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
