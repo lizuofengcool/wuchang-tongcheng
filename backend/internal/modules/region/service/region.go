@@ -15,7 +15,12 @@ var (
 	ErrRegionNotFound      = errors.New("地区不存在")
 	ErrRegionCodeExists    = errors.New("地区编码已存在")
 	ErrRegionHasChildren   = errors.New("该地区存在子地区，无法删除")
+	ErrRegionMaxLevel      = errors.New("地区层级已达上限（最多3级：省/市/区县）")
+	ErrRegionParentInvalid = errors.New("父地区不存在")
 )
+
+// MaxRegionLevel 地区最大层级（1省 2市 3区县）
+const MaxRegionLevel = 3
 
 // RegionService 地区业务逻辑接口
 type RegionService interface {
@@ -49,6 +54,8 @@ func toRegionInfo(region *model.Region) *dto.RegionInfo {
 }
 
 // Create 创建地区
+// Level 自动根据 ParentID 计算：ParentID=0 时为 1（省），否则为 父地区 Level+1
+// 最大层级受 MaxRegionLevel 限制（省/市/区县 3 级），超过返回错误
 func (s *regionService) Create(req *dto.CreateRegionRequest) (*dto.RegionInfo, error) {
 	// 检查编码是否重复
 	if _, err := s.regionRepo.FindByCode(req.Code); err == nil {
@@ -58,15 +65,31 @@ func (s *regionService) Create(req *dto.CreateRegionRequest) (*dto.RegionInfo, e
 	}
 
 	status := req.Status
-	if status == 0 && req.Status == 0 {
+	if status == 0 {
 		status = 1 // 默认正常
+	}
+
+	// 根据父地区计算层级
+	level := 1
+	if req.ParentID > 0 {
+		parent, err := s.regionRepo.FindByID(req.ParentID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, ErrRegionParentInvalid
+			}
+			return nil, err
+		}
+		level = parent.Level + 1
+		if level > MaxRegionLevel {
+			return nil, ErrRegionMaxLevel
+		}
 	}
 
 	region := &model.Region{
 		Name:     req.Name,
 		Code:     req.Code,
 		ParentID: req.ParentID,
-		Level:    req.Level,
+		Level:    level,
 		Sort:     req.Sort,
 		Status:   status,
 	}

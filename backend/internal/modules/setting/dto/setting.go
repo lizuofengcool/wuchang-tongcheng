@@ -3,13 +3,14 @@ package dto
 
 // SettingInfo 配置信息
 type SettingInfo struct {
-	ID          uint   `json:"id"`
-	Group       string `json:"group"`
-	Key         string `json:"key"`
-	Value       string `json:"value"`
-	ValueType   string `json:"value_type"`
-	Description string `json:"description"`
-	Sort        int    `json:"sort"`
+	ID          uint        `json:"id"`
+	Group       string      `json:"group"`
+	Key         string      `json:"key"`
+	Value       string      `json:"value"`        // 原始字符串值
+	ParsedValue interface{} `json:"parsed_value"` // 按 value_type 反序列化后的值（string/float64/bool/任意 JSON 结构）
+	ValueType   string      `json:"value_type"`
+	Description string      `json:"description"`
+	Sort        int         `json:"sort"`
 }
 
 // CreateSettingRequest 创建配置请求

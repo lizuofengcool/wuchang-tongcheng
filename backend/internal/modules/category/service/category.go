@@ -14,7 +14,12 @@ import (
 var (
 	ErrCategoryNotFound    = errors.New("分类不存在")
 	ErrCategoryHasChildren  = errors.New("该分类存在子分类，无法删除")
+	ErrCategoryMaxLevel    = errors.New("分类层级已达上限（最多3级）")
+	ErrCategoryParentInvalid = errors.New("父分类不存在")
 )
+
+// MaxCategoryLevel 分类最大层级
+const MaxCategoryLevel = 3
 
 // CategoryService 分类业务逻辑接口
 type CategoryService interface {
@@ -48,17 +53,35 @@ func toCategoryInfo(c *model.Category) *dto.CategoryInfo {
 }
 
 // Create 创建分类
+// Level 自动根据 ParentID 计算：ParentID=0 时为 1，否则为 父分类 Level+1
+// 最大层级受 MaxCategoryLevel 限制，超过返回错误
 func (s *categoryService) Create(regionID uint, req *dto.CreateCategoryRequest) (*dto.CategoryInfo, error) {
 	status := req.Status
 	if status == 0 {
 		status = 1
 	}
 
+	// 根据父分类计算层级
+	level := 1
+	if req.ParentID > 0 {
+		parent, err := s.categoryRepo.FindByID(req.ParentID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, ErrCategoryParentInvalid
+			}
+			return nil, err
+		}
+		level = parent.Level + 1
+		if level > MaxCategoryLevel {
+			return nil, ErrCategoryMaxLevel
+		}
+	}
+
 	category := &model.Category{
 		Name:     req.Name,
 		Icon:     req.Icon,
 		ParentID: req.ParentID,
-		Level:    req.Level,
+		Level:    level,
 		Sort:     req.Sort,
 		Status:   status,
 	}

@@ -2,7 +2,11 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"wuchang-tongcheng/internal/modules/setting/dto"
 	"wuchang-tongcheng/internal/modules/setting/model"
@@ -12,8 +16,9 @@ import (
 )
 
 var (
-	ErrSettingNotFound  = errors.New("配置项不存在")
-	ErrSettingKeyExists = errors.New("配置键已存在")
+	ErrSettingNotFound   = errors.New("配置项不存在")
+	ErrSettingKeyExists   = errors.New("配置键已存在")
+	ErrSettingValueInvalid = errors.New("配置值与值类型不匹配")
 )
 
 // SettingService 系统设置业务逻辑接口
@@ -39,15 +44,85 @@ func NewSettingService(repo repository.SettingRepository) SettingService {
 }
 
 func toSettingInfo(s *model.Setting) *dto.SettingInfo {
+	vt := s.ValueType
+	if vt == "" {
+		vt = "string"
+	}
 	return &dto.SettingInfo{
 		ID:          s.ID,
 		Group:       s.Group,
 		Key:         s.Key,
 		Value:       s.Value,
-		ValueType:   s.ValueType,
+		ParsedValue: parseValue(s.Value, vt),
+		ValueType:   vt,
 		Description: s.Description,
 		Sort:        s.Sort,
 	}
+}
+
+// parseValue 按 valueType 反序列化字符串值为对应的 Go 类型
+//   - string: 原样返回
+//   - number: float64
+//   - bool:   bool
+//   - json:   任意 JSON 结构（map/slice/标量）；解析失败回退为原字符串
+func parseValue(value, valueType string) interface{} {
+	switch valueType {
+	case "number":
+		f, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err != nil {
+			return value
+		}
+		return f
+	case "bool":
+		v := strings.ToLower(strings.TrimSpace(value))
+		switch v {
+		case "true", "1", "yes", "on":
+			return true
+		case "false", "0", "no", "off", "":
+			return false
+		}
+		return value
+	case "json":
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(value), &parsed); err != nil {
+			return value
+		}
+		return parsed
+	default: // string 或未知类型
+		return value
+	}
+}
+
+// validateValue 校验 value 是否符合声明的 valueType，不符合返回错误
+func validateValue(value, valueType string) error {
+	switch valueType {
+	case "number":
+		if value == "" {
+			return nil
+		}
+		if _, err := strconv.ParseFloat(strings.TrimSpace(value), 64); err != nil {
+			return fmt.Errorf("%w: 期望 number, 实际 %q", ErrSettingValueInvalid, value)
+		}
+	case "bool":
+		if value == "" {
+			return nil
+		}
+		v := strings.ToLower(strings.TrimSpace(value))
+		switch v {
+		case "true", "false", "1", "0", "yes", "no", "on", "off":
+			return nil
+		}
+		return fmt.Errorf("%w: 期望 bool(true/false/1/0), 实际 %q", ErrSettingValueInvalid, value)
+	case "json":
+		if value == "" {
+			return nil
+		}
+		var v interface{}
+		if err := json.Unmarshal([]byte(value), &v); err != nil {
+			return fmt.Errorf("%w: 期望合法 JSON, 解析失败: %v", ErrSettingValueInvalid, err)
+		}
+	}
+	return nil
 }
 
 // Create 创建配置
@@ -62,6 +137,11 @@ func (s *settingService) Create(regionID uint, req *dto.CreateSettingRequest) (*
 	valueType := req.ValueType
 	if valueType == "" {
 		valueType = "string"
+	}
+
+	// 校验 value 是否符合声明的 valueType
+	if err := validateValue(req.Value, valueType); err != nil {
+		return nil, err
 	}
 
 	setting := &model.Setting{
@@ -82,10 +162,19 @@ func (s *settingService) Create(regionID uint, req *dto.CreateSettingRequest) (*
 
 // Update 更新配置
 func (s *settingService) Update(id uint, req *dto.UpdateSettingRequest) error {
-	if _, err := s.repo.FindByID(id); err != nil {
+	setting, err := s.repo.FindByID(id)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrSettingNotFound
 		}
+		return err
+	}
+	// 用已存在的 valueType 校验新值
+	vt := setting.ValueType
+	if vt == "" {
+		vt = "string"
+	}
+	if err := validateValue(req.Value, vt); err != nil {
 		return err
 	}
 	fields := map[string]interface{}{
@@ -156,6 +245,14 @@ func (s *settingService) BatchUpdate(regionID uint, req *dto.BatchUpdateRequest)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue // 跳过不存在的
 			}
+			return err
+		}
+		// 用已存在的 valueType 校验新值
+		vt := setting.ValueType
+		if vt == "" {
+			vt = "string"
+		}
+		if err := validateValue(item.Value, vt); err != nil {
 			return err
 		}
 		if err := s.repo.UpdateFields(setting.ID, map[string]interface{}{"value": item.Value}); err != nil {
