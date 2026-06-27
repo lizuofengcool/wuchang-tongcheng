@@ -13,6 +13,7 @@ import (
 	"wuchang-tongcheng/internal/modules/news/model"
 	"wuchang-tongcheng/internal/modules/news/repository"
 	"wuchang-tongcheng/internal/pkg/es"
+	rediscache "wuchang-tongcheng/internal/pkg/redis"
 	"wuchang-tongcheng/internal/pkg/utils"
 
 	"gorm.io/gorm"
@@ -22,6 +23,27 @@ var (
 	ErrNewsNotFound     = errors.New("头条不存在")
 	ErrNewsNoPermission = errors.New("无权操作此头条")
 )
+
+// 缓存键前缀与 TTL
+// news 列表变更相对频繁（发布/更新/删除），TTL 60s 兼顾新鲜度与性能；
+// 仅缓存 keyword 为空的热点列表（首页 feed），带关键词的检索走 ES 不走此缓存，避免缓存膨胀。
+const (
+	newsCachePrefix = "cache:news:"
+	newsCacheTTL    = 60 * time.Second
+)
+
+// newsCacheKeyList 列表缓存键：regionID + categoryID + status + 分页
+func newsCacheKeyList(regionID uint, req *dto.NewsListRequest) string {
+	return fmt.Sprintf(newsCachePrefix+"list:%d:%d:%d:%d:%d",
+		regionID, req.CategoryID, req.Status, req.Page, req.PageSize)
+}
+
+// invalidateNewsCache 失效整组头条缓存（SCAN+DEL，Redis 不可用时 no-op）
+func invalidateNewsCache() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = rediscache.DelByPrefix(ctx, newsCachePrefix)
+}
 
 // NewsService 头条业务逻辑接口
 type NewsService interface {
@@ -95,7 +117,8 @@ func (s *newsService) Create(regionID uint, authorID uint, authorName string, re
 	if err := s.newsRepo.Create(news); err != nil {
 		return nil, err
 	}
-	// 触发索引同步（fire-and-forget）
+	// 失效列表缓存 + 触发索引同步（fire-and-forget）
+	invalidateNewsCache()
 	s.indexer.OnIndex(news)
 	return toNewsInfo(news), nil
 }
@@ -148,7 +171,8 @@ func (s *newsService) Update(id uint, operatorID uint, req *dto.UpdateNewsReques
 	if err := s.newsRepo.UpdateFields(id, fields); err != nil {
 		return err
 	}
-	// 重新查询最新数据触发索引同步（fire-and-forget）
+	// 失效列表缓存 + 重新查询最新数据触发索引同步（fire-and-forget）
+	invalidateNewsCache()
 	if updated, err := s.newsRepo.FindByID(id); err == nil {
 		s.indexer.OnIndex(updated)
 	}
@@ -170,7 +194,8 @@ func (s *newsService) Delete(id uint, operatorID uint) error {
 	if err := s.newsRepo.Delete(id); err != nil {
 		return err
 	}
-	// 触发索引删除（fire-and-forget）
+	// 失效列表缓存 + 触发索引删除（fire-and-forget）
+	invalidateNewsCache()
 	s.indexer.OnDelete(id)
 	return nil
 }
@@ -192,16 +217,46 @@ func (s *newsService) GetByID(id uint) (*dto.NewsInfo, error) {
 	return toNewsInfo(news), nil
 }
 
+// newsListCache 缓存负载：分页元数据 + 列表数据
+type newsListCache struct {
+	Pagination utils.Pagination `json:"pagination"`
+	List       []dto.NewsInfo    `json:"list"`
+}
+
 // List 头条列表
+// cache-aside：仅当 keyword 为空（首页 feed）时走缓存，TTL 60s；带关键词检索走 ES 不走此缓存。
+// Redis 不可用或 miss 时回源 DB。
 func (s *newsService) List(regionID uint, req *dto.NewsListRequest) (*utils.Pagination, []dto.NewsInfo, error) {
 	pagination := utils.NewPagination(req.Page, req.PageSize)
 
+	// 仅缓存无关键词的热点列表
+	if req.Keyword == "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		var cached newsListCache
+		if hit, _ := rediscache.GetJSON(ctx, newsCacheKeyList(regionID, req), &cached); hit {
+			return &cached.Pagination, cached.List, nil
+		}
+
+		list, total, err := s.newsRepo.List(regionID, pagination, req.CategoryID, req.Status, "")
+		if err != nil {
+			return nil, nil, err
+		}
+		pagination.Total = total
+		result := make([]dto.NewsInfo, 0, len(list))
+		for i := range list {
+			result = append(result, *toNewsInfo(&list[i]))
+		}
+		_ = rediscache.SetJSON(ctx, newsCacheKeyList(regionID, req), newsListCache{Pagination: *pagination, List: result}, newsCacheTTL)
+		return pagination, result, nil
+	}
+
+	// 带关键词：直接查 DB
 	list, total, err := s.newsRepo.List(regionID, pagination, req.CategoryID, req.Status, req.Keyword)
 	if err != nil {
 		return nil, nil, err
 	}
 	pagination.Total = total
-
 	result := make([]dto.NewsInfo, 0, len(list))
 	for i := range list {
 		result = append(result, *toNewsInfo(&list[i]))

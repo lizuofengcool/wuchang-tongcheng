@@ -2,11 +2,15 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"wuchang-tongcheng/internal/modules/category/dto"
 	"wuchang-tongcheng/internal/modules/category/model"
 	"wuchang-tongcheng/internal/modules/category/repository"
+	rediscache "wuchang-tongcheng/internal/pkg/redis"
 
 	"gorm.io/gorm"
 )
@@ -20,6 +24,29 @@ var (
 
 // MaxCategoryLevel 分类最大层级
 const MaxCategoryLevel = 3
+
+// 缓存键前缀与 TTL（分类数据变更少，TTL 30min，写操作按前缀失效整组）
+const (
+	categoryCachePrefix = "cache:category:"
+	categoryCacheTTL    = 30 * time.Minute
+)
+
+func categoryCacheKeyTree(regionID uint) string {
+	return fmt.Sprintf(categoryCachePrefix+"tree:%d", regionID)
+}
+func categoryCacheKeyByID(id uint) string {
+	return fmt.Sprintf(categoryCachePrefix+"id:%d", id)
+}
+func categoryCacheKeyByParent(parentID, regionID uint) string {
+	return fmt.Sprintf(categoryCachePrefix+"parent:%d:%d", parentID, regionID)
+}
+
+// invalidateCategoryCache 失效整组分类缓存（SCAN+DEL，Redis 不可用时 no-op）
+func invalidateCategoryCache() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = rediscache.DelByPrefix(ctx, categoryCachePrefix)
+}
 
 // CategoryService 分类业务逻辑接口
 type CategoryService interface {
@@ -90,6 +117,7 @@ func (s *categoryService) Create(regionID uint, req *dto.CreateCategoryRequest) 
 	if err := s.categoryRepo.Create(category); err != nil {
 		return nil, err
 	}
+	invalidateCategoryCache()
 	return toCategoryInfo(category), nil
 }
 
@@ -113,7 +141,11 @@ func (s *categoryService) Update(id uint, req *dto.UpdateCategoryRequest) error 
 	if req.Status == 0 || req.Status == 1 {
 		fields["status"] = req.Status
 	}
-	return s.categoryRepo.UpdateFields(id, fields)
+	if err := s.categoryRepo.UpdateFields(id, fields); err != nil {
+		return err
+	}
+	invalidateCategoryCache()
+	return nil
 }
 
 // Delete 删除分类
@@ -138,11 +170,22 @@ func (s *categoryService) Delete(id uint) error {
 	if len(children) > 0 {
 		return ErrCategoryHasChildren
 	}
-	return s.categoryRepo.Delete(id)
+	if err := s.categoryRepo.Delete(id); err != nil {
+		return err
+	}
+	invalidateCategoryCache()
+	return nil
 }
 
-// GetByID 根据ID获取分类
+// GetByID 根据ID获取分类（cache-aside）
 func (s *categoryService) GetByID(id uint) (*dto.CategoryInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached dto.CategoryInfo
+	if hit, _ := rediscache.GetJSON(ctx, categoryCacheKeyByID(id), &cached); hit {
+		return &cached, nil
+	}
+
 	category, err := s.categoryRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -150,11 +193,20 @@ func (s *categoryService) GetByID(id uint) (*dto.CategoryInfo, error) {
 		}
 		return nil, err
 	}
-	return toCategoryInfo(category), nil
+	info := toCategoryInfo(category)
+	_ = rediscache.SetJSON(ctx, categoryCacheKeyByID(id), info, categoryCacheTTL)
+	return info, nil
 }
 
-// GetByParentID 根据父级ID获取子分类
+// GetByParentID 根据父级ID获取子分类（cache-aside）
 func (s *categoryService) GetByParentID(parentID uint, regionID uint) ([]dto.CategoryInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached []dto.CategoryInfo
+	if hit, _ := rediscache.GetJSON(ctx, categoryCacheKeyByParent(parentID, regionID), &cached); hit {
+		return cached, nil
+	}
+
 	categories, err := s.categoryRepo.FindByParentID(parentID, regionID)
 	if err != nil {
 		return nil, err
@@ -163,11 +215,19 @@ func (s *categoryService) GetByParentID(parentID uint, regionID uint) ([]dto.Cat
 	for i := range categories {
 		result = append(result, *toCategoryInfo(&categories[i]))
 	}
+	_ = rediscache.SetJSON(ctx, categoryCacheKeyByParent(parentID, regionID), result, categoryCacheTTL)
 	return result, nil
 }
 
-// GetTree 获取分类树形结构
+// GetTree 获取分类树形结构（cache-aside：分类树变更少，前端导航热点读）
 func (s *categoryService) GetTree(regionID uint) ([]dto.CategoryTree, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached []dto.CategoryTree
+	if hit, _ := rediscache.GetJSON(ctx, categoryCacheKeyTree(regionID), &cached); hit {
+		return cached, nil
+	}
+
 	all, err := s.categoryRepo.FindByRegionID(regionID)
 	if err != nil {
 		return nil, err
@@ -187,11 +247,13 @@ func (s *categoryService) GetTree(regionID uint) ([]dto.CategoryTree, error) {
 			c := children[i]
 			tree := dto.CategoryTree{
 				CategoryInfo: *toCategoryInfo(&c),
-				Children:     build(c.ID),
+				Children:   build(c.ID),
 			}
 			trees = append(trees, tree)
 		}
 		return trees
 	}
-	return build(0), nil
+	tree := build(0)
+	_ = rediscache.SetJSON(ctx, categoryCacheKeyTree(regionID), tree, categoryCacheTTL)
+	return tree, nil
 }

@@ -2,11 +2,15 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"wuchang-tongcheng/internal/modules/region/dto"
 	"wuchang-tongcheng/internal/modules/region/model"
 	"wuchang-tongcheng/internal/modules/region/repository"
+	rediscache "wuchang-tongcheng/internal/pkg/redis"
 
 	"gorm.io/gorm"
 )
@@ -21,6 +25,26 @@ var (
 
 // MaxRegionLevel 地区最大层级（1省 2市 3区县）
 const MaxRegionLevel = 3
+
+// 缓存键前缀与 TTL（地区数据变更极少，TTL 30min，写操作按前缀失效整组）
+const (
+	regionCachePrefix = "cache:region:"
+	regionCacheTTL    = 30 * time.Minute
+)
+
+// regionCacheKey 各读路径的缓存键
+func regionCacheKeyTree() string          { return regionCachePrefix + "tree" }
+func regionCacheKeyByID(id uint) string   { return fmt.Sprintf(regionCachePrefix+"id:%d", id) }
+func regionCacheKeyByParent(id uint) string {
+	return fmt.Sprintf(regionCachePrefix+"parent:%d", id)
+}
+
+// invalidateRegionCache 失效整组地区缓存（SCAN+DEL，Redis 不可用时 no-op）
+func invalidateRegionCache() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = rediscache.DelByPrefix(ctx, regionCachePrefix)
+}
 
 // RegionService 地区业务逻辑接口
 type RegionService interface {
@@ -97,6 +121,7 @@ func (s *regionService) Create(req *dto.CreateRegionRequest) (*dto.RegionInfo, e
 	if err := s.regionRepo.Create(region); err != nil {
 		return nil, err
 	}
+	invalidateRegionCache()
 	return toRegionInfo(region), nil
 }
 
@@ -117,7 +142,11 @@ func (s *regionService) Update(id uint, req *dto.UpdateRegionRequest) error {
 	if req.Status == 0 || req.Status == 1 {
 		fields["status"] = req.Status
 	}
-	return s.regionRepo.UpdateFields(id, fields)
+	if err := s.regionRepo.UpdateFields(id, fields); err != nil {
+		return err
+	}
+	invalidateRegionCache()
+	return nil
 }
 
 // Delete 删除地区
@@ -138,11 +167,22 @@ func (s *regionService) Delete(id uint) error {
 		return ErrRegionHasChildren
 	}
 
-	return s.regionRepo.Delete(id)
+	if err := s.regionRepo.Delete(id); err != nil {
+		return err
+	}
+	invalidateRegionCache()
+	return nil
 }
 
-// GetByID 根据ID获取地区
+// GetByID 根据ID获取地区（cache-aside：Redis 命中直接返回，miss 回源 DB 并回填）
 func (s *regionService) GetByID(id uint) (*dto.RegionInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached dto.RegionInfo
+	if hit, _ := rediscache.GetJSON(ctx, regionCacheKeyByID(id), &cached); hit {
+		return &cached, nil
+	}
+
 	region, err := s.regionRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -150,11 +190,20 @@ func (s *regionService) GetByID(id uint) (*dto.RegionInfo, error) {
 		}
 		return nil, err
 	}
-	return toRegionInfo(region), nil
+	info := toRegionInfo(region)
+	_ = rediscache.SetJSON(ctx, regionCacheKeyByID(id), info, regionCacheTTL)
+	return info, nil
 }
 
-// GetByParentID 根据父级ID获取子地区列表
+// GetByParentID 根据父级ID获取子地区列表（cache-aside）
 func (s *regionService) GetByParentID(parentID uint) ([]dto.RegionInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached []dto.RegionInfo
+	if hit, _ := rediscache.GetJSON(ctx, regionCacheKeyByParent(parentID), &cached); hit {
+		return cached, nil
+	}
+
 	regions, err := s.regionRepo.FindByParentID(parentID)
 	if err != nil {
 		return nil, err
@@ -163,11 +212,19 @@ func (s *regionService) GetByParentID(parentID uint) ([]dto.RegionInfo, error) {
 	for i := range regions {
 		result = append(result, *toRegionInfo(&regions[i]))
 	}
+	_ = rediscache.SetJSON(ctx, regionCacheKeyByParent(parentID), result, regionCacheTTL)
 	return result, nil
 }
 
-// GetTree 获取地区树形结构
+// GetTree 获取地区树形结构（cache-aside：地区树变更极少，热点读）
 func (s *regionService) GetTree() ([]dto.RegionTree, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var cached []dto.RegionTree
+	if hit, _ := rediscache.GetJSON(ctx, regionCacheKeyTree(), &cached); hit {
+		return cached, nil
+	}
+
 	all, err := s.regionRepo.FindAll()
 	if err != nil {
 		return nil, err
@@ -194,5 +251,7 @@ func (s *regionService) GetTree() ([]dto.RegionTree, error) {
 		return trees
 	}
 
-	return build(0), nil
+	tree := build(0)
+	_ = rediscache.SetJSON(ctx, regionCacheKeyTree(), tree, regionCacheTTL)
+	return tree, nil
 }

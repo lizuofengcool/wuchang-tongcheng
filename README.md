@@ -10,7 +10,7 @@
 - **ORM**: GORM
 - **架构模式**: 插件化架构 + Repository模式
 - **数据库**: PostgreSQL 16（PostGIS 扩展已部署但代码未使用空间查询）
-- **缓存**: Redis 7（已封装，限流已接入；业务缓存待补齐）
+- **缓存**: Redis 7（已封装，限流 + 业务缓存接入：region/category 树 30min TTL、news 列表 60s TTL，写操作按前缀失效，Redis 不可用降级走 DB）
 - **搜索引擎**: Elasticsearch 8（已集成：news 全文检索 multi_match + 异步索引，ES 不可用降级 DB LIKE）
 - **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
 - **实时通信**: WebSocket（规划中，待开发）
@@ -202,6 +202,10 @@ docker-compose up -d
 - v0.5.0 - 三端前端落地（D11-D12）
   - D11 PC门户站 Next.js 14（ISR 首页、头条列表/详情、分类、搜索、点赞组件，SSR 容错降级，多阶段 Dockerfile）
   - D12 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
+- v0.6.0 - Redis 业务缓存（D14）
+  - cache-aside 助手（GetJSON/SetJSON/DelByPrefix，Redis 不可用降级 miss）
+  - region/category 树缓存（30min TTL，写操作 SCAN+DEL 按前缀失效）
+  - news 列表缓存（60s TTL，仅 keyword 为空的热点 feed）
 
 ## 功能完成度（对照规划）
 
@@ -230,9 +234,7 @@ docker-compose up -d
 - ✅ indexer 三态工厂（NoopIndexer/MQIndexer/DirectESIndexer，按 MQ/ES 可用性自动选择）
 - ✅ PC门户站 Next.js 14（首页 ISR 60s、头条列表/详情、分类页、搜索、点赞组件，SSR try/catch 容错降级）
 - ✅ 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
-
-### 部分实现
-- ⚠️ Redis：封装完整，目前仅限流中间件接入，业务缓存（hot key/会话/列表）待补齐
+- ✅ Redis 业务缓存（cache-aside：region/category 树 30min + news 列表 60s，写操作 SCAN+DEL 按前缀失效，Redis 不可用全链路降级走 DB）
 
 ### 未实现（待开发）
 - ❌ WebSocket 实时通信、高德地图 API
