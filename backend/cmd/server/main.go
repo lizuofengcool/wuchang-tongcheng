@@ -31,16 +31,29 @@ import (
 	redispkg "wuchang-tongcheng/internal/pkg/redis"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+
+	// docs 包含 init() 注册 Swagger 元数据（占位版，swag init 后会覆盖）
+	_ "wuchang-tongcheng/docs"
 )
 
+// 版本信息
 var (
-	// 版本信息
 	Version   = "0.1.0"
 	BuildTime = "unknown"
 	GitCommit = "unknown"
 )
 
+// @title           五常同城本地生活服务平台 API
+// @version         0.2.0
+// @description     五常同城后端服务 API 文档
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in   header
+// @name Authorization
+// @description JWT Bearer Token，格式：Bearer {token}
 func main() {
 	// 解析命令行参数
 	configPath := flag.String("config", "./configs/config.yaml", "配置文件路径")
@@ -159,6 +172,12 @@ func main() {
 	// 注册插件路由
 	rootGroup := r.Group("")
 	pluginManager.RegisterAllRoutes(rootGroup)
+
+	// Swagger 文档路由（/api/v1/docs 与 /swagger/* 均可访问）
+	// 生成文档命令：swag init -g cmd/server/main.go -o docs
+	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
+	r.GET("/api/v1/docs/*any", swaggerHandler)
+	r.GET("/swagger/*any", swaggerHandler)
 
 	// 404处理
 	r.Engine().NoRoute(func(c *gin.Context) {
