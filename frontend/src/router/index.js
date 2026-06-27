@@ -28,6 +28,24 @@ export const constantRoutes = [
         meta: { title: '个人中心', hidden: true }
       },
       {
+        path: 'news',
+        name: 'News',
+        component: () => import('@/views/news/index.vue'),
+        meta: { title: '同城头条', icon: 'Document' }
+      },
+      {
+        path: 'category',
+        name: 'Category',
+        component: () => import('@/views/category/index.vue'),
+        meta: { title: '分类管理', icon: 'Files' }
+      },
+      {
+        path: 'region',
+        name: 'Region',
+        component: () => import('@/views/region/index.vue'),
+        meta: { title: '地区管理', icon: 'Location' }
+      },
+      {
         path: 'system/user',
         name: 'SystemUser',
         component: () => import('@/views/user/index.vue'),
@@ -44,6 +62,18 @@ export const constantRoutes = [
         name: 'SystemPermission',
         component: () => import('@/views/permission/index.vue'),
         meta: { title: '权限管理', icon: 'Lock' }
+      },
+      {
+        path: 'system/setting',
+        name: 'SystemSetting',
+        component: () => import('@/views/setting/index.vue'),
+        meta: { title: '系统设置', icon: 'Setting' }
+      },
+      {
+        path: 'system/file',
+        name: 'SystemFile',
+        component: () => import('@/views/file/index.vue'),
+        meta: { title: '文件管理', icon: 'UploadFilled' }
       }
     ]
   },

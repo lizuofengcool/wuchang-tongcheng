@@ -65,6 +65,16 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.GET("/info", p.handler.GetUserInfo)
 	router.PUT("/profile", p.handler.UpdateProfile)
 	router.PUT("/password", p.handler.ChangePassword)
+
+	// 管理后台接口（需要登录）
+	admin := router.Group("/admin")
+	admin.GET("/users", p.handler.ListUsers)
+	admin.POST("/users", p.handler.AdminCreateUser)
+	admin.GET("/users/:id", p.handler.AdminGetUser)
+	admin.PUT("/users/:id", p.handler.AdminUpdateUser)
+	admin.PUT("/users/:id/status", p.handler.UpdateUserStatus)
+	admin.PUT("/users/:id/password", p.handler.ResetPassword)
+	admin.DELETE("/users/:id", p.handler.DeleteUser)
 }
 
 // Close 关闭插件
