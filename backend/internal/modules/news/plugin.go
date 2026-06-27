@@ -54,15 +54,19 @@ func (p *Plugin) Init(ctx context.Context) error {
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 需要登录的接口
 	auth := coreRouter.WrapGin(middleware.AuthRequired())
+	// 访问限流：单 IP 每分钟最多 60 次，防止恶意刷浏览量
+	readLimiter := coreRouter.WrapGin(middleware.RateLimit(60, 60, "news"))
+	// 点赞限流：单 IP 每分钟最多 30 次
+	likeLimiter := coreRouter.WrapGin(middleware.RateLimit(30, 60, "news_like"))
 
 	router.POST("", coreRouter.WrapGin(middleware.RequirePermission("news:create")), p.handler.Create)
 	router.PUT("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:update")), p.handler.Update)
 	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:delete")), p.handler.Delete)
-	router.GET("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.GetByID)
-	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.List)
+	router.GET("/:id", readLimiter, coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.GetByID)
+	router.GET("", readLimiter, coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.List)
 
 	// 点赞：仅需登录（浏览用户也能点赞）
-	router.POST("/:id/like", auth, p.handler.Like)
+	router.POST("/:id/like", auth, likeLimiter, p.handler.Like)
 	router.GET("/:id/like", auth, p.handler.LikeStatus)
 }
 

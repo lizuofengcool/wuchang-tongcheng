@@ -44,6 +44,12 @@ func GetClient() *redis.Client {
 	return client
 }
 
+// IsAvailable 检查 Redis 是否已初始化可用
+// 用于限流等可选功能在 Redis 不可用时优雅降级
+func IsAvailable() bool {
+	return client != nil
+}
+
 // Close 关闭Redis连接
 func Close() error {
 	if client == nil {

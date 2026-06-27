@@ -60,8 +60,10 @@ func (p *Plugin) Init(ctx context.Context) error {
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 公开接口（无需登录）
+	// 登录限流：单 IP 每分钟最多 5 次，防止暴力破解
+	loginLimiter := coreRouter.WrapGin(middleware.RateLimit(5, 60, "login"))
 	router.POST("/register", p.handler.Register)
-	router.POST("/login", p.handler.Login)
+	router.POST("/login", loginLimiter, p.handler.Login)
 
 	// 需要登录的接口
 	auth := coreRouter.WrapGin(middleware.AuthRequired())
