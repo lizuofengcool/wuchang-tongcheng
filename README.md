@@ -10,9 +10,9 @@
 - **ORM**: GORM
 - **架构模式**: 插件化架构 + Repository模式
 - **数据库**: PostgreSQL 16（PostGIS 扩展已部署但代码未使用空间查询）
-- **缓存**: Redis 7（已封装，业务模块接入待补齐）
-- **搜索引擎**: Elasticsearch 8（基础设施已部署，代码集成待补齐）
-- **消息队列**: RabbitMQ（基础设施已部署，代码集成待补齐）
+- **缓存**: Redis 7（已封装，限流已接入；业务缓存待补齐）
+- **搜索引擎**: Elasticsearch 8（已集成：news 全文检索 multi_match + 异步索引，ES 不可用降级 DB LIKE）
+- **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
 - **实时通信**: WebSocket（规划中，待开发）
 - **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）；七牛云Kodo 待补齐
 - **地图服务**: 高德地图API（规划中，待开发）
@@ -23,8 +23,8 @@
 
 ### 前端
 - **管理后台**: Vue 3 + Vite + Element Plus + Pinia（当前已实现）
-- **PC门户**: Next.js（规划中，待开发）
-- **小程序**: Uni-app（规划中，待开发）
+- **PC门户**: Next.js 14 App Router + TypeScript + Tailwind CSS（已实现：首页 ISR、头条列表/详情、分类页、搜索、点赞组件，SSR try/catch 容错降级）
+- **小程序**: Uni-app 3 + Vue 3 + Vite（已实现：首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
 
 ## 项目结构
 
@@ -59,8 +59,8 @@ wuchang-tongcheng/
 │   ├── configs/                # 配置文件
 │   ├── Dockerfile               # 后端镜像构建
 │   └── Makefile                # 构建脚本
-├── frontend/                   # 前端管理后台（Vue 3 + Vite + Element Plus）
-│   ├── src/
+├── frontend/                   # 前端工程（三端）
+│   ├── src/                    # 管理后台（Vue 3 + Vite + Element Plus）
 │   │   ├── api/                # 接口封装
 │   │   ├── components/         # 公共组件（RichTextEditor）
 │   │   ├── directives/         # 自定义指令（v-permission/v-role）
@@ -70,13 +70,19 @@ wuchang-tongcheng/
 │   │   ├── utils/              # 工具（request/auth/format）
 │   │   └── views/              # 页面（login/dashboard/profile/error/news/...）
 │   ├── deploy/nginx.conf       # Nginx 配置
-│   ├── Dockerfile              # 前端镜像构建
-│   └── .env.development / .env.production
+│   ├── Dockerfile              # 管理后台镜像构建
+│   ├── .env.development / .env.production
+│   ├── pc/                     # PC门户站（Next.js 14 App Router + TS + Tailwind）
+│   │   ├── src/app/            # 路由：首页/头条列表/详情/分类/搜索
+│   │   ├── src/components/     # Header/Footer/NewsCard/RegionSelector
+│   │   └── src/lib/            # api/region/types
+│   └── miniapp/                # 小程序端（Uni-app 3 + Vue 3 + Vite）
+│       └── src/                # pages（index/news/search/user）+ api + manifest
 └── deploy/                     # 整体部署
     └── docker-compose.yml      # Docker Compose 配置（含 PG/Redis/RabbitMQ/ES/MinIO）
 ```
 
-> 注：README 中提到的 `pc/`（Next.js 门户）与 `miniapp/`（Uni-app 小程序）尚未实现，仅为规划。`backend/docs/`、`backend/scripts/` 目录尚未建立。
+> 注：`backend/scripts/`（数据库迁移脚本）目录尚未建立，PostGIS 空间查询代码未接入。
 
 ## 快速开始
 
@@ -180,6 +186,22 @@ docker-compose up -d
   - 后端：CORS 修复、WrapGin 中间件桥、seed 种子数据、file/permission 模块补齐、my-auth 端点
   - 前端：v-permission/v-role 指令、地区选择器、403/500 错误页、.env、news 富文本+封面上传、role 权限回显、permission 编辑
   - 工程：前后端多阶段 Dockerfile + Nginx 反代配置
+- v0.3.0 - 基础设施与防护层补齐（D3-D9）
+  - D3 MinIO 对象存储（S3 协议，自动建桶+公开读+按日期分目录）
+  - D4 news 点赞 API（幂等 toggle，NewsLike 唯一索引）+ 详情页
+  - D5 地区隔离全链路（file.List + user 读写 + X-Region-ID）
+  - D6 setting 值类型反序列化 + category/region 层级深度限制（MaxLevel=3）
+  - D7 Redis 限流中间件（登录/读取/点赞分级，降级容错）
+  - D8 后端单元测试（28 用例，覆盖 utils/setting/user 纯函数）
+  - D9 GitHub Actions CI/CD（backend/frontend CI + tag 触发 docker-publish GHCR）
+- v0.4.0 - 异步索引与全文检索（D10）
+  - RabbitMQ 封装（topic 交换机+手动 ack，连接关闭自愈）
+  - Elasticsearch 封装（esapi 函数式，IndexDoc/DeleteDoc/SearchByQuery/CreateIndexIfNotExists）
+  - indexer 三态工厂（NoopIndexer/MQIndexer/DirectESIndexer，按可用性自动选择）
+  - news 写入异步索引（fire-and-forget）+ Search 全文检索（multi_match 4 字段加权，ES 不可用降级 DB LIKE）
+- v0.5.0 - 三端前端落地（D11-D12）
+  - D11 PC门户站 Next.js 14（ISR 首页、头条列表/详情、分类、搜索、点赞组件，SSR 容错降级，多阶段 Dockerfile）
+  - D12 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
 
 ## 功能完成度（对照规划）
 
@@ -203,13 +225,17 @@ docker-compose up -d
 - ✅ 限流防刷（基于 Redis INCR 固定窗口，登录 5/min、news 读取 60/min、点赞 30/min，Redis 不可用优雅降级）
 - ✅ 后端单元测试（utils/setting/user 共 28 个用例，覆盖纯函数无 DB/Redis 依赖）
 - ✅ GitHub Actions CI/CD（backend CI、frontend CI、docker-publish 推送 GHCR）
+- ✅ RabbitMQ 集成（topic 交换机发布订阅 + 手动 ack + 连接自愈，news 异步索引解耦）
+- ✅ Elasticsearch 集成（esapi 函数式封装，IndexDoc/DeleteDoc/SearchByQuery/CreateIndexIfNotExists，news 全文检索 multi_match + 降级 DB LIKE）
+- ✅ indexer 三态工厂（NoopIndexer/MQIndexer/DirectESIndexer，按 MQ/ES 可用性自动选择）
+- ✅ PC门户站 Next.js 14（首页 ISR 60s、头条列表/详情、分类页、搜索、点赞组件，SSR try/catch 容错降级）
+- ✅ 小程序 Uni-app 3（首页/头条列表/详情/搜索/我的 5 页 + tabBar，H5/微信小程序多端编译）
 
 ### 部分实现
 - ⚠️ Redis：封装完整，目前仅限流中间件接入，业务缓存（hot key/会话/列表）待补齐
 
 ### 未实现（待开发）
-- ❌ PC 门户站（Next.js）、小程序端（Uni-app）
-- ❌ RabbitMQ 集成、Elasticsearch 集成、WebSocket、高德地图
+- ❌ WebSocket 实时通信、高德地图 API
 - ❌ 数据库迁移 scripts、PostGIS 空间查询
 - ❌ 第三方登录、手机验证码登录
 - ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
