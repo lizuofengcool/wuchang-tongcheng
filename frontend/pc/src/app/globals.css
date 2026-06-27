@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --max-width: 1200px;
+}
+
+body {
+  background: #f5f5f5;
+  color: #1f2937;
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* 头条内容富文本（v-html 渲染）样式 */
+.news-content {
+  line-height: 1.8;
+  font-size: 16px;
+}
+.news-content img {
+  max-width: 100%;
+  height: auto;
+}
+.news-content p {
+  margin: 1em 0;
+}
