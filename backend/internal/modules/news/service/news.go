@@ -25,6 +25,10 @@ type NewsService interface {
 	Delete(id uint, operatorID uint) error
 	GetByID(id uint) (*dto.NewsInfo, error)
 	List(regionID uint, req *dto.NewsListRequest) (*utils.Pagination, []dto.NewsInfo, error)
+	// Like 点赞（幂等：已点赞则取消，未点赞则点赞）
+	Like(userID, newsID uint) (*dto.LikeResponse, error)
+	// LikeStatus 查询当前用户对该头条的点赞状态
+	LikeStatus(userID, newsID uint) (*dto.LikeResponse, error)
 }
 
 type newsService struct {
@@ -177,4 +181,58 @@ func (s *newsService) List(regionID uint, req *dto.NewsListRequest) (*utils.Pagi
 		result = append(result, *toNewsInfo(&list[i]))
 	}
 	return pagination, result, nil
+}
+
+// Like 点赞（幂等 toggle：已点赞则取消并 liked=false，未点赞则点赞并 liked=true）
+func (s *newsService) Like(userID, newsID uint) (*dto.LikeResponse, error) {
+	// 校验头条是否存在
+	news, err := s.newsRepo.FindByID(newsID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNewsNotFound
+		}
+		return nil, err
+	}
+
+	exists, err := s.newsRepo.LikeExists(userID, newsID)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		// 已点赞 -> 取消
+		if err := s.newsRepo.DeleteLike(userID, newsID); err != nil {
+			return nil, err
+		}
+		_ = s.newsRepo.DecrLikeCount(newsID)
+		news.LikeCount--
+		if news.LikeCount < 0 {
+			news.LikeCount = 0
+		}
+		return &dto.LikeResponse{Liked: false, LikeCount: news.LikeCount}, nil
+	}
+
+	// 未点赞 -> 点赞
+	if err := s.newsRepo.CreateLike(&model.NewsLike{UserID: userID, NewsID: newsID}); err != nil {
+		return nil, err
+	}
+	_ = s.newsRepo.IncrLikeCount(newsID)
+	news.LikeCount++
+	return &dto.LikeResponse{Liked: true, LikeCount: news.LikeCount}, nil
+}
+
+// LikeStatus 查询当前用户对该头条的点赞状态
+func (s *newsService) LikeStatus(userID, newsID uint) (*dto.LikeResponse, error) {
+	news, err := s.newsRepo.FindByID(newsID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNewsNotFound
+		}
+		return nil, err
+	}
+	liked, err := s.newsRepo.LikeExists(userID, newsID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.LikeResponse{Liked: liked, LikeCount: news.LikeCount}, nil
 }

@@ -152,3 +152,47 @@ func (h *Handler) List(ctx plugin.Context) {
 	}
 	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
 }
+
+// Like 点赞/取消点赞（toggle，幂等）
+func (h *Handler) Like(ctx plugin.Context) {
+	userID, _ := getUserID(ctx)
+	if userID == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+	id, err := parseID(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的头条ID"))
+		return
+	}
+	res, err := h.service.Like(userID, id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeNewsError, err.Error()))
+		return
+	}
+	if res.Liked {
+		ctx.JSON(http.StatusOK, response.SuccessWithMessage("点赞成功", res))
+	} else {
+		ctx.JSON(http.StatusOK, response.SuccessWithMessage("已取消点赞", res))
+	}
+}
+
+// LikeStatus 查询当前用户对该头条的点赞状态
+func (h *Handler) LikeStatus(ctx plugin.Context) {
+	userID, _ := getUserID(ctx)
+	if userID == 0 {
+		ctx.JSON(http.StatusOK, response.Success(dto.LikeResponse{Liked: false, LikeCount: 0}))
+		return
+	}
+	id, err := parseID(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("无效的头条ID"))
+		return
+	}
+	res, err := h.service.LikeStatus(userID, id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeNewsNotFound, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(res))
+}

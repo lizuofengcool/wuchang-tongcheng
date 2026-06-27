@@ -28,3 +28,16 @@ type News struct {
 func (News) TableName() string {
 	return "news"
 }
+
+// NewsLike 头条点赞记录（user_id + news_id 唯一，保证幂等）
+type NewsLike struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"not null;uniqueIndex:uniq_user_news" json:"user_id"`
+	NewsID    uint      `gorm:"not null;uniqueIndex:uniq_user_news" json:"news_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// TableName 表名
+func (NewsLike) TableName() string {
+	return "news_likes"
+}

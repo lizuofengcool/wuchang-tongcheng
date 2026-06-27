@@ -49,6 +49,12 @@ export const constantRoutes = [
         meta: { title: '同城头条', icon: 'Document', permission: 'news:read' }
       },
       {
+        path: 'news/detail/:id',
+        name: 'NewsDetail',
+        component: () => import('@/views/news/detail.vue'),
+        meta: { title: '头条详情', hidden: true, permission: 'news:read' }
+      },
+      {
         path: 'category',
         name: 'Category',
         component: () => import('@/views/category/index.vue'),

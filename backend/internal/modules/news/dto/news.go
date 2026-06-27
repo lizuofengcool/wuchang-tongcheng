@@ -51,3 +51,9 @@ type NewsListRequest struct {
 	Status     int    `form:"status"`
 	Keyword    string `form:"keyword"`
 }
+
+// LikeResponse 点赞操作/状态响应
+type LikeResponse struct {
+	Liked     bool `json:"liked"`      // 当前用户是否已点赞
+	LikeCount int  `json:"like_count"` // 该头条的总点赞数
+}

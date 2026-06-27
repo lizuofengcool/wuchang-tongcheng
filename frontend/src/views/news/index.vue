@@ -56,8 +56,9 @@
         <el-table-column label="发布时间" width="170">
           <template #default="{ row }">{{ formatTime(row.published_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="goDetail(row)">查看</el-button>
             <el-button type="warning" link size="small" @click="openEdit(row)">编辑</el-button>
             <el-button
               v-if="row.status !== 1"
@@ -156,6 +157,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { listNews, createNews, updateNews, deleteNews } from '@/api/news'
@@ -163,6 +165,8 @@ import { getCategoryTree } from '@/api/category'
 import { uploadFile } from '@/api/file'
 import { newsStatusText as statusText, newsStatusTagType as statusTag, formatTime } from '@/utils/format'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+
+const router = useRouter()
 
 const loading = ref(false)
 const search = ref('')
@@ -273,6 +277,11 @@ const openCreate = () => {
   isEdit.value = false
   Object.assign(form, { id: 0, title: '', content: '', cover_image: '', summary: '', category_id: null, tags: '', status: 1 })
   dialogVisible.value = true
+}
+
+// 跳转详情页
+const goDetail = (row) => {
+  router.push({ name: 'NewsDetail', params: { id: row.id } })
 }
 
 const openEdit = (row) => {

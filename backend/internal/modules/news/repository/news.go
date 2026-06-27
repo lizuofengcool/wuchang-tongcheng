@@ -17,6 +17,12 @@ type NewsRepository interface {
 	Delete(id uint) error
 	List(regionID uint, req *utils.Pagination, categoryID uint, status int, keyword string) ([]model.News, int64, error)
 	IncrViewCount(id uint) error
+	// 点赞相关
+	LikeExists(userID, newsID uint) (bool, error)
+	CreateLike(like *model.NewsLike) error
+	DeleteLike(userID, newsID uint) error
+	IncrLikeCount(id uint) error
+	DecrLikeCount(id uint) error
 }
 
 type newsRepository struct {
@@ -93,4 +99,32 @@ func (r *newsRepository) List(regionID uint, pagination *utils.Pagination, categ
 
 func (r *newsRepository) IncrViewCount(id uint) error {
 	return r.db.Model(&model.News{}).Where("id = ?", id).UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error
+}
+
+// LikeExists 检查用户是否已对头条点赞
+func (r *newsRepository) LikeExists(userID, newsID uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.NewsLike{}).Where("user_id = ? AND news_id = ?", userID, newsID).Count(&count).Error
+	return count > 0, err
+}
+
+// CreateLike 创建点赞记录
+func (r *newsRepository) CreateLike(like *model.NewsLike) error {
+	return r.db.Create(like).Error
+}
+
+// DeleteLike 删除点赞记录
+func (r *newsRepository) DeleteLike(userID, newsID uint) error {
+	return r.db.Where("user_id = ? AND news_id = ?", userID, newsID).Delete(&model.NewsLike{}).Error
+}
+
+// IncrLikeCount 点赞数 +1
+func (r *newsRepository) IncrLikeCount(id uint) error {
+	return r.db.Model(&model.News{}).Where("id = ?", id).UpdateColumn("like_count", gorm.Expr("like_count + 1")).Error
+}
+
+// DecrLikeCount 点赞数 -1（不低于 0）
+func (r *newsRepository) DecrLikeCount(id uint) error {
+	return r.db.Model(&model.News{}).Where("id = ? AND like_count > 0", id).
+		UpdateColumn("like_count", gorm.Expr("like_count - 1")).Error
 }

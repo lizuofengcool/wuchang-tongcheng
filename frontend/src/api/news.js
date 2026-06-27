@@ -25,3 +25,13 @@ export function updateNews(id, data) {
 export function deleteNews(id) {
   return request.delete(`/news/${id}`)
 }
+
+// 点赞/取消点赞（toggle）
+export function likeNews(id) {
+  return request.post(`/news/${id}/like`)
+}
+
+// 查询当前用户对该头条的点赞状态
+export function getNewsLikeStatus(id) {
+  return request.get(`/news/${id}/like`)
+}

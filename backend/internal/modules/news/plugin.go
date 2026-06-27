@@ -37,8 +37,8 @@ func (p *Plugin) Version() string { return p.version }
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 
-	// 自动迁移头条表
-	if err := db.AutoMigrate(&model.News{}); err != nil {
+	// 自动迁移头条表 + 点赞记录表
+	if err := db.AutoMigrate(&model.News{}, &model.NewsLike{}); err != nil {
 		return err
 	}
 
@@ -52,11 +52,18 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
+	// 需要登录的接口
+	auth := coreRouter.WrapGin(middleware.AuthRequired())
+
 	router.POST("", coreRouter.WrapGin(middleware.RequirePermission("news:create")), p.handler.Create)
 	router.PUT("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:update")), p.handler.Update)
 	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:delete")), p.handler.Delete)
 	router.GET("/:id", coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.GetByID)
 	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("news:read")), p.handler.List)
+
+	// 点赞：仅需登录（浏览用户也能点赞）
+	router.POST("/:id/like", auth, p.handler.Like)
+	router.GET("/:id/like", auth, p.handler.LikeStatus)
 }
 
 // Close 关闭插件
