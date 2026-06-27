@@ -23,6 +23,8 @@ type NewsRepository interface {
 	DeleteLike(userID, newsID uint) error
 	IncrLikeCount(id uint) error
 	DecrLikeCount(id uint) error
+	// FindByIDs 按 ID 列表批量查询（ES 检索后回查 DB 用）
+	FindByIDs(ids []uint) ([]model.News, error)
 }
 
 type newsRepository struct {
@@ -127,4 +129,16 @@ func (r *newsRepository) IncrLikeCount(id uint) error {
 func (r *newsRepository) DecrLikeCount(id uint) error {
 	return r.db.Model(&model.News{}).Where("id = ? AND like_count > 0", id).
 		UpdateColumn("like_count", gorm.Expr("like_count - 1")).Error
+}
+
+// FindByIDs 按 ID 列表批量查询（ES 检索后回查 DB 用，保持 ES 返回顺序）
+func (r *newsRepository) FindByIDs(ids []uint) ([]model.News, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var list []model.News
+	if err := r.db.Where("id IN ?", ids).Find(&list).Error; err != nil {
+		return nil, err
+	}
+	return list, nil
 }

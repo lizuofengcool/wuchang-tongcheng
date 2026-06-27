@@ -26,8 +26,10 @@ import (
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/seed"
 	"wuchang-tongcheng/internal/pkg/database"
+	espkg "wuchang-tongcheng/internal/pkg/es"
 	jwtpkg "wuchang-tongcheng/internal/pkg/jwt"
 	"wuchang-tongcheng/internal/pkg/logger"
+	mqpkg "wuchang-tongcheng/internal/pkg/mq"
 	redispkg "wuchang-tongcheng/internal/pkg/redis"
 
 	"github.com/gin-gonic/gin"
@@ -104,6 +106,24 @@ func main() {
 	}
 	defer redispkg.Close()
 	logger.Info("Redis初始化成功")
+
+	// 5.1 初始化RabbitMQ（可选：连不上不阻塞服务启动）
+	logger.Info("正在初始化RabbitMQ...")
+	if err := mqpkg.Init(&cfg.RabbitMQ); err != nil {
+		logger.Warn("RabbitMQ初始化失败，业务可降级运行", zap.Error(err))
+	} else {
+		defer mqpkg.Close()
+		logger.Info("RabbitMQ初始化成功")
+	}
+
+	// 5.2 初始化Elasticsearch（可选：连不上不阻塞服务启动）
+	logger.Info("正在初始化Elasticsearch...")
+	if err := espkg.Init(&cfg.ES); err != nil {
+		logger.Warn("Elasticsearch初始化失败，业务可降级运行", zap.Error(err))
+	} else {
+		defer espkg.Close()
+		logger.Info("Elasticsearch初始化成功")
+	}
 
 	// 6. 初始化JWT
 	logger.Info("正在初始化JWT...")

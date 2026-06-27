@@ -153,6 +153,23 @@ func (h *Handler) List(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
 }
 
+// Search 头条全文检索（ES 优先，ES 不可用时降级到 DB LIKE）
+func (h *Handler) Search(ctx plugin.Context) {
+	var req dto.NewsSearchRequest
+	_ = ctx.Bind(&req)
+	if req.Keyword == "" {
+		ctx.JSON(http.StatusOK, response.BadRequest("关键词不能为空"))
+		return
+	}
+	regionID := getRegionID(ctx)
+	pagination, list, err := h.service.Search(regionID, &req)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeNewsError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
+}
+
 // Like 点赞/取消点赞（toggle，幂等）
 func (h *Handler) Like(ctx plugin.Context) {
 	userID, _ := getUserID(ctx)

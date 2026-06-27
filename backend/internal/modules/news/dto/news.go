@@ -57,3 +57,11 @@ type LikeResponse struct {
 	Liked     bool `json:"liked"`      // 当前用户是否已点赞
 	LikeCount int  `json:"like_count"` // 该头条的总点赞数
 }
+
+// NewsSearchRequest 头条全文检索请求（走 Elasticsearch，ES 不可用时降级到 DB LIKE）
+type NewsSearchRequest struct {
+	Page     int    `form:"page"`
+	PageSize int    `form:"page_size"`
+	Keyword  string `form:"keyword"`  // 检索关键词（匹配 title/content/summary/tags）
+	CategoryID uint `form:"category_id"` // 可选过滤
+}
