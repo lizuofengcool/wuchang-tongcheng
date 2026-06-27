@@ -33,6 +33,16 @@ func getUserID(ctx plugin.Context) uint {
 	return 0
 }
 
+// getRegionID 从上下文中获取地区ID（由 Region 中间件注入）
+func getRegionID(ctx plugin.Context) uint {
+	if v, ok := ctx.Get(middleware.RegionIDKey); ok {
+		if id, ok := v.(uint); ok {
+			return id
+		}
+	}
+	return middleware.DefaultRegionID
+}
+
 // Register 用户注册
 func (h *Handler) Register(ctx plugin.Context) {
 	var req dto.RegisterRequest
@@ -41,7 +51,7 @@ func (h *Handler) Register(ctx plugin.Context) {
 		return
 	}
 
-	info, err := h.service.Register(&req)
+	info, err := h.service.Register(getRegionID(ctx), &req)
 	if err != nil {
 		ctx.JSON(http.StatusOK, response.Fail(utils.CodeUserAlreadyExists, err.Error()))
 		return
@@ -140,7 +150,7 @@ func parseUserID(ctx plugin.Context) (uint, error) {
 	return uint(id), nil
 }
 
-// ListUsers 用户列表
+// ListUsers 用户列表（按地区隔离）
 func (h *Handler) ListUsers(ctx plugin.Context) {
 	if getUserID(ctx) == 0 {
 		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
@@ -149,7 +159,7 @@ func (h *Handler) ListUsers(ctx plugin.Context) {
 	var req dto.ListUsersRequest
 	_ = ctx.Bind(&req)
 
-	pagination, list, err := h.service.ListUsers(&req)
+	pagination, list, err := h.service.ListUsers(getRegionID(ctx), &req)
 	if err != nil {
 		ctx.JSON(http.StatusOK, response.Fail(utils.CodeUserError, err.Error()))
 		return
@@ -187,7 +197,7 @@ func (h *Handler) AdminCreateUser(ctx plugin.Context) {
 		ctx.JSON(http.StatusOK, response.BadRequest("参数错误"))
 		return
 	}
-	info, err := h.service.AdminCreateUser(&req)
+	info, err := h.service.AdminCreateUser(getRegionID(ctx), &req)
 	if err != nil {
 		ctx.JSON(http.StatusOK, response.Fail(utils.CodeUserAlreadyExists, err.Error()))
 		return

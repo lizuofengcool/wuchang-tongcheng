@@ -24,14 +24,14 @@ var (
 
 // UserService 用户业务逻辑接口
 type UserService interface {
-	Register(req *dto.RegisterRequest) (*dto.UserInfo, error)
+	Register(regionID uint, req *dto.RegisterRequest) (*dto.UserInfo, error)
 	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
 	GetUserInfo(userID uint) (*dto.UserInfo, error)
 	UpdateProfile(userID uint, req *dto.UpdateProfileRequest) error
 	ChangePassword(userID uint, req *dto.ChangePasswordRequest) error
 	// 管理后台
-	ListUsers(req *dto.ListUsersRequest) (*utils.Pagination, []dto.UserInfo, error)
-	AdminCreateUser(req *dto.AdminCreateUserRequest) (*dto.UserInfo, error)
+	ListUsers(regionID uint, req *dto.ListUsersRequest) (*utils.Pagination, []dto.UserInfo, error)
+	AdminCreateUser(regionID uint, req *dto.AdminCreateUserRequest) (*dto.UserInfo, error)
 	AdminUpdateUser(id uint, req *dto.AdminUpdateUserRequest) error
 	UpdateUserStatus(id uint, status int) error
 	ResetPassword(id uint, req *dto.ResetPasswordRequest) error
@@ -73,8 +73,8 @@ func toUserInfo(user *model.User) *dto.UserInfo {
 	}
 }
 
-// Register 用户注册
-func (s *userService) Register(req *dto.RegisterRequest) (*dto.UserInfo, error) {
+// Register 用户注册（按请求头 X-Region-ID 写入用户所属地区）
+func (s *userService) Register(regionID uint, req *dto.RegisterRequest) (*dto.UserInfo, error) {
 	// 检查用户名是否已存在
 	if _, err := s.userRepo.FindByUsername(req.Username); err == nil {
 		return nil, ErrUserAlreadyExists
@@ -101,6 +101,7 @@ func (s *userService) Register(req *dto.RegisterRequest) (*dto.UserInfo, error) 
 		Phone:    req.Phone,
 		Status:   1,
 	}
+	user.RegionID = regionID
 
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
@@ -207,10 +208,10 @@ func (s *userService) ChangePassword(userID uint, req *dto.ChangePasswordRequest
 
 // ===== 管理后台 =====
 
-// ListUsers 用户列表
-func (s *userService) ListUsers(req *dto.ListUsersRequest) (*utils.Pagination, []dto.UserInfo, error) {
+// ListUsers 用户列表（按地区隔离：regionID=0 表示不限制，超管跨区查看）
+func (s *userService) ListUsers(regionID uint, req *dto.ListUsersRequest) (*utils.Pagination, []dto.UserInfo, error) {
 	pagination := utils.NewPagination(req.Page, req.PageSize)
-	list, total, err := s.userRepo.List(pagination, req.Keyword, req.Status)
+	list, total, err := s.userRepo.List(regionID, pagination, req.Keyword, req.Status)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -223,8 +224,8 @@ func (s *userService) ListUsers(req *dto.ListUsersRequest) (*utils.Pagination, [
 	return pagination, result, nil
 }
 
-// AdminCreateUser 管理员创建用户
-func (s *userService) AdminCreateUser(req *dto.AdminCreateUserRequest) (*dto.UserInfo, error) {
+// AdminCreateUser 管理员创建用户（按管理员所在地区写入 region_id）
+func (s *userService) AdminCreateUser(regionID uint, req *dto.AdminCreateUserRequest) (*dto.UserInfo, error) {
 	if _, err := s.userRepo.FindByUsername(req.Username); err == nil {
 		return nil, ErrUserAlreadyExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -254,6 +255,8 @@ func (s *userService) AdminCreateUser(req *dto.AdminCreateUserRequest) (*dto.Use
 		Gender:   req.Gender,
 		Status:   status,
 	}
+	user.RegionID = regionID
+
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
 	}

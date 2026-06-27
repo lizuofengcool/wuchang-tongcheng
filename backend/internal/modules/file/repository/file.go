@@ -12,7 +12,7 @@ import (
 type FileRepository interface {
 	Create(record *model.FileUpload) error
 	GetByID(id uint) (*model.FileUpload, error)
-	List(pagination *utils.Pagination, fileType, keyword string) ([]model.FileUpload, int64, error)
+	List(regionID uint, pagination *utils.Pagination, fileType, keyword string) ([]model.FileUpload, int64, error)
 	Delete(id uint) error
 }
 
@@ -39,11 +39,14 @@ func (r *fileRepository) GetByID(id uint) (*model.FileUpload, error) {
 	return &record, nil
 }
 
-// List 文件分页列表（支持类型筛选、文件名关键词）
-func (r *fileRepository) List(pagination *utils.Pagination, fileType, keyword string) ([]model.FileUpload, int64, error) {
+// List 文件分页列表（按地区隔离 + 类型筛选 + 文件名关键词）
+func (r *fileRepository) List(regionID uint, pagination *utils.Pagination, fileType, keyword string) ([]model.FileUpload, int64, error) {
 	var list []model.FileUpload
 	var total int64
 	query := r.db.Model(&model.FileUpload{})
+	if regionID > 0 {
+		query = query.Where("region_id = ?", regionID)
+	}
 	if fileType != "" {
 		query = query.Where("file_type = ?", fileType)
 	}

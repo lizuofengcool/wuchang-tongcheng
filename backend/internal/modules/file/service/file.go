@@ -40,7 +40,7 @@ const maxFileSize = 50 * 1024 * 1024
 // FileService 文件业务逻辑接口
 type FileService interface {
 	Upload(regionID uint, userID uint, filename string, mimeType string, size int64, reader io.Reader) (*model.FileUpload, error)
-	List(req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error)
+	List(regionID uint, req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error)
 	Delete(id uint) error
 }
 
@@ -96,10 +96,10 @@ func (s *fileService) Upload(regionID uint, userID uint, filename string, mimeTy
 	return record, nil
 }
 
-// List 文件列表
-func (s *fileService) List(req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error) {
+// List 文件列表（按地区隔离）
+func (s *fileService) List(regionID uint, req *dto.ListFilesRequest) (*utils.Pagination, []model.FileUpload, error) {
 	pagination := utils.NewPagination(req.Page, req.PageSize)
-	list, total, err := s.repo.List(pagination, req.FileType, req.Keyword)
+	list, total, err := s.repo.List(regionID, pagination, req.FileType, req.Keyword)
 	if err != nil {
 		return nil, nil, err
 	}

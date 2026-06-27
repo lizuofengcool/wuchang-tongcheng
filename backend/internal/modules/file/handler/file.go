@@ -69,11 +69,17 @@ func (h *Handler) Upload(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.SuccessWithMessage("上传成功", record))
 }
 
-// List 文件列表
+// List 文件列表（按地区隔离）
 func (h *Handler) List(ctx plugin.Context) {
 	var req dto.ListFilesRequest
 	_ = ctx.Bind(&req)
-	pagination, list, err := h.service.List(&req)
+	regionID := uint(0)
+	if v, ok := ctx.Get(middleware.RegionIDKey); ok {
+		if id, ok := v.(uint); ok {
+			regionID = id
+		}
+	}
+	pagination, list, err := h.service.List(regionID, &req)
 	if err != nil {
 		ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileError, err.Error()))
 		return

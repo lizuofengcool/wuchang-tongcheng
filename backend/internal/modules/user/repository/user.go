@@ -16,7 +16,7 @@ type UserRepository interface {
 	Update(user *model.User) error
 	UpdateFields(id uint, fields map[string]interface{}) error
 	// 管理后台
-	List(pagination *utils.Pagination, keyword string, status int) ([]model.User, int64, error)
+	List(regionID uint, pagination *utils.Pagination, keyword string, status int) ([]model.User, int64, error)
 	Delete(id uint) error
 }
 
@@ -62,13 +62,17 @@ func (r *userRepository) UpdateFields(id uint, fields map[string]interface{}) er
 	return r.db.Model(&model.User{}).Where("id = ?", id).Updates(fields).Error
 }
 
-// List 用户分页列表（支持用户名/昵称关键词、状态筛选）
-func (r *userRepository) List(pagination *utils.Pagination, keyword string, status int) ([]model.User, int64, error) {
+// List 用户分页列表（按地区隔离 + 用户名/昵称关键词 + 状态筛选）
+// regionID=0 表示不按地区过滤（用于超管跨区查看）
+func (r *userRepository) List(regionID uint, pagination *utils.Pagination, keyword string, status int) ([]model.User, int64, error) {
 	var list []model.User
 	var total int64
 
 	query := r.db.Model(&model.User{})
 
+	if regionID > 0 {
+		query = query.Where("region_id = ?", regionID)
+	}
 	if keyword != "" {
 		like := "%" + keyword + "%"
 		query = query.Where("username LIKE ? OR nickname LIKE ?", like, like)
