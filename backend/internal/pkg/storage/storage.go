@@ -1,6 +1,7 @@
 // Package storage 对象存储抽象层
-// 已实现 local（本地磁盘）和 minio（S3 协议，兼容 AWS S3 / 阿里云 OSS / 腾讯云 COS）
-// 七牛云 Kodo 可通过 minio + S3 兼容端点复用，或独立实现
+// 已实现 local（本地磁盘）、minio（S3 协议，兼容 AWS S3 / 阿里云 OSS / 腾讯云 COS）、
+// qiniu（七牛云 Kodo，基于官方 SDK github.com/qiniu/go-sdk/v7）。
+// qiniu 在 AK/SK 未配置时自动降级到 local，避免开发环境启动失败。
 package storage
 
 import (
@@ -43,8 +44,19 @@ func Init(cfg *config.StorageConfig) error {
 		}
 		storage = s
 	case "qiniu":
-		// 七牛云 Kodo（可复用 S3 兼容端点，或独立实现）
-		return errors.New("qiniu storage not implemented yet, use local or minio")
+		// 七牛云 Kodo：AK/SK 未配置或占位值时 NewQiniuStorage 返回错误，
+		// 自动降级到 local 存储（与 amap 模式一致），避免开发环境无凭据启动失败。
+		s, err := NewQiniuStorage(cfg)
+		if err != nil {
+			fmt.Printf("[storage] qiniu init failed, fallback to local: %v\n", err)
+			ls, lerr := NewLocalStorage(cfg)
+			if lerr != nil {
+				return lerr
+			}
+			storage = ls
+		} else {
+			storage = s
+		}
 	default:
 		return fmt.Errorf("unsupported storage type: %s", cfg.Type)
 	}
