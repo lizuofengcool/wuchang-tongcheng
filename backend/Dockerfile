@@ -1,49 +1,39 @@
-# 多阶段构建：后端 Go 服务
-# syntax=docker/dockerfile:1
+# 五常同城 - 后端 Dockerfile
+FROM golang:1.22-alpine AS builder
 
-# ====== 阶段1：构建 ======
-FROM golang:1.25-alpine AS builder
+WORKDIR /app
 
-# 安装必要的构建工具（CGO 依赖等，如需可加 gcc musl-dev）
-RUN apk add --no-cache git ca-certificates tzdata
+# 安装构建依赖
+RUN apk add --no-cache git gcc musl-dev
 
-WORKDIR /build
-
-# 先拷贝依赖文件，利用缓存层
+# 复制依赖文件
 COPY go.mod go.sum ./
 RUN go mod download
 
-# 拷贝源码
+# 复制源码
 COPY . .
 
-# 构建可执行文件
-# CGO_ENABLED=0 静态编译，便于 scratch/alpine 运行
-ARG VERSION=dev
-ARG BUILD_TIME=unknown
-ARG GIT_COMMIT=unknown
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags "-s -w -X 'main.Version=${VERSION}' -X 'main.BuildTime=${BUILD_TIME}' -X 'main.GitCommit=${GIT_COMMIT}'" \
-    -o /out/wuchang-tongcheng ./cmd/server/main.go
+# 构建
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server ./cmd/server/main.go
 
-# ====== 阶段2：运行 ======
+# 运行阶段
 FROM alpine:3.20
 
-# 时区与证书
-RUN apk add --no-cache tzdata ca-certificates && \
+RUN apk add --no-cache ca-certificates tzdata curl && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
 WORKDIR /app
 
-# 拷贝二进制
-COPY --from=builder /out/wuchang-tongcheng /app/wuchang-tongcheng
+COPY --from=builder /app/server .
+COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/migrations ./migrations
 
-# 配置与上传目录（通过 volume 挂载覆盖）
-RUN mkdir -p /app/configs /app/uploads /app/logs
-
-ENV TZ=Asia/Shanghai
-ENV GIN_MODE=release
+RUN mkdir -p uploads logs
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/wuchang-tongcheng"]
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["./server"]
