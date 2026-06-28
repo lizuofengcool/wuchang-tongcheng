@@ -2,6 +2,7 @@
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
+import { useUserStore } from '@/stores/user'
 
 // 创建 axios 实例
 const service = axios.create({
@@ -75,14 +76,17 @@ let unauthorizedShown = false
 function handleUnauthorized(message) {
   if (unauthorizedShown) return
   unauthorizedShown = true
+  // 立即清除 Pinia store 状态，防止界面残留
+  try {
+    const userStore = useUserStore()
+    userStore.logout()
+  } catch (e) { /* ignore */ }
   ElMessageBox.confirm(message || '请先登录', '提示', {
     confirmButtonText: '重新登录',
     cancelButtonText: '取消',
     type: 'warning'
   })
     .then(() => {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
       router.push('/login')
     })
     .catch(() => {})
