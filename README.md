@@ -20,6 +20,7 @@
 - **API文档**: Swagger（gin-swagger + swaggo/swag，已集成）
 - **限流防刷**: 基于 Redis INCR 的固定窗口限流（登录 5/min、新闻读取 60/min、点赞 30/min），Redis 不可用时优雅降级
 - **CI/CD**: GitHub Actions（backend go vet/build/test、frontend npm build、tag 触发 docker publish 推送 GHCR）
+- **测试**: 单元测试（标准库 testing，无外部依赖）+ 集成测试（testcontainers-go + testify，自动拉起 PostgreSQL 容器，无 Docker 时优雅 SKIP）
 
 ### 前端
 - **管理后台**: Vue 3 + Vite + Element Plus + Pinia（当前已实现）
@@ -217,6 +218,11 @@ docker-compose up -d
   - amap 客户端（Regeocode/Geocode/Around，标准库 net/http，无新依赖）
   - key 未配置降级（占位值/空值/非 amap 类型均不激活，返回 503）
   - /api/v1/map/{regeocode,geocode,around} 路由（需登录 + 限流 30/min）
+- v1.0.0 - 后端集成测试（D18）
+  - testcontainers-go + testify 测试栈，PG 16-alpine 容器自动拉起
+  - pgtest 夹具包（SetupPostgres + MigrateAll 全量建表，无 Docker 自动 SKIP）
+  - user/region/news 三模块 repository 集成测试（CRUD/唯一索引/分页/过滤/软删除/点赞幂等流程）
+  - Makefile test-integration / test-unit 目标（WCTC_SKIP_INTEGRATION=1 跳过开关）
 
 ## 功能完成度（对照规划）
 
@@ -239,6 +245,7 @@ docker-compose up -d
 - ✅ category/region 层级深度限制（MaxLevel=3，Level 按 ParentID 自动计算）
 - ✅ 限流防刷（基于 Redis INCR 固定窗口，登录 5/min、news 读取 60/min、点赞 30/min，Redis 不可用优雅降级）
 - ✅ 后端单元测试（utils/setting/user 共 28 个用例，覆盖纯函数无 DB/Redis 依赖）
+- ✅ 后端集成测试（testcontainers-go + testify，pgtest 夹具自动拉起 PG 容器，user/region/news 三模块 repository 端到端验证 CRUD/唯一索引/分页/过滤/软删除/点赞幂等；无 Docker 自动 SKIP，WCTC_SKIP_INTEGRATION=1 强制跳过）
 - ✅ GitHub Actions CI/CD（backend CI、frontend CI、docker-publish 推送 GHCR）
 - ✅ RabbitMQ 集成（topic 交换机发布订阅 + 手动 ack + 连接自愈，news 异步索引解耦）
 - ✅ Elasticsearch 集成（esapi 函数式封装，IndexDoc/DeleteDoc/SearchByQuery/CreateIndexIfNotExists，news 全文检索 multi_match + 降级 DB LIKE）

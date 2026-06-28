@@ -34,7 +34,9 @@ help:
 	@echo "  all          构建项目（默认）"
 	@echo "  build        编译后端服务"
 	@echo "  run          运行后端服务"
-	@echo "  test         运行测试"
+	@echo "  test         运行测试（含集成测试，无 Docker 自动 SKIP）"
+	@echo "  test-unit    仅运行单元测试（强制跳过集成测试）"
+	@echo "  test-integration 运行集成测试（需要 Docker，testcontainers+PG）"
 	@echo "  lint         代码检查"
 	@echo "  fmt          格式化代码"
 	@echo "  tidy         整理依赖"
@@ -71,6 +73,20 @@ run:
 test:
 	@echo "正在运行测试..."
 	cd $(BACKEND_DIR) && $(GO) test -v ./...
+
+# 运行集成测试（需要 Docker daemon，testcontainers 会自动拉起 PostgreSQL 容器）
+# 无 Docker 时集成测试会自动 SKIP，不影响整体结果。
+# 跳过开关：WCTC_SKIP_INTEGRATION=1 强制跳过集成测试
+.PHONY: test-integration
+test-integration:
+	@echo "正在运行集成测试（testcontainers + PostgreSQL）..."
+	cd $(BACKEND_DIR) && $(GO) test -v -count=1 ./internal/modules/.../repository/... ./internal/testutil/...
+
+# 仅运行单元测试（跳过集成测试）
+.PHONY: test-unit
+test-unit:
+	@echo "正在运行单元测试（跳过集成测试）..."
+	cd $(BACKEND_DIR) && WCTC_SKIP_INTEGRATION=1 $(GO) test -v ./...
 
 # 代码检查
 .PHONY: lint
