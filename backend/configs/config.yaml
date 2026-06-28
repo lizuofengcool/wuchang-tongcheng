@@ -2,14 +2,14 @@
 server:
   host: "0.0.0.0"
   port: 8080
-  mode: "debug"  # debug | release | test
+  mode: "debug"
 
 database:
-  host: "${DB_HOST:-localhost}"
-  port: "${DB_PORT:-5432}"
-  user: "${DB_USER:-postgres}"
-  password: "${DB_PASSWORD:-postgres}"
-  dbname: "${DB_NAME:-wuchang_tongcheng}"
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "wuchang_tongcheng"
   sslmode: "disable"
   timezone: "Asia/Shanghai"
   max_open_conns: 100
@@ -17,48 +17,48 @@ database:
   max_lifetime: 3600
 
 redis:
-  host: "${REDIS_HOST:-localhost}"
-  port: "${REDIS_PORT:-6379}"
-  password: "${REDIS_PASSWORD:-}"
+  host: "localhost"
+  port: 6379
+  password: ""
   db: 0
   pool_size: 10
   default_expiration: 3600
 
 logger:
-  level: "info"
+  level: "debug"
   filename: "logs/app.log"
   max_size: 100
   max_backups: 3
   max_age: 30
-  compress: true
+  compress: false
   console: true
 
 jwt:
-  secret: "${JWT_SECRET:-wuchang-tongcheng-jwt-secret-key-2024}"
-  expire: 72  # 小时
+  secret: "wuchang-tongcheng-jwt-secret-key-2024"
+  expire: 72
   issuer: "wuchang-tongcheng"
 
 rabbitmq:
-  host: "${RABBITMQ_HOST:-localhost}"
-  port: "${RABBITMQ_PORT:-5672}"
-  user: "${RABBITMQ_USER:-guest}"
-  password: "${RABBITMQ_PASSWORD:-guest}"
+  host: "localhost"
+  port: 5672
+  user: "guest"
+  password: "guest"
   vhost: "/"
 
 elasticsearch:
   addresses:
-    - "${ES_ADDR:-http://localhost:9200}"
-  username: "${ES_USER:-}"
-  password: "${ES_PASSWORD:-}"
+    - "http://localhost:9200"
+  username: ""
+  password: ""
 
 storage:
-  type: "${STORAGE_TYPE:-local}"  # local | qiniu | minio
-  access_key: "${STORAGE_ACCESS_KEY:-}"
-  secret_key: "${STORAGE_SECRET_KEY:-}"
-  bucket: "${STORAGE_BUCKET:-wuchang-tongcheng}"
-  domain: "${STORAGE_DOMAIN:-}"
-  region: "${STORAGE_REGION:-}"
+  type: "local"
+  access_key: ""
+  secret_key: ""
+  bucket: "wuchang-tongcheng"
+  domain: ""
+  region: ""
 
 map:
-  type: "${MAP_TYPE:-amap}"  # amap | baidu
-  key: "${MAP_KEY:-}"
+  type: "amap"
+  key: ""
