@@ -223,6 +223,11 @@ docker-compose up -d
   - pgtest 夹具包（SetupPostgres + MigrateAll 全量建表，无 Docker 自动 SKIP）
   - user/region/news 三模块 repository 集成测试（CRUD/唯一索引/分页/过滤/软删除/点赞幂等流程）
   - Makefile test-integration / test-unit 目标（WCTC_SKIP_INTEGRATION=1 跳过开关）
+- v1.1.0 - HTTP 端到端集成测试（D19）
+  - user 模块 HTTP e2e（gin + httptest，真实 PG 容器）
+  - 覆盖全链路：全局中间件（Region+Auth）→ 路由 → handler → service → repository → DB
+  - 15 用例：注册/登录/鉴权/资料更新/改密码/admin 权限（超管直通 + 普通用户 403）
+  - seed.Run 复用 + 真实 permission service 注入权限校验器
 
 ## 功能完成度（对照规划）
 
@@ -246,6 +251,7 @@ docker-compose up -d
 - ✅ 限流防刷（基于 Redis INCR 固定窗口，登录 5/min、news 读取 60/min、点赞 30/min，Redis 不可用优雅降级）
 - ✅ 后端单元测试（utils/setting/user 共 28 个用例，覆盖纯函数无 DB/Redis 依赖）
 - ✅ 后端集成测试（testcontainers-go + testify，pgtest 夹具自动拉起 PG 容器，user/region/news 三模块 repository 端到端验证 CRUD/唯一索引/分页/过滤/软删除/点赞幂等；无 Docker 自动 SKIP，WCTC_SKIP_INTEGRATION=1 强制跳过）
+- ✅ HTTP 端到端集成测试（gin + httptest，user 模块 15 用例覆盖注册/登录/JWT 鉴权/资料更新/改密码/admin 权限全链路，seed 复用 + 真实 permission service 注入）
 - ✅ GitHub Actions CI/CD（backend CI、frontend CI、docker-publish 推送 GHCR）
 - ✅ RabbitMQ 集成（topic 交换机发布订阅 + 手动 ack + 连接自愈，news 异步索引解耦）
 - ✅ Elasticsearch 集成（esapi 函数式封装，IndexDoc/DeleteDoc/SearchByQuery/CreateIndexIfNotExists，news 全文检索 multi_match + 降级 DB LIKE）

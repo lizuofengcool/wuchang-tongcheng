@@ -80,7 +80,7 @@ test:
 .PHONY: test-integration
 test-integration:
 	@echo "正在运行集成测试（testcontainers + PostgreSQL）..."
-	cd $(BACKEND_DIR) && $(GO) test -v -count=1 ./internal/modules/.../repository/... ./internal/testutil/...
+	cd $(BACKEND_DIR) && $(GO) test -v -count=1 ./internal/modules/.../repository/... ./internal/modules/user/handler/... ./internal/testutil/...
 
 # 仅运行单元测试（跳过集成测试）
 .PHONY: test-unit
