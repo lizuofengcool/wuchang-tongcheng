@@ -262,11 +262,12 @@ docker-compose up -d
 - ✅ WebSocket 实时通知（Hub 单用户多连接 + JWT 鉴权 /ws 端点 + 定向推送/广播，点赞实时通知作者，不在线 fire-and-forget 丢弃）
 - ✅ 数据库初始化脚本（deploy/initdb PostGIS 扩展 + Makefile migrate/swagger 目标补齐）
 - ✅ 高德地图 API 集成（地理编码/逆地理编码/周边搜索，key 未配置降级 503，限流 30/min）
+- ✅ 七牛云 Kodo 对象存储（基于 github.com/qiniu/go-sdk/v7 经典 storage 包，Save 走 FormUploader + Delete 走 BucketManager，AK/SK 占位值自动降级到 local）
 
 ### 未实现（待开发）
 - ❌ PostGIS 空间查询业务接入
 - ❌ 第三方登录、手机验证码登录
-- ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
+- ❌ 阿里云 OSS 直传（STS/预签名 URL 前端直传）
 
 ## 许可证
 
