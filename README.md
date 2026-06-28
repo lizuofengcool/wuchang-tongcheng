@@ -15,7 +15,7 @@
 - **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
 - **实时通信**: WebSocket（已实现：Hub 连接管理 + JWT 鉴权升级端点 /ws，单用户多连接定向推送 + 全局广播，点赞实时通知作者）
 - **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）；七牛云Kodo 待补齐
-- **地图服务**: 高德地图API（规划中，待开发）
+- **地图服务**: 高德地图API（已实现：地理编码/逆地理编码/周边 POI 搜索，key 未配置降级返回 503）
 - **鉴权**: JWT + RBAC（用户-角色-权限，超级管理员直通）
 - **API文档**: Swagger（gin-swagger + swaggo/swag，已集成）
 - **限流防刷**: 基于 Redis INCR 的固定窗口限流（登录 5/min、新闻读取 60/min、点赞 30/min），Redis 不可用时优雅降级
@@ -213,6 +213,10 @@ docker-compose up -d
 - v0.8.0 - 数据库初始化与工程脚本（D16）
   - deploy/initdb/01-extensions.sql（PostGIS 扩展，docker-compose 挂载点补齐）
   - Makefile migrate 目标（AutoMigrate + seed 说明）、swagger 目标（swag init）
+- v0.9.0 - 高德地图 API 集成（D17）
+  - amap 客户端（Regeocode/Geocode/Around，标准库 net/http，无新依赖）
+  - key 未配置降级（占位值/空值/非 amap 类型均不激活，返回 503）
+  - /api/v1/map/{regeocode,geocode,around} 路由（需登录 + 限流 30/min）
 
 ## 功能完成度（对照规划）
 
@@ -244,9 +248,10 @@ docker-compose up -d
 - ✅ Redis 业务缓存（cache-aside：region/category 树 30min + news 列表 60s，写操作 SCAN+DEL 按前缀失效，Redis 不可用全链路降级走 DB）
 - ✅ WebSocket 实时通知（Hub 单用户多连接 + JWT 鉴权 /ws 端点 + 定向推送/广播，点赞实时通知作者，不在线 fire-and-forget 丢弃）
 - ✅ 数据库初始化脚本（deploy/initdb PostGIS 扩展 + Makefile migrate/swagger 目标补齐）
+- ✅ 高德地图 API 集成（地理编码/逆地理编码/周边搜索，key 未配置降级 503，限流 30/min）
 
 ### 未实现（待开发）
-- ❌ 高德地图 API、PostGIS 空间查询业务接入
+- ❌ PostGIS 空间查询业务接入
 - ❌ 第三方登录、手机验证码登录
 - ❌ 七牛云 Kodo 存储、阿里云 OSS 直传
 

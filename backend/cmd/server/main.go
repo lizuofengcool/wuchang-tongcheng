@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	espkg "wuchang-tongcheng/internal/pkg/es"
 	jwtpkg "wuchang-tongcheng/internal/pkg/jwt"
 	"wuchang-tongcheng/internal/pkg/logger"
+	mappkg "wuchang-tongcheng/internal/pkg/map"
 	mqpkg "wuchang-tongcheng/internal/pkg/mq"
 	redispkg "wuchang-tongcheng/internal/pkg/redis"
 	wspkg "wuchang-tongcheng/internal/pkg/ws"
@@ -131,6 +133,14 @@ func main() {
 	defer wspkg.Close()
 	logger.Info("WebSocket Hub初始化成功")
 
+	// 5.4 初始化高德地图客户端（可选：key 未配置则降级不可用）
+	mappkg.Init(&cfg.Map)
+	if mappkg.IsAvailable() {
+		logger.Info("高德地图客户端初始化成功")
+	} else {
+		logger.Warn("高德地图未配置 key，地图服务不可用（业务可降级）")
+	}
+
 	// 6. 初始化JWT
 	logger.Info("正在初始化JWT...")
 	jwtpkg.Init(cfg.JWT.Secret, cfg.JWT.Expire)
@@ -207,6 +217,75 @@ func main() {
 	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
 	r.GET("/api/v1/docs/*any", swaggerHandler)
 	r.GET("/swagger/*any", swaggerHandler)
+
+	// 地图服务路由（需登录，key 未配置时返回 503）
+	mapAuth := middleware.AuthRequired()
+	mapLimiter := middleware.RateLimit(30, 60, "map")
+	apiV1 := r.Engine().Group("/api/v1")
+	apiV1.GET("/map/regeocode", mapAuth, mapLimiter, func(c *gin.Context) {
+		if !mappkg.IsAvailable() {
+			c.JSON(http.StatusOK, response.Fail(503, "地图服务未配置"))
+			return
+		}
+		lng, _ := strconv.ParseFloat(c.Query("lng"), 64)
+		lat, _ := strconv.ParseFloat(c.Query("lat"), 64)
+		if lng == 0 || lat == 0 {
+			c.JSON(http.StatusOK, response.Fail(400, "缺少经纬度参数 lng/lat"))
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
+		defer cancel()
+		result, err := mappkg.Regeocode(ctx, lng, lat)
+		if err != nil {
+			c.JSON(http.StatusOK, response.Fail(500, "逆地理编码失败: "+err.Error()))
+			return
+		}
+		c.JSON(http.StatusOK, response.Success(result))
+	})
+	apiV1.GET("/map/geocode", mapAuth, mapLimiter, func(c *gin.Context) {
+		if !mappkg.IsAvailable() {
+			c.JSON(http.StatusOK, response.Fail(503, "地图服务未配置"))
+			return
+		}
+		address := c.Query("address")
+		if address == "" {
+			c.JSON(http.StatusOK, response.Fail(400, "缺少地址参数 address"))
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
+		defer cancel()
+		result, err := mappkg.Geocode(ctx, address)
+		if err != nil {
+			c.JSON(http.StatusOK, response.Fail(500, "地理编码失败: "+err.Error()))
+			return
+		}
+		c.JSON(http.StatusOK, response.Success(result))
+	})
+	apiV1.GET("/map/around", mapAuth, mapLimiter, func(c *gin.Context) {
+		if !mappkg.IsAvailable() {
+			c.JSON(http.StatusOK, response.Fail(503, "地图服务未配置"))
+			return
+		}
+		lng, _ := strconv.ParseFloat(c.Query("lng"), 64)
+		lat, _ := strconv.ParseFloat(c.Query("lat"), 64)
+		if lng == 0 || lat == 0 {
+			c.JSON(http.StatusOK, response.Fail(400, "缺少经纬度参数 lng/lat"))
+			return
+		}
+		radius, _ := strconv.Atoi(c.Query("radius"))
+		if radius <= 0 {
+			radius = 1000
+		}
+		limit, _ := strconv.Atoi(c.Query("limit"))
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
+		defer cancel()
+		pois, err := mappkg.Around(ctx, lng, lat, radius, c.Query("types"), limit)
+		if err != nil {
+			c.JSON(http.StatusOK, response.Fail(500, "周边搜索失败: "+err.Error()))
+			return
+		}
+		c.JSON(http.StatusOK, response.Success(gin.H{"pois": pois}))
+	})
 
 	// 404处理
 	r.Engine().NoRoute(func(c *gin.Context) {
