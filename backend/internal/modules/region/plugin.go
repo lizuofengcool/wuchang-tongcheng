@@ -52,6 +52,9 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
+	// 公开路由（无需鉴权，PC/小程序门户使用）
+	router.GET("", p.handler.GetAll)
+
 	router.POST("", coreRouter.WrapGin(middleware.RequirePermission("region:create")), p.handler.Create)
 	router.PUT("/:id", coreRouter.WrapGin(middleware.RequirePermission("region:update")), p.handler.Update)
 	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("region:delete")), p.handler.Delete)

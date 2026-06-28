@@ -55,6 +55,7 @@ type CategoryService interface {
 	Delete(id uint) error
 	GetByID(id uint) (*dto.CategoryInfo, error)
 	GetByParentID(parentID uint, regionID uint) ([]dto.CategoryInfo, error)
+	GetAll(regionID uint) ([]dto.CategoryInfo, error)
 	GetTree(regionID uint) ([]dto.CategoryTree, error)
 }
 
@@ -216,6 +217,28 @@ func (s *categoryService) GetByParentID(parentID uint, regionID uint) ([]dto.Cat
 		result = append(result, *toCategoryInfo(&categories[i]))
 	}
 	_ = rediscache.SetJSON(ctx, categoryCacheKeyByParent(parentID, regionID), result, categoryCacheTTL)
+	return result, nil
+}
+
+// GetAll 获取全部分类平铺列表（cache-aside：供 PC/小程序门户使用）
+func (s *categoryService) GetAll(regionID uint) ([]dto.CategoryInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	allCacheKey := categoryCachePrefix + "all:" + fmt.Sprintf("%d", regionID)
+	var cached []dto.CategoryInfo
+	if hit, _ := rediscache.GetJSON(ctx, allCacheKey, &cached); hit {
+		return cached, nil
+	}
+
+	all, err := s.categoryRepo.FindByRegionID(regionID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.CategoryInfo, 0, len(all))
+	for i := range all {
+		result = append(result, *toCategoryInfo(&all[i]))
+	}
+	_ = rediscache.SetJSON(ctx, allCacheKey, result, categoryCacheTTL)
 	return result, nil
 }
 

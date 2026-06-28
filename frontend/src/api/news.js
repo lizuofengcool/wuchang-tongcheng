@@ -35,3 +35,13 @@ export function likeNews(id) {
 export function getNewsLikeStatus(id) {
   return request.get(`/news/${id}/like`)
 }
+
+// 发布/取消发布新闻
+export function toggleNewsStatus(id, status) {
+  return request.put(`/news/${id}/status`, { status })
+}
+
+// 搜索新闻（ES搜索）
+export function searchNews(params) {
+  return request.get('/news/search', { params })
+}

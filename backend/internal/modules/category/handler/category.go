@@ -140,6 +140,17 @@ func (h *Handler) GetTree(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(tree))
 }
 
+// GetAll 获取全部分类平铺列表（供 PC/小程序门户使用）
+func (h *Handler) GetAll(ctx plugin.Context) {
+	regionID := getRegionID(ctx)
+	list, err := h.service.GetAll(regionID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeCategoryError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(list))
+}
+
 // parseID 解析URL中的ID参数
 func parseID(ctx plugin.Context) (uint, error) {
 	idStr := ctx.Param("id")

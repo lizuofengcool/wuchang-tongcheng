@@ -14,3 +14,13 @@ export function uploadFile(file, onProgress) {
     }
   })
 }
+
+// 获取文件列表
+export function listFiles(params) {
+  return request.get('/file', { params })
+}
+
+// 删除文件
+export function deleteFile(id) {
+  return request.delete(`/file/${id}`)
+}

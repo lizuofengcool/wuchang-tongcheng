@@ -13,7 +13,7 @@ export function login(username, password) {
 // 获取个人信息（需登录）
 export function getProfile() {
   return request({
-    url: '/api/v1/user/profile',
+    url: '/api/v1/user/info',
     method: 'GET',
     requireAuth: true,
   })

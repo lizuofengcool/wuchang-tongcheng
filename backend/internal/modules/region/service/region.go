@@ -53,6 +53,7 @@ type RegionService interface {
 	Delete(id uint) error
 	GetByID(id uint) (*dto.RegionInfo, error)
 	GetByParentID(parentID uint) ([]dto.RegionInfo, error)
+	GetAll() ([]dto.RegionInfo, error)
 	GetTree() ([]dto.RegionTree, error)
 }
 
@@ -213,6 +214,28 @@ func (s *regionService) GetByParentID(parentID uint) ([]dto.RegionInfo, error) {
 		result = append(result, *toRegionInfo(&regions[i]))
 	}
 	_ = rediscache.SetJSON(ctx, regionCacheKeyByParent(parentID), result, regionCacheTTL)
+	return result, nil
+}
+
+// GetAll 获取全部地区平铺列表（cache-aside：供 PC/小程序门户使用）
+func (s *regionService) GetAll() ([]dto.RegionInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	allCacheKey := regionCachePrefix + "all"
+	var cached []dto.RegionInfo
+	if hit, _ := rediscache.GetJSON(ctx, allCacheKey, &cached); hit {
+		return cached, nil
+	}
+
+	all, err := s.regionRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.RegionInfo, 0, len(all))
+	for i := range all {
+		result = append(result, *toRegionInfo(&all[i]))
+	}
+	_ = rediscache.SetJSON(ctx, allCacheKey, result, regionCacheTTL)
 	return result, nil
 }
 

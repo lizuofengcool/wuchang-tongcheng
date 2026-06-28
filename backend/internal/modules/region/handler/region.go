@@ -137,3 +137,13 @@ func (h *Handler) GetTree(ctx plugin.Context) {
 	}
 	ctx.JSON(http.StatusOK, response.Success(tree))
 }
+
+// GetAll 获取全部地区平铺列表（供 PC/小程序门户使用）
+func (h *Handler) GetAll(ctx plugin.Context) {
+	list, err := h.service.GetAll()
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeRegionError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(list))
+}
