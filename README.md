@@ -235,6 +235,13 @@ docker-compose up -d
   - 新手机号验证通过自动注册（用户名=手机号，随机占位密码无法走密码登录），老用户直接签发 JWT，禁用用户拒绝登录
   - 配置项 sms.provider（mock/aliyun 预留）+ dev_return_code（联调返回验证码明文）
   - 单元测试 14 用例（sms 包 8 + user service SMS 登录 6）
+- v1.3.0 - 阿里云短信 SDK 真实接入（D22）
+  - AliyunProvider：dysmsapi.aliyuncs.com RPC API（SendSms）+ HMAC-SHA1 签名（RPC v1 规则，RFC3986 percentEncode）
+  - 标准库 net/http 实现，无新外部依赖（与 pkg/amap 风格一致），crypto/rand 生成 SignatureNonce
+  - resolveProvider 升级：provider=aliyun 且 AK/SK/SignName/TemplateCode 齐全 → AliyunProvider；任一缺失或占位（your-）→ 降级 NoopProvider
+  - 模板参数 {"code":"xxxxxx"} 自动 marshal，响应 Code!=OK 包装错误（含阿里云错误码）
+  - 单元测试 11 用例：percentEncode（含中文/空格/特殊符号）、canonicalQueryString 排序、IsAvailable 四项校验、Send 成功（httptest 独立验证签名）/失败（业务限流）/网络错误/非 JSON 响应/空手机号/配置不全、resolveProvider 正向解析、签名确定性
+
 
 ## 功能完成度（对照规划）
 
@@ -271,12 +278,12 @@ docker-compose up -d
 - ✅ 高德地图 API 集成（地理编码/逆地理编码/周边搜索，key 未配置降级 503，限流 30/min）
 - ✅ 七牛云 Kodo 对象存储（基于 github.com/qiniu/go-sdk/v7 经典 storage 包，Save 走 FormUploader + Delete 走 BucketManager，AK/SK 占位值自动降级到 local）
 - ✅ 手机验证码登录（pkg/sms：Provider 接口 + NoopProvider + CodeStore Redis/内存双实现 + crypto/rand 生成 + 一次性消费 + 尝试次数限制；user 模块新增 /sms/code、/login/sms 路由，新手机号自动注册；mock provider + dev_return_code=true 联调返回验证码明文）
+- ✅ 阿里云短信 SDK 真实接入（AliyunProvider：dysmsapi.aliyuncs.com RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖，与 pkg/amap 风格一致；AK/SK/SignName/TemplateCode 任一缺失或占位自动降级 NoopProvider；单元测试 11 用例覆盖 percentEncode/签名一致性/httptest 成功失败/网络错误/配置校验）
 
 ### 未实现（待开发）
 - ❌ PostGIS 空间查询业务接入
 - ❌ 第三方登录（微信等）
 - ❌ 阿里云 OSS 直传（STS/预签名 URL 前端直传）
-- ❌ 阿里云短信 SDK 真实接入（pkg/sms 已预留 Provider 接口与 aliyun 配置项，AK/SK 未配置时降级 NoopProvider）
 
 ## 许可证
 

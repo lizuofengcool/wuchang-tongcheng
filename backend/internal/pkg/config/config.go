@@ -25,7 +25,7 @@ type Config struct {
 
 // SMSConfig 短信验证码服务配置
 type SMSConfig struct {
-	Provider     string `mapstructure:"provider"`        // ""/mock（不发短信，dev 可返回验证码）/aliyun（预留，AK/SK 未配置降级 mock）
+	Provider     string `mapstructure:"provider"`        // ""/mock（不发短信，dev 可返回验证码）/aliyun（dysmsapi RPC API，AK/SK/SignName/TemplateCode 未配置降级 mock）
 	SignName     string `mapstructure:"sign_name"`       // 短信签名
 	TemplateCode string `mapstructure:"template_code"`   // 短信模板
 	AccessKey    string `mapstructure:"access_key"`      // 短信服务 AK

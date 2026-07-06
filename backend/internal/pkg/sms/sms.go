@@ -1,7 +1,7 @@
 // Package sms 短信验证码服务
 //
 // 提供：
-//   - Provider 接口（mock/dev 不实际发短信；aliyun 预留，AK/SK 未配置降级 mock）
+//   - Provider 接口（mock/dev 不实际发短信；aliyun 已实现 dysmsapi RPC API + HMAC-SHA1 签名，AK/SK/SignName/TemplateCode 未配置降级 mock）
 //   - CodeStore 验证码存储（Redis 优先，Redis 不可用时降级内存）
 //   - Service 验证码生成（crypto/rand）+ 发送 + 校验（一次性 + 尝试次数限制）
 //
@@ -59,7 +59,7 @@ type Service struct {
 // NewService 根据配置创建短信验证码服务
 //
 // 配置 provider 为空或 "mock" → NoopProvider
-// provider="aliyun" 但 AK/SK 未配置齐全 → 降级 NoopProvider（真实阿里云 SDK 待补齐）
+// provider="aliyun" 且 AK/SK/SignName/TemplateCode 齐全 → AliyunProvider（dysmsapi RPC API）；任一缺失或占位 → 降级 NoopProvider
 // Redis 可用 → redisCodeStore；否则 → memoryCodeStore
 func NewService(cfg *config.SMSConfig) *Service {
 	if cfg == nil {
@@ -95,12 +95,13 @@ func NewService(cfg *config.SMSConfig) *Service {
 func resolveProvider(cfg *config.SMSConfig) Provider {
 	switch strings.ToLower(cfg.Provider) {
 	case "aliyun":
-		// 阿里云短信 SDK 待补齐；AK/SK 缺失或占位时降级 Noop，避免引入未集成依赖
+		// AK/SK/SignName/TemplateCode 任一缺失或占位 → 降级 Noop，避免运行时调用失败
 		if cfg.AccessKey == "" || cfg.SecretKey == "" ||
+			cfg.SignName == "" || cfg.TemplateCode == "" ||
 			strings.Contains(cfg.AccessKey, "your-") || strings.Contains(cfg.SecretKey, "your-") {
 			return NoopProvider{}
 		}
-		return NoopProvider{}
+		return NewAliyunProvider(cfg)
 	default: // "" 或 "mock"
 		return NoopProvider{}
 	}

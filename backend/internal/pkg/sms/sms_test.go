@@ -143,7 +143,7 @@ func TestResolveProvider_DegradesToNoop(t *testing.T) {
 		{Provider: "aliyun"},                                                        // 无 AK/SK
 		{Provider: "aliyun", AccessKey: "your-ak", SecretKey: "sk"},                 // AK 占位
 		{Provider: "aliyun", AccessKey: "ak", SecretKey: "your-sk"},                 // SK 占位
-		{Provider: "aliyun", AccessKey: "AKIDxxxx", SecretKey: "secretxxxx"},        // 暂用 Noop（SDK 未集成）
+		{Provider: "aliyun", AccessKey: "AKIDxxxx", SecretKey: "secretxxxx"},        // 缺 SignName/TemplateCode → Noop
 	}
 	for i, cfg := range cases {
 		if _, ok := resolveProvider(cfg).(NoopProvider); !ok {

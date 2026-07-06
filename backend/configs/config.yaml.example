@@ -77,7 +77,7 @@ map:
 
 # 短信验证码服务配置
 sms:
-  provider: "mock"            # ""/mock（不发短信，dev_return_code=true 时接口返回验证码明文便于联调）/aliyun（预留，AK/SK 未配置降级 mock）
+  provider: "mock"            # ""/mock（不发短信，dev_return_code=true 时接口返回验证码明文便于联调）/aliyun（dysmsapi RPC API，AK/SK/SignName/TemplateCode 任一缺失降级 mock）
   sign_name: ""               # 短信签名（aliyun 用）
   template_code: ""           # 短信模板 code（aliyun 用）
   access_key: ""              # 短信服务 AK（aliyun 用）
