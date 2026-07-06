@@ -6,6 +6,7 @@
 package repository
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	newsModel "wuchang-tongcheng/internal/modules/news/model"
+	"wuchang-tongcheng/internal/pkg/geo"
 	"wuchang-tongcheng/internal/pkg/utils"
 	"wuchang-tongcheng/internal/testutil/pgtest"
 )
@@ -341,3 +343,93 @@ func TestNewsRepository_Delete_CascadeLikeNotAuto(t *testing.T) {
 	require.NoError(t, db.Model(&newsModel.NewsLike{}).Where("news_id = ?", n.ID).Count(&likeCount).Error)
 	assert.Equal(t, int64(1), likeCount, "repo 未做级联删除，点赞记录仍在")
 }
+
+// makeNewsWithLocation 构造一条带经纬度的已发布头条，用于 ListNearby 附近查询测试。
+func makeNewsWithLocation(title string, regionID, categoryID uint, lat, lng float64) *newsModel.News {
+	n := &newsModel.News{
+		Title:       title,
+		Content:     "正文 " + title,
+		Summary:     title + " 摘要",
+		AuthorID:    1,
+		AuthorName:  "author",
+		CategoryID:  categoryID,
+		Status:      1,
+		ListingType: newsModel.ListingTypeSell,
+		Latitude:    lat,
+		Longitude:   lng,
+		Address:     title + " 地址",
+	}
+	n.RegionID = regionID
+	return n
+}
+
+// TestNewsRepository_ListNearby 附近信息查询集成测试。
+// pgtest 容器为 postgres:16-alpine（未装 PostGIS），自动走 Haversine 降级路径，
+// 验证：半径过滤、距离升序排序、Distance 字段回填、草稿/无坐标排除、分类过滤、半径上限钳制。
+func TestNewsRepository_ListNearby(t *testing.T) {
+	geo.ResetForTest()
+	repo, _ := newNewsRepoForTest(t)
+
+	// 以五常 (44.9225, 127.1500) 为中心
+	const centerLat, centerLng = 44.9225, 127.1500
+
+	// A：正中心 → 距离 0
+	require.NoError(t, repo.Create(makeNewsWithLocation("中心点", 2, 10, centerLat, centerLng)))
+	// B：正北 ~30 km（纬度 +0.27）→ 半径 50 km 内
+	require.NoError(t, repo.Create(makeNewsWithLocation("北30km", 2, 10, centerLat+0.27, centerLng)))
+	// C：正东 ~80 km（经度增量按 cos(lat) 折算）→ 半径 50 km 外
+	cosLat := math.Cos(centerLat * math.Pi / 180.0)
+	lngDeltaC := 80.0 / (111.0 * cosLat)
+	require.NoError(t, repo.Create(makeNewsWithLocation("东80km", 2, 10, centerLat, centerLng+lngDeltaC)))
+	// D：中心点但草稿 → 不应返回
+	draft := makeNewsWithLocation("草稿", 2, 10, centerLat, centerLng)
+	draft.Status = 0
+	require.NoError(t, repo.Create(draft))
+	// E：中心点但无坐标（lat/lng=0）→ 不应返回
+	require.NoError(t, repo.Create(makeNewsWithLocation("无坐标", 2, 10, 0, 0)))
+
+	// 1) 半径 50 km → 仅 A、B，按距离升序（A 在前）
+	pg := utils.NewPagination(1, 10)
+	list, total, err := repo.ListNearby(2, pg, centerLat, centerLng, 50, 0, "")
+	require.NoError(t, err)
+	require.Equal(t, int64(2), total, "50km 内应有 2 条（中心点 + 北30km）")
+	require.Len(t, list, 2)
+	assert.Equal(t, "中心点", list[0].Title, "中心点距离最近应排第一")
+	assert.Equal(t, "北30km", list[1].Title)
+	// Distance 字段应被回填
+	assert.LessOrEqual(t, list[0].Distance, 1.0, "中心点距离应 < 1 km")
+	assert.InDelta(t, 30.0, list[1].Distance, 5.0, "北30km 距离应约 30 km")
+
+	// 2) 半径 100 km → A、B、C 三条
+	pg2 := utils.NewPagination(1, 10)
+	list, total, err = repo.ListNearby(2, pg2, centerLat, centerLng, 100, 0, "")
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total, "100km 内应有 3 条")
+	require.Len(t, list, 3)
+	assert.InDelta(t, 80.0, list[2].Distance, 5.0, "东80km 距离应约 80 km，排第三")
+
+	// 3) 半径 10 km → 仅 A
+	pg3 := utils.NewPagination(1, 10)
+	list, total, err = repo.ListNearby(2, pg3, centerLat, centerLng, 10, 0, "")
+	require.NoError(t, err)
+	require.Equal(t, int64(1), total, "10km 内应仅中心点 1 条")
+	require.Len(t, list, 1)
+	assert.Equal(t, "中心点", list[0].Title)
+
+	// 4) 越界半径（>100）应钳制为 100，与 radius=100 结果一致
+	pg4 := utils.NewPagination(1, 10)
+	_, total4, err := repo.ListNearby(2, pg4, centerLat, centerLng, 9999, 0, "")
+	require.NoError(t, err)
+	assert.Equal(t, total, total4, "半径 9999 应钳制为 100，结果数一致")
+
+	// 5) 半径 50 km + 分类过滤（构造一条 50km 内但分类不同的，应被排除）
+	//    重新用 30km 北点位置但 categoryID=99，半径 50km 内但按 category=10 过滤应不含它
+	//    （上面 B 用 category=10，这里再加一个 category=99 的近点）
+	require.NoError(t, repo.Create(makeNewsWithLocation("北30km-分类99", 2, 99, centerLat+0.27, centerLng)))
+	pg5 := utils.NewPagination(1, 10)
+	list, total, err = repo.ListNearby(2, pg5, centerLat, centerLng, 50, 10, "")
+	require.NoError(t, err)
+	require.Equal(t, int64(2), total, "半径50km+分类10 → 仍为 A、B 两条（分类99 的被排除）")
+	require.Len(t, list, 2)
+}
+

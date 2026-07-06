@@ -165,6 +165,24 @@ func (h *Handler) Search(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
 }
 
+// Nearby 附近信息查询（基于 PostGIS 空间查询，扩展不可用降级 Haversine）
+func (h *Handler) Nearby(ctx plugin.Context) {
+	var req dto.NewsNearbyRequest
+	_ = ctx.Bind(&req)
+	// 经纬度必填且在有效范围内（binding:"required" 仅校验非零，这里补充范围校验）
+	if req.Latitude < -90 || req.Latitude > 90 || req.Longitude < -180 || req.Longitude > 180 {
+		ctx.JSON(http.StatusOK, response.BadRequest("经纬度参数无效"))
+		return
+	}
+	regionID := getRegionID(ctx)
+	pagination, list, err := h.service.ListNearby(regionID, &req)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeNewsError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
+}
+
 // Like 点赞/取消点赞
 func (h *Handler) Like(ctx plugin.Context) {
 	userID, _ := getUserID(ctx)

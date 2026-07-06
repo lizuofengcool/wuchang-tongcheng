@@ -32,6 +32,9 @@ type NewsInfo struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 
+	// Distance 仅在"附近"查询返回时填充，单位公里；其他接口为零值省略
+	Distance float64 `json:"distance,omitempty"`
+
 	// 展示控制
 	IsUrgent     bool       `json:"is_urgent"`
 	ExpiryTime   *time.Time `json:"expiry_time"`
@@ -138,6 +141,20 @@ type NewsSearchRequest struct {
 	Keyword    string `form:"keyword"`
 	CategoryID uint   `form:"category_id"`
 	ListingType string `form:"listing_type"`
+}
+
+// NewsNearbyRequest 附近分类信息查询请求
+// 以 (latitude, longitude) 为中心，返回半径 radius_km 公里内的已发布信息，
+// 按距离由近到远排序（加急信息置顶优先）。优先走 PostGIS ST_DWithin，
+// 扩展不可用时降级走纯 SQL Haversine 公式。
+type NewsNearbyRequest struct {
+	Page        int     `form:"page"`
+	PageSize    int     `form:"page_size"`
+	Latitude    float64 `form:"latitude" binding:"required"`
+	Longitude   float64 `form:"longitude" binding:"required"`
+	RadiusKm    float64 `form:"radius_km"`      // 搜索半径（公里），默认 5，最大 100
+	CategoryID  uint    `form:"category_id"`
+	ListingType string  `form:"listing_type"`
 }
 
 // CommentInfo 评论信息

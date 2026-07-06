@@ -9,7 +9,7 @@
 - **Web框架**: Gin
 - **ORM**: GORM
 - **架构模式**: 插件化架构 + Repository模式
-- **数据库**: PostgreSQL 16（PostGIS 扩展已部署但代码未使用空间查询）
+- **数据库**: PostgreSQL 16（PostGIS 扩展已部署并接入业务：news 附近信息查询走 ST_DWithin 球面距离，扩展不可用降级纯 SQL Haversine）
 - **缓存**: Redis 7（已封装，限流 + 业务缓存接入：region/category 树 30min TTL、news 列表 60s TTL，写操作按前缀失效，Redis 不可用降级走 DB）
 - **搜索引擎**: Elasticsearch 8（已集成：news 全文检索 multi_match + 异步索引，ES 不可用降级 DB LIKE）
 - **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
@@ -241,6 +241,12 @@ docker-compose up -d
   - resolveProvider 升级：provider=aliyun 且 AK/SK/SignName/TemplateCode 齐全 → AliyunProvider；任一缺失或占位（your-）→ 降级 NoopProvider
   - 模板参数 {"code":"xxxxxx"} 自动 marshal，响应 Code!=OK 包装错误（含阿里云错误码）
   - 单元测试 11 用例：percentEncode（含中文/空格/特殊符号）、canonicalQueryString 排序、IsAvailable 四项校验、Send 成功（httptest 独立验证签名）/失败（业务限流）/网络错误/非 JSON 响应/空手机号/配置不全、resolveProvider 正向解析、签名确定性
+- v1.4.0 - PostGIS 空间查询业务接入（D23）
+  - pkg/geo 包：HaversineKm 球面距离 + BoundingBox 经纬度边界框 + PostGISAvailable 扩展探测（进程级缓存）
+  - news 模块新增 GET /api/v1/news/nearby（限流 30/min）：以 (lat,lng) 为中心返回 radius_km 公里内已发布信息，按距离升序、加急置顶
+  - 双路实现：PostGIS 可用走 ST_DWithin + ST_Distance(geography) 精确球面距离；不可用降级纯 SQL Haversine + 边界框预筛（走普通索引）
+  - DTO 新增 NewsNearbyRequest + NewsInfo.distance（公里，仅 nearby 接口回填）；半径默认 5km、上限 100km 自动钳制；经纬度范围校验
+  - 单元测试 14 用例（Haversine 对称性/北京-上海/赤道/对跖点/哈尔滨-五常、边界框赤道/高纬/零半径/负半径/极点退化、PostGIS nil 探测）+ 集成测试（半径过滤/距离排序/Distance 回填/草稿排除/无坐标排除/分类过滤/半径钳制，无 Docker 自动 SKIP）
 
 
 ## 功能完成度（对照规划）
@@ -279,9 +285,9 @@ docker-compose up -d
 - ✅ 七牛云 Kodo 对象存储（基于 github.com/qiniu/go-sdk/v7 经典 storage 包，Save 走 FormUploader + Delete 走 BucketManager，AK/SK 占位值自动降级到 local）
 - ✅ 手机验证码登录（pkg/sms：Provider 接口 + NoopProvider + CodeStore Redis/内存双实现 + crypto/rand 生成 + 一次性消费 + 尝试次数限制；user 模块新增 /sms/code、/login/sms 路由，新手机号自动注册；mock provider + dev_return_code=true 联调返回验证码明文）
 - ✅ 阿里云短信 SDK 真实接入（AliyunProvider：dysmsapi.aliyuncs.com RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖，与 pkg/amap 风格一致；AK/SK/SignName/TemplateCode 任一缺失或占位自动降级 NoopProvider；单元测试 11 用例覆盖 percentEncode/签名一致性/httptest 成功失败/网络错误/配置校验）
+- ✅ PostGIS 空间查询业务接入（pkg/geo：HaversineKm + BoundingBox + PostGISAvailable 探测；news 模块 GET /api/v1/news/nearby 附近信息查询，PostGIS ST_DWithin 精确球面距离，扩展不可用降级纯 SQL Haversine + 边界框预筛；半径默认 5km/上限 100km 钳制、距离升序加急置顶、distance 字段回填；单元测试 14 用例 + 集成测试）
 
 ### 未实现（待开发）
-- ❌ PostGIS 空间查询业务接入
 - ❌ 第三方登录（微信等）
 - ❌ 阿里云 OSS 直传（STS/预签名 URL 前端直传）
 

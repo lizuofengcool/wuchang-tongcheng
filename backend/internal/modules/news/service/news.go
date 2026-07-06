@@ -50,6 +50,7 @@ type NewsService interface {
 	Delete(id uint, operatorID uint) error
 	GetByID(id uint) (*dto.NewsInfo, error)
 	List(regionID uint, req *dto.NewsListRequest) (*utils.Pagination, []dto.NewsInfo, error)
+	ListNearby(regionID uint, req *dto.NewsNearbyRequest) (*utils.Pagination, []dto.NewsInfo, error)
 	Search(regionID uint, req *dto.NewsSearchRequest) (*utils.Pagination, []dto.NewsInfo, error)
 	Like(userID, newsID uint) (*dto.LikeResponse, error)
 	LikeStatus(userID, newsID uint) (*dto.LikeResponse, error)
@@ -100,6 +101,7 @@ func toNewsInfo(n *model.News) *dto.NewsInfo {
 		Address:       n.Address,
 		Latitude:      n.Latitude,
 		Longitude:     n.Longitude,
+		Distance:      n.Distance,
 		IsUrgent:      n.IsUrgent,
 		ExpiryTime:    n.ExpiryTime,
 		ViewCount:     n.ViewCount,
@@ -353,6 +355,27 @@ func (s *newsService) List(regionID uint, req *dto.NewsListRequest) (*utils.Pagi
 	}
 
 	list, total, err := s.newsRepo.List(regionID, pagination, req.CategoryID, req.Status, req.ListingType, req.Keyword, req.MinPrice, req.MaxPrice, req.IsUrgent, req.Sort)
+	if err != nil {
+		return nil, nil, err
+	}
+	pagination.Total = total
+	result := make([]dto.NewsInfo, 0, len(list))
+	for i := range list {
+		result = append(result, *toNewsInfo(&list[i]))
+	}
+	return pagination, result, nil
+}
+
+// ListNearby 附近信息查询。走 PostGIS 空间查询（不可用降级 Haversine），
+// 不读列表缓存（按位置动态计算），结果按距离升序、加急置顶。
+func (s *newsService) ListNearby(regionID uint, req *dto.NewsNearbyRequest) (*utils.Pagination, []dto.NewsInfo, error) {
+	pagination := utils.NewPagination(req.Page, req.PageSize)
+	radiusKm := req.RadiusKm
+	if radiusKm <= 0 {
+		radiusKm = 5
+	}
+
+	list, total, err := s.newsRepo.ListNearby(regionID, pagination, req.Latitude, req.Longitude, radiusKm, req.CategoryID, req.ListingType)
 	if err != nil {
 		return nil, nil, err
 	}
