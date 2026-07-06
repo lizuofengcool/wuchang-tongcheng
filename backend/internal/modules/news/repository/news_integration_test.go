@@ -40,6 +40,27 @@ func makeNews(title string, authorID uint, regionID uint, categoryID uint, statu
 	return n
 }
 
+// makeNewsListing 构造一条带分类信息字段（listingType/price/isUrgent）的已发布头条，
+// 用于覆盖 List 仓储层新增的 listingType / 价格区间 / 加急 过滤参数。
+func makeNewsListing(title string, regionID, categoryID uint, listingType string, price float64, isUrgent bool) *newsModel.News {
+	n := &newsModel.News{
+		Title:       title,
+		Content:     "正文 " + title,
+		Summary:     title + " 摘要",
+		AuthorID:    1,
+		AuthorName:  "author",
+		CategoryID:  categoryID,
+		Tags:        "tag1,tag2",
+		Status:      1,
+		ListingType: listingType,
+		Price:       price,
+		PriceUnit:   "元",
+		IsUrgent:    isUrgent,
+	}
+	n.RegionID = regionID
+	return n
+}
+
 // TestNewsRepository_CreateAndFindByID 创建 + 查询
 func TestNewsRepository_CreateAndFindByID(t *testing.T) {
 	repo, _ := newNewsRepoForTest(t)
@@ -70,21 +91,22 @@ func TestNewsRepository_List_Filters(t *testing.T) {
 	pg := utils.NewPagination(1, 10)
 
 	// 1) 武汉市已发布 → 3 条
-	list, total, err := repo.List(2, pg, uint(0), 1, "")
+	//    List 新签名：(regionID, pagination, categoryID, status, listingType, keyword, minPrice, maxPrice, isUrgent, sort)
+	list, total, err := repo.List(2, pg, uint(0), 1, "", "", 0, 0, nil, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(3), total)
 	assert.Len(t, list, 3)
 
 	// 2) 武汉市 + 分类 11 已发布 → 2 条
 	pg2 := utils.NewPagination(1, 10)
-	list, total, err = repo.List(2, pg2, 11, 1, "")
+	list, total, err = repo.List(2, pg2, 11, 1, "", "", 0, 0, nil, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	assert.Len(t, list, 2)
 
 	// 3) 武汉市 + 关键词 "新闻"（标题匹配）→ 2 条（A、B）
 	pg3 := utils.NewPagination(1, 10)
-	list, total, err = repo.List(2, pg3, 0, 1, "新闻")
+	list, total, err = repo.List(2, pg3, 0, 1, "", "新闻", 0, 0, nil, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	assert.Len(t, list, 2)
@@ -92,18 +114,105 @@ func TestNewsRepository_List_Filters(t *testing.T) {
 	// 4) 武汉市 + status=2（不在 0..2 之外触发默认 status=1）→ 3 条已发布
 	//    注：repo 逻辑 status<0||status>2 时 WHERE status=1
 	pg4 := utils.NewPagination(1, 10)
-	list, total, err = repo.List(2, pg4, 0, 9, "")
+	list, total, err = repo.List(2, pg4, 0, 9, "", "", 0, 0, nil, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(3), total, "status 越界默认查已发布")
 	assert.Len(t, list, 3)
 
 	// 5) 武汉市 + status=0（草稿）→ 1 条
 	pg5 := utils.NewPagination(1, 10)
-	list, total, err = repo.List(2, pg5, 0, 0, "")
+	list, total, err = repo.List(2, pg5, 0, 0, "", "", 0, 0, nil, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), total)
 	assert.Len(t, list, 1)
 	assert.Equal(t, "武汉草稿", list[0].Title)
+}
+
+// TestNewsRepository_List_ListingFilters 覆盖 List 仓储层新增的分类信息过滤参数：
+// listingType（出售/求购/出租/服务/招聘）、minPrice/maxPrice 价格区间、isUrgent 加急。
+// 这一组参数是「同城分类信息平台」升级时新增到 List 签名的，需要专门的集成测试覆盖。
+func TestNewsRepository_List_ListingFilters(t *testing.T) {
+	repo, _ := newNewsRepoForTest(t)
+
+	// 武汉市(2) 全部已发布，覆盖 5 种 listingType + 不同价格 + 是否加急
+	require.NoError(t, repo.Create(makeNewsListing("出售-笔记本", 2, 10, newsModel.ListingTypeSell, 3000, true)))
+	require.NoError(t, repo.Create(makeNewsListing("出售-自行车", 2, 10, newsModel.ListingTypeSell, 200, false)))
+	require.NoError(t, repo.Create(makeNewsListing("求购-笔记本", 2, 10, newsModel.ListingTypeBuy, 2500, false)))
+	require.NoError(t, repo.Create(makeNewsListing("出租-单间", 2, 10, newsModel.ListingTypeRent, 1500, true)))
+	require.NoError(t, repo.Create(makeNewsListing("服务-搬家", 2, 10, newsModel.ListingTypeService, 500, false)))
+
+	// 1) listingType=sell → 2 条（笔记本、自行车）
+	pg := utils.NewPagination(1, 10)
+	list, total, err := repo.List(2, pg, 0, 1, newsModel.ListingTypeSell, "", 0, 0, nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	assert.Len(t, list, 2)
+
+	// 2) listingType=rent → 1 条（单间）
+	pg2 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg2, 0, 1, newsModel.ListingTypeRent, "", 0, 0, nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, list, 1)
+	assert.Equal(t, "出租-单间", list[0].Title)
+
+	// 3) 价格区间 [1000, 3000] → 3 条（笔记本 3000、求购笔记本 2500、单间 1500）
+	pg3 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg3, 0, 1, "", "", 1000, 3000, nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), total)
+	assert.Len(t, list, 3)
+
+	// 4) 仅 minPrice=1000 → 4 条（≥1000：笔记本、求购笔记本、单间、搬家 500 不算 → 3 条）
+	//    注：搬家 500 < 1000 应被排除
+	pg4 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg4, 0, 1, "", "", 1000, 0, nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), total)
+	assert.Len(t, list, 3)
+
+	// 5) isUrgent=true → 2 条（笔记本、单间）
+	urgent := true
+	pg5 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg5, 0, 1, "", "", 0, 0, &urgent, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	assert.Len(t, list, 2)
+
+	// 6) 组合：listingType=sell + isUrgent=true → 1 条（笔记本）
+	pg6 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg6, 0, 1, newsModel.ListingTypeSell, "", 0, 0, &urgent, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, list, 1)
+	assert.Equal(t, "出售-笔记本", list[0].Title)
+
+	// 7) isUrgent=false（*bool 为 nil 表示不过滤，传 false 指针当前实现仅 *isUrgent==true 才生效，
+	//    所以传 false 与 nil 等价 → 5 条全部返回）
+	notUrgent := false
+	pg7 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg7, 0, 1, "", "", 0, 0, &notUrgent, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), total, "isUrgent=false 当前实现等价于不过滤")
+	assert.Len(t, list, 5)
+
+	// 8) sort=price → 按价格升序，第一条应是「出售-自行车」(200)
+	pg8 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg8, 0, 1, "", "", 0, 0, nil, "price")
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), total)
+	require.Len(t, list, 5)
+	assert.Equal(t, "出售-自行车", list[0].Title, "sort=price 应按价格升序")
+	assert.Equal(t, float64(200), list[0].Price)
+
+	// 9) sort=price_desc → 按价格降序，第一条应是「出售-笔记本」(3000)
+	pg9 := utils.NewPagination(1, 10)
+	list, total, err = repo.List(2, pg9, 0, 1, "", "", 0, 0, nil, "price_desc")
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), total)
+	require.Len(t, list, 5)
+	assert.Equal(t, "出售-笔记本", list[0].Title, "sort=price_desc 应按价格降序")
+	assert.Equal(t, float64(3000), list[0].Price)
 }
 
 // TestNewsRepository_IncrViewCount 浏览量自增
