@@ -2,7 +2,11 @@
 package service
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"wuchang-tongcheng/internal/modules/user/dto"
 	"wuchang-tongcheng/internal/modules/user/model"
@@ -20,12 +24,22 @@ var (
 	ErrPasswordInvalid   = errors.New("密码错误")
 	ErrUserDisabled      = errors.New("用户已被禁用")
 	ErrOldPasswordWrong  = errors.New("原密码错误")
+	ErrSMSCodeInvalid    = errors.New("验证码错误或已过期")
+	ErrSMSNotConfigured  = errors.New("短信服务未启用")
 )
+
+// SMSService 短信验证码服务接口（由 pkg/sms.Service 实现）
+type SMSService interface {
+	SendCode(ctx context.Context, phone string) (string, error)
+	Verify(ctx context.Context, phone, code string) error
+}
 
 // UserService 用户业务逻辑接口
 type UserService interface {
 	Register(regionID uint, req *dto.RegisterRequest) (*dto.UserInfo, error)
 	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
+	SendSMSCode(ctx context.Context, phone string) (*dto.SendSMSCodeResponse, error)
+	LoginBySMS(ctx context.Context, regionID uint, phone, code string) (*dto.LoginResponse, error)
 	GetUserInfo(userID uint) (*dto.UserInfo, error)
 	UpdateProfile(userID uint, req *dto.UpdateProfileRequest) error
 	ChangePassword(userID uint, req *dto.ChangePasswordRequest) error
@@ -40,11 +54,13 @@ type UserService interface {
 
 type userService struct {
 	userRepo repository.UserRepository
+	sms      SMSService
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo repository.UserRepository) UserService {
-	return &userService{userRepo: userRepo}
+// sms 可为 nil：未启用短信服务时调用 SendSMSCode/LoginBySMS 返回 ErrSMSNotConfigured
+func NewUserService(userRepo repository.UserRepository, sms SMSService) UserService {
+	return &userService{userRepo: userRepo, sms: sms}
 }
 
 // HashPassword 密码哈希
@@ -141,6 +157,86 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		Expires:  24 * 3600,
 		UserInfo: *toUserInfo(user),
 	}, nil
+}
+
+// SendSMSCode 发送短信验证码
+// 返回的 SendSMSCodeResponse.DevCode 仅在 mock provider + dev_return_code=true 时非空（联调用）
+func (s *userService) SendSMSCode(ctx context.Context, phone string) (*dto.SendSMSCodeResponse, error) {
+	if s.sms == nil {
+		return nil, ErrSMSNotConfigured
+	}
+	devCode, err := s.sms.SendCode(ctx, phone)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.SendSMSCodeResponse{DevCode: devCode}, nil
+}
+
+// LoginBySMS 短信验证码登录
+// 流程：校验验证码 → 按手机号查用户 → 存在则直接签发 token；不存在则自动注册（用户名=手机号，随机密码，无法走密码登录）
+func (s *userService) LoginBySMS(ctx context.Context, regionID uint, phone, code string) (*dto.LoginResponse, error) {
+	if s.sms == nil {
+		return nil, ErrSMSNotConfigured
+	}
+	// 校验验证码（成功后一次性删除）
+	if err := s.sms.Verify(ctx, phone, code); err != nil {
+		return nil, ErrSMSCodeInvalid
+	}
+
+	// 按手机号查找用户
+	user, err := s.userRepo.FindByPhone(phone)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		// 新手机号：自动注册（用户名=手机号，随机密码占位，无法用密码登录）
+		randPwd, perr := randomPassword(32)
+		if perr != nil {
+			return nil, perr
+		}
+		hashedPassword, perr := HashPassword(randPwd)
+		if perr != nil {
+			return nil, perr
+		}
+		user = &model.User{
+			Username: phone,
+			Password: hashedPassword,
+			Nickname: phone,
+			Phone:    phone,
+			Status:   1,
+		}
+		user.RegionID = regionID
+		if err := s.userRepo.Create(user); err != nil {
+			return nil, err
+		}
+	}
+
+	// 禁用用户拒绝登录
+	if user.Status == 0 {
+		return nil, ErrUserDisabled
+	}
+
+	token, err := jwt.GenerateToken(user.ID, user.Username)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.LoginResponse{
+		Token:    token,
+		Expires:  24 * 3600,
+		UserInfo: *toUserInfo(user),
+	}, nil
+}
+
+// randomPassword 生成指定长度的十六进制随机字符串（用于自动注册用户的占位密码）
+func randomPassword(n int) (string, error) {
+	if n <= 0 {
+		n = 32
+	}
+	b := make([]byte, n/2+1)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate random password: %w", err)
+	}
+	return hex.EncodeToString(b)[:n], nil
 }
 
 // GetUserInfo 获取用户信息

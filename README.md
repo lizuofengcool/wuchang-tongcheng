@@ -48,6 +48,7 @@ wuchang-tongcheng/
 │   │   │   ├── logger/         # 日志封装
 │   │   │   ├── storage/        # 文件存储（已实现 local，minio/qiniu 待补齐）
 │   │   │   ├── seed/           # 种子数据（地区/权限/admin）
+│   │   │   ├── sms/            # 短信验证码服务（Provider + CodeStore Redis/内存 + 生成/校验）
 │   │   │   └── utils/          # 工具函数（分页/错误码/helper）
 │   │   └── modules/            # 业务模块（插件，每个含 model/dto/repository/service/handler/plugin.go）
 │   │       ├── user/           # 用户模块
@@ -228,6 +229,12 @@ docker-compose up -d
   - 覆盖全链路：全局中间件（Region+Auth）→ 路由 → handler → service → repository → DB
   - 15 用例：注册/登录/鉴权/资料更新/改密码/admin 权限（超管直通 + 普通用户 403）
   - seed.Run 复用 + 真实 permission service 注入权限校验器
+- v1.2.0 - 手机验证码登录（D21）
+  - pkg/sms 包：Provider 接口（NoopProvider mock/dev）+ CodeStore（Redis 优先，不可用降级内存）+ crypto/rand 生成 + 一次性消费 + 尝试次数限制（防暴力枚举）
+  - user 模块新增 POST /api/v1/user/sms/code（发送验证码，限流 5/min）、POST /api/v1/user/login/sms（验证码登录，限流 5/min）
+  - 新手机号验证通过自动注册（用户名=手机号，随机占位密码无法走密码登录），老用户直接签发 JWT，禁用用户拒绝登录
+  - 配置项 sms.provider（mock/aliyun 预留）+ dev_return_code（联调返回验证码明文）
+  - 单元测试 14 用例（sms 包 8 + user service SMS 登录 6）
 
 ## 功能完成度（对照规划）
 
@@ -263,11 +270,13 @@ docker-compose up -d
 - ✅ 数据库初始化脚本（deploy/initdb PostGIS 扩展 + Makefile migrate/swagger 目标补齐）
 - ✅ 高德地图 API 集成（地理编码/逆地理编码/周边搜索，key 未配置降级 503，限流 30/min）
 - ✅ 七牛云 Kodo 对象存储（基于 github.com/qiniu/go-sdk/v7 经典 storage 包，Save 走 FormUploader + Delete 走 BucketManager，AK/SK 占位值自动降级到 local）
+- ✅ 手机验证码登录（pkg/sms：Provider 接口 + NoopProvider + CodeStore Redis/内存双实现 + crypto/rand 生成 + 一次性消费 + 尝试次数限制；user 模块新增 /sms/code、/login/sms 路由，新手机号自动注册；mock provider + dev_return_code=true 联调返回验证码明文）
 
 ### 未实现（待开发）
 - ❌ PostGIS 空间查询业务接入
-- ❌ 第三方登录、手机验证码登录
+- ❌ 第三方登录（微信等）
 - ❌ 阿里云 OSS 直传（STS/预签名 URL 前端直传）
+- ❌ 阿里云短信 SDK 真实接入（pkg/sms 已预留 Provider 接口与 aliyun 配置项，AK/SK 未配置时降级 NoopProvider）
 
 ## 许可证
 

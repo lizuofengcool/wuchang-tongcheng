@@ -2,8 +2,10 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"wuchang-tongcheng/internal/core/middleware"
 	"wuchang-tongcheng/internal/core/plugin"
@@ -74,6 +76,45 @@ func (h *Handler) Login(ctx plugin.Context) {
 		return
 	}
 
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("登录成功", result))
+}
+
+// SendSMSCode 发送短信验证码
+// POST /api/v1/user/sms/code
+func (h *Handler) SendSMSCode(ctx plugin.Context) {
+	var req dto.SendSMSCodeRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("参数错误"))
+		return
+	}
+	// 短信发送与存储操作设置 5s 超时，避免外部依赖拖垮请求
+	rctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := h.service.SendSMSCode(rctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeSMSError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("验证码已发送", resp))
+}
+
+// SMSLogin 短信验证码登录
+// POST /api/v1/user/login/sms
+func (h *Handler) SMSLogin(ctx plugin.Context) {
+	var req dto.SMSLoginRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("参数错误"))
+		return
+	}
+	rctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := h.service.LoginBySMS(rctx, getRegionID(ctx), req.Phone, req.Code)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeSMSError, err.Error()))
+		return
+	}
 	ctx.JSON(http.StatusOK, response.SuccessWithMessage("登录成功", result))
 }
 

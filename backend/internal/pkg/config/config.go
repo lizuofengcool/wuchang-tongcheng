@@ -20,6 +20,20 @@ type Config struct {
 	ES       ESConfig       `mapstructure:"elasticsearch"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Map      MapConfig      `mapstructure:"map"`
+	SMS      SMSConfig      `mapstructure:"sms"`
+}
+
+// SMSConfig 短信验证码服务配置
+type SMSConfig struct {
+	Provider     string `mapstructure:"provider"`        // ""/mock（不发短信，dev 可返回验证码）/aliyun（预留，AK/SK 未配置降级 mock）
+	SignName     string `mapstructure:"sign_name"`       // 短信签名
+	TemplateCode string `mapstructure:"template_code"`   // 短信模板
+	AccessKey    string `mapstructure:"access_key"`      // 短信服务 AK
+	SecretKey    string `mapstructure:"secret_key"`      // 短信服务 SK
+	CodeTTL      int    `mapstructure:"code_ttl"`        // 验证码有效期（秒），默认 300
+	CodeLength   int    `mapstructure:"code_length"`     // 验证码位数，默认 6
+	MaxAttempts  int    `mapstructure:"max_attempts"`    // 最大尝试次数，默认 5
+	DevReturnCode bool  `mapstructure:"dev_return_code"` // 开发模式：发送接口返回验证码明文（仅 mock provider 生效）
 }
 
 // JWTConfig JWT配置
@@ -209,6 +223,17 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Logger.MaxAge == 0 {
 		cfg.Logger.MaxAge = 30
+	}
+
+	// SMS 默认值
+	if cfg.SMS.CodeTTL == 0 {
+		cfg.SMS.CodeTTL = 300
+	}
+	if cfg.SMS.CodeLength == 0 {
+		cfg.SMS.CodeLength = 6
+	}
+	if cfg.SMS.MaxAttempts == 0 {
+		cfg.SMS.MaxAttempts = 5
 	}
 }
 

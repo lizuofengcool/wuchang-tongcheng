@@ -12,7 +12,9 @@ import (
 	"wuchang-tongcheng/internal/modules/user/model"
 	"wuchang-tongcheng/internal/modules/user/repository"
 	"wuchang-tongcheng/internal/modules/user/service"
+	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
+	"wuchang-tongcheng/internal/pkg/sms"
 )
 
 // Plugin 用户模块插件
@@ -51,7 +53,9 @@ func (p *Plugin) Init(ctx context.Context) error {
 
 	// 初始化依赖链: repository -> service -> handler
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
+	// 短信验证码服务（按全局 SMS 配置创建；provider 未配置时走 mock，Redis 不可用降级内存存储）
+	smsSvc := sms.NewService(&config.Get().SMS)
+	userService := service.NewUserService(userRepo, smsSvc)
 	p.handler = handler.NewHandler(userService)
 
 	return nil
@@ -62,8 +66,13 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 公开接口（无需登录）
 	// 登录限流：单 IP 每分钟最多 5 次，防止暴力破解
 	loginLimiter := coreRouter.WrapGin(middleware.RateLimit(5, 60, "login"))
+	// 短信验证码限流：单 IP 每分钟最多 5 次，防止短信轰炸
+	smsLimiter := coreRouter.WrapGin(middleware.RateLimit(5, 60, "sms"))
 	router.POST("/register", p.handler.Register)
 	router.POST("/login", loginLimiter, p.handler.Login)
+	// 短信验证码登录：发送验证码 + 验证码登录
+	router.POST("/sms/code", smsLimiter, p.handler.SendSMSCode)
+	router.POST("/login/sms", loginLimiter, p.handler.SMSLogin)
 
 	// 需要登录的接口
 	auth := coreRouter.WrapGin(middleware.AuthRequired())

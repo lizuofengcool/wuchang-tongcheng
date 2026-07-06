@@ -74,3 +74,15 @@ storage:
 map:
   type: "amap"  # amap, baidu
   key: "your-map-api-key"
+
+# 短信验证码服务配置
+sms:
+  provider: "mock"            # ""/mock（不发短信，dev_return_code=true 时接口返回验证码明文便于联调）/aliyun（预留，AK/SK 未配置降级 mock）
+  sign_name: ""               # 短信签名（aliyun 用）
+  template_code: ""           # 短信模板 code（aliyun 用）
+  access_key: ""              # 短信服务 AK（aliyun 用）
+  secret_key: ""              # 短信服务 SK（aliyun 用）
+  code_ttl: 300               # 验证码有效期（秒），默认 300
+  code_length: 6              # 验证码位数，默认 6
+  max_attempts: 5             # 单次验证码最大尝试次数，超限后作废，默认 5
+  dev_return_code: false      # 开发联调：发送接口返回验证码明文（仅 mock provider 生效，生产务必 false）
