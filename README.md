@@ -19,8 +19,8 @@
 - **鉴权**: JWT + RBAC（用户-角色-权限，超级管理员直通）
 - **API文档**: Swagger（gin-swagger + swaggo/swag，已集成）
 - **限流防刷**: 基于 Redis INCR 的固定窗口限流（登录 5/min、新闻读取 60/min、点赞 30/min），Redis 不可用时优雅降级
-- **CI/CD**: GitHub Actions（backend go vet/build/test、frontend npm build、tag 触发 docker publish 推送 GHCR）
-- **测试**: 单元测试（标准库 testing，无外部依赖）+ 集成测试（testcontainers-go + testify，自动拉起 PostgreSQL 容器，无 Docker 时优雅 SKIP）
+- **CI/CD**: GitHub Actions（backend go vet/build/test、frontend npm test/build、tag 触发 docker publish 推送 GHCR）
+- **测试**: 后端单元测试（标准库 testing，无外部依赖）+ 后端集成测试（testcontainers-go + testify，自动拉起 PostgreSQL 容器，无 Docker 时优雅 SKIP）+ 前端单元测试（Vitest，纯函数 + Pinia 状态校验，node 环境免 DOM）
 
 ### 前端
 - **管理后台**: Vue 3 + Vite + Element Plus + Pinia（当前已实现）
@@ -293,6 +293,7 @@ docker-compose up -d
 - ✅ 阿里云短信 SDK 真实接入（AliyunProvider：dysmsapi.aliyuncs.com RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖，与 pkg/amap 风格一致；AK/SK/SignName/TemplateCode 任一缺失或占位自动降级 NoopProvider；单元测试 11 用例覆盖 percentEncode/签名一致性/httptest 成功失败/网络错误/配置校验）
 - ✅ PostGIS 空间查询业务接入（pkg/geo：HaversineKm + BoundingBox + PostGISAvailable 探测；news 模块 GET /api/v1/news/nearby 附近信息查询，PostGIS ST_DWithin 精确球面距离，扩展不可用降级纯 SQL Haversine + 边界框预筛；半径默认 5km/上限 100km 钳制、距离升序加急置顶、distance 字段回填；单元测试 14 用例 + 集成测试）
 - ✅ 预签名直传（Storage 接口新增 PresignPut/AccessURL：MinIO/S3 走本地 SigV4 签名；file 模块 POST /file/presign 换 PUT URL + POST /file/commit 直传后按 object_name 拼装访问 URL 落库；LocalStorage/Qiniu 返回 ErrPresignNotSupported 降级普通上传；错误码 1306；单元测试 16 用例）
+- ✅ 前端单元测试（Vitest 接入：独立 vitest.config.js 复用 @ 别名 + node 环境 + 内存 localStorage setup；src/utils/format.js 21 用例覆盖 formatTime/formatDate/formatSize 边界与状态文本、src/utils/auth.js 13 用例覆盖 hasPermission/hasRole/hasAllPermissions 含超管直通/数组任一/空码直通；mock api 层切断 router→createWebHistory 的 DOM 依赖链；frontend CI 新增 npm run test 步骤；共 34 用例）
 
 ### 未实现（待开发）
 - ❌ 第三方登录（微信等）
