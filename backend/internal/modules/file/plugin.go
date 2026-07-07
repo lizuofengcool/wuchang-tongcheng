@@ -62,6 +62,9 @@ func (p *Plugin) Init(ctx context.Context) error {
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.POST("/upload", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Upload)
+	// 预签名直传：前端先换 PUT URL 直传对象存储，再 /commit 落库（仅 S3/MinIO 支持）
+	router.POST("/presign", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Presign)
+	router.POST("/commit", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Commit)
 	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("file:read")), p.handler.List)
 	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("file:delete")), p.handler.Delete)
 }

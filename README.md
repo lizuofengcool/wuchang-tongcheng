@@ -247,6 +247,12 @@ docker-compose up -d
   - 双路实现：PostGIS 可用走 ST_DWithin + ST_Distance(geography) 精确球面距离；不可用降级纯 SQL Haversine + 边界框预筛（走普通索引）
   - DTO 新增 NewsNearbyRequest + NewsInfo.distance（公里，仅 nearby 接口回填）；半径默认 5km、上限 100km 自动钳制；经纬度范围校验
   - 单元测试 14 用例（Haversine 对称性/北京-上海/赤道/对跖点/哈尔滨-五常、边界框赤道/高纬/零半径/负半径/极点退化、PostGIS nil 探测）+ 集成测试（半径过滤/距离排序/Distance 回填/草稿排除/无坐标排除/分类过滤/半径钳制，无 Docker 自动 SKIP）
+- v1.5.0 - 预签名直传（D24）
+  - Storage 接口新增 PresignPut / AccessURL：MinIO（S3 协议，兼容 AWS S3 / 阿里云 OSS / 腾讯云 COS）走 minio-go PresignedPutObject 本地 SigV4 签名（无网络请求），LocalStorage / QiniuStorage 返回 ErrPresignNotSupported 优雅降级
+  - file 模块新增 POST /api/v1/file/presign（换取预签名 PUT URL）+ POST /api/v1/file/commit（直传后按 object_name 由后端重新拼装访问 URL 落库，避免前端伪造）；权限 file:upload，复用现有类型/大小校验（50MB 上限、扩展名白名单）
+  - 前端先 presign 拿 upload_url → 直接 PUT 二进制到对象存储（绕过后端带宽，适合大文件）→ commit 提交记录；本地存储环境回退普通 POST /upload
+  - 错误码新增 1306 CodeFilePresignError（当前存储不支持预签名直传）
+  - 单元测试 16 用例：storage 离线签名 URL 拼装/签名参数/有效期/对象名唯一 + service 类型/大小校验 + 本地存储降级路径
 
 
 ## 功能完成度（对照规划）
@@ -286,10 +292,11 @@ docker-compose up -d
 - ✅ 手机验证码登录（pkg/sms：Provider 接口 + NoopProvider + CodeStore Redis/内存双实现 + crypto/rand 生成 + 一次性消费 + 尝试次数限制；user 模块新增 /sms/code、/login/sms 路由，新手机号自动注册；mock provider + dev_return_code=true 联调返回验证码明文）
 - ✅ 阿里云短信 SDK 真实接入（AliyunProvider：dysmsapi.aliyuncs.com RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖，与 pkg/amap 风格一致；AK/SK/SignName/TemplateCode 任一缺失或占位自动降级 NoopProvider；单元测试 11 用例覆盖 percentEncode/签名一致性/httptest 成功失败/网络错误/配置校验）
 - ✅ PostGIS 空间查询业务接入（pkg/geo：HaversineKm + BoundingBox + PostGISAvailable 探测；news 模块 GET /api/v1/news/nearby 附近信息查询，PostGIS ST_DWithin 精确球面距离，扩展不可用降级纯 SQL Haversine + 边界框预筛；半径默认 5km/上限 100km 钳制、距离升序加急置顶、distance 字段回填；单元测试 14 用例 + 集成测试）
+- ✅ 预签名直传（Storage 接口新增 PresignPut/AccessURL：MinIO/S3 走本地 SigV4 签名；file 模块 POST /file/presign 换 PUT URL + POST /file/commit 直传后按 object_name 拼装访问 URL 落库；LocalStorage/Qiniu 返回 ErrPresignNotSupported 降级普通上传；错误码 1306；单元测试 16 用例）
 
 ### 未实现（待开发）
 - ❌ 第三方登录（微信等）
-- ❌ 阿里云 OSS 直传（STS/预签名 URL 前端直传）
+- ❌ 阿里云 OSS STS 临时凭据直传（预签名 URL 直传已实现，可指向 OSS 端点；STS 临时 AccessKey 直传尚未实现）
 
 ## 许可证
 

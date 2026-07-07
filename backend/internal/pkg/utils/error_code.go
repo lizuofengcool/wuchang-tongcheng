@@ -42,6 +42,7 @@ const (
 	CodeFileNotFound   = 1303
 	CodeFileTooLarge   = 1304
 	CodeFileTypeInvalid = 1305
+	CodeFilePresignError = 1306 // 当前存储后端不支持预签名直传
 
 	// ===== 用户相关错误 2000-2999 =====
 	CodeUserError          = 2001
@@ -117,6 +118,7 @@ var codeMessages = map[int]string{
 	CodeFileNotFound:    "文件不存在",
 	CodeFileTooLarge:    "文件过大",
 	CodeFileTypeInvalid: "文件类型不支持",
+	CodeFilePresignError: "当前存储不支持预签名直传",
 
 	// 用户相关错误
 	CodeUserError:            "用户错误",

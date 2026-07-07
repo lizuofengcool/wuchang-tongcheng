@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"wuchang-tongcheng/internal/core/response"
 	"wuchang-tongcheng/internal/modules/file/dto"
 	"wuchang-tongcheng/internal/modules/file/service"
+	"wuchang-tongcheng/internal/pkg/storage"
 	"wuchang-tongcheng/internal/pkg/utils"
 )
 
@@ -100,6 +102,96 @@ func (h *Handler) Delete(ctx plugin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, response.SuccessWithMessage("删除成功", nil))
+}
+
+// Presign 生成预签名直传 URL
+//
+// 客户端先 POST /file/presign 拿到 upload_url，再直接 PUT 文件二进制到该 URL（绕过后端带宽），
+// 上传成功后 POST /file/commit 提交记录。仅 S3/MinIO 等支持；本地存储返回 1306 提示回退普通上传。
+func (h *Handler) Presign(ctx plugin.Context) {
+	userID, _ := ctx.Get(middleware.ContextUserID)
+	uid, _ := userID.(uint)
+	if uid == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+
+	var req dto.PresignUploadRequest
+	if err := ctx.Bind(&req); err != nil || strings.TrimSpace(req.FileName) == "" {
+		ctx.JSON(http.StatusOK, response.BadRequest("请提供文件名 file_name"))
+		return
+	}
+
+	regionID := uint(0)
+	if v, ok := ctx.Get(middleware.RegionIDKey); ok {
+		if id, ok := v.(uint); ok {
+			regionID = id
+		}
+	}
+
+	resp, err := h.service.PresignUpload(regionID, uid, req.FileName)
+	if err != nil {
+		if errors.Is(err, storage.ErrPresignNotSupported) {
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFilePresignError, "当前存储不支持预签名直传，请使用 POST /file/upload 普通上传"))
+			return
+		}
+		if errors.Is(err, service.ErrFileTypeInvalid) {
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileTypeInvalid, err.Error()))
+			return
+		}
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileUploadError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("预签名 URL 生成成功", resp))
+}
+
+// Commit 直传完成后提交文件记录
+//
+// 客户端 PUT 到预签名 URL 成功后调用，后端按 object_name 重新拼装访问 URL 并落库。
+func (h *Handler) Commit(ctx plugin.Context) {
+	userID, _ := ctx.Get(middleware.ContextUserID)
+	uid, _ := userID.(uint)
+	if uid == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+
+	var req dto.CommitUploadRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("请求参数无效"))
+		return
+	}
+	if strings.TrimSpace(req.ObjectName) == "" {
+		ctx.JSON(http.StatusOK, response.BadRequest("object_name 不能为空"))
+		return
+	}
+
+	regionID := uint(0)
+	if v, ok := ctx.Get(middleware.RegionIDKey); ok {
+		if id, ok := v.(uint); ok {
+			regionID = id
+		}
+	}
+
+	record, err := h.service.CommitUpload(regionID, uid, req.FileName, req.ObjectName, req.MimeType, req.FileSize)
+	if err != nil {
+		if errors.Is(err, storage.ErrPresignNotSupported) {
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFilePresignError, "当前存储不支持预签名直传，请使用 POST /file/upload 普通上传"))
+			return
+		}
+		switch {
+		case errors.Is(err, service.ErrFileTypeInvalid):
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileTypeInvalid, err.Error()))
+		case errors.Is(err, service.ErrFileTooLarge):
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileTooLarge, err.Error()))
+		case errors.Is(err, service.ErrFileEmpty):
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileError, err.Error()))
+		default:
+			ctx.JSON(http.StatusOK, response.Fail(utils.CodeFileUploadError, err.Error()))
+		}
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("文件记录已保存", record))
 }
 
 // guessMIME 根据扩展名简单推断MIME类型

@@ -152,6 +152,37 @@ func (s *MinIOStorage) Delete(fileURL string) error {
 	return s.client.RemoveObject(context.Background(), s.bucket, objectName, minio.RemoveObjectOptions{})
 }
 
+// PresignPut 生成预签名 PUT 上传 URL，供前端直传 S3/MinIO（兼容阿里云 OSS / AWS S3 / 腾讯云 COS）。
+//
+// minio-go 的 PresignedPutObject 仅在本地用 AK/SK 做 AWS SigV4 签名，不发起任何网络请求，
+// 因此无需真实可用的 MinIO 服务即可调用（适合单元测试）。
+// expiry 为有效期，<=0 时默认 15 分钟，S3 协议上限 7 天（604800s），超出会返回错误。
+func (s *MinIOStorage) PresignPut(filename string, expiry time.Duration) (string, string, string, error) {
+	if expiry <= 0 {
+		expiry = 15 * time.Minute
+	}
+	// 与 Save 保持一致的对象名规则：按日期分目录 + 唯一文件名 + 原扩展名
+	dateDir := time.Now().Format("2006/01")
+	ext := filepath.Ext(filename)
+	objectName := fmt.Sprintf("%s/%d%s", dateDir, time.Now().UnixNano(), ext)
+
+	u, err := s.client.PresignedPutObject(context.Background(), s.bucket, objectName, expiry)
+	if err != nil {
+		return "", "", "", fmt.Errorf("minio presign put failed: %w", err)
+	}
+	accessURL := fmt.Sprintf("%s/%s/%s", s.domain, s.bucket, objectName)
+	return u.String(), objectName, accessURL, nil
+}
+
+// AccessURL 根据对象名构造可访问 URL：{domain}/{bucket}/{objectName}。
+// 用于前端直传完成后的提交记录步骤，由后端重新拼装 URL，避免前端伪造。
+func (s *MinIOStorage) AccessURL(objectName string) (string, error) {
+	if objectName == "" {
+		return "", errors.New("empty object name")
+	}
+	return fmt.Sprintf("%s/%s/%s", s.domain, s.bucket, objectName), nil
+}
+
 // getReaderSize 尝试获取 reader 的字节数
 func getReaderSize(r io.Reader) (int64, error) {
 	type sizer interface{ Size() (int64, error) }
