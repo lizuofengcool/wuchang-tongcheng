@@ -14,7 +14,7 @@
 - **搜索引擎**: Elasticsearch 8（已集成：news 全文检索 multi_match + 异步索引，ES 不可用降级 DB LIKE）
 - **消息队列**: RabbitMQ（已集成：news 写入异步索引解耦，topic 交换机发布订阅，手动 ack）
 - **实时通信**: WebSocket（已实现：Hub 连接管理 + JWT 鉴权升级端点 /ws，单用户多连接定向推送 + 全局广播，点赞实时通知作者）
-- **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）；七牛云Kodo 待补齐
+- **对象存储**: 已实现 LocalStorage + MinIO（S3 协议兼容，可适配 AWS S3/阿里云 OSS/腾讯云 COS）+ 七牛云 Kodo（含降级机制）
 - **地图服务**: 高德地图API（已实现：地理编码/逆地理编码/周边 POI 搜索，key 未配置降级返回 503）
 - **鉴权**: JWT + RBAC（用户-角色-权限，超级管理员直通）
 - **API文档**: Swagger（gin-swagger + swaggo/swag，已集成）
@@ -46,7 +46,7 @@ wuchang-tongcheng/
 │   │   │   ├── redis/          # Redis封装
 │   │   │   ├── jwt/            # JWT 鉴权
 │   │   │   ├── logger/         # 日志封装
-│   │   │   ├── storage/        # 文件存储（已实现 local，minio/qiniu 待补齐）
+│   │   │   ├── storage/        # 文件存储（已实现 local/minio/qiniu）
 │   │   │   ├── seed/           # 种子数据（地区/权限/admin）
 │   │   │   ├── sms/            # 短信验证码服务（Provider + CodeStore Redis/内存 + 生成/校验）
 │   │   │   └── utils/          # 工具函数（分页/错误码/helper）
