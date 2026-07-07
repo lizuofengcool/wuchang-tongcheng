@@ -50,3 +50,20 @@ type CommitUploadRequest struct {
 	MimeType   string `json:"mime_type"`                      // MIME 类型（前端可填，后端兜底推断）
 	FileSize   int64  `json:"file_size" binding:"required"`    // 文件大小（字节，前端 PUT 后已知）
 }
+
+// STSCredentialsResponse STS 临时凭据响应
+//
+// 前端拿到后用 OSS 浏览器 SDK 或 SigV4 + x-amz-security-token 头直接 PUT 到 OSS。
+// 一组凭据可在 expires_in 内上传任意多对象，过期后需重新申请。
+// 与预签名直传（/file/presign 单对象一次性 URL）互补，适合批量/大文件场景。
+type STSCredentialsResponse struct {
+	AccessKeyID     string `json:"access_key_id"`     // 临时 AccessKeyID
+	AccessKeySecret string `json:"access_key_secret"` // 临时 AccessKeySecret
+	SecurityToken   string `json:"security_token"`    // 安全令牌（OSS 请求头 x-amz-security-token）
+	Expiration      string `json:"expiration"`        // 凭据过期时间（ISO8601，阿里云原样透传）
+	Bucket          string `json:"bucket"`            // OSS 桶名
+	Region          string `json:"region"`            // OSS 区域，如 oss-cn-hangzhou
+	Endpoint        string `json:"endpoint"`          // OSS 端点，如 https://oss-cn-hangzhou.aliyuncs.com
+	ObjectPrefix    string `json:"object_prefix"`     // 对象 key 前缀，如 uploads/2026/07/
+	ExpiresIn       int    `json:"expires_in"`        // 凭据剩余有效期（秒）
+}

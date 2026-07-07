@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"wuchang-tongcheng/internal/modules/file/model"
 	"wuchang-tongcheng/internal/modules/file/repository"
 	"wuchang-tongcheng/internal/pkg/storage"
+	"wuchang-tongcheng/internal/pkg/sts"
 	"wuchang-tongcheng/internal/pkg/utils"
 
 	"gorm.io/gorm"
@@ -50,6 +52,9 @@ type FileService interface {
 	PresignUpload(regionID uint, userID uint, filename string) (*dto.PresignUploadResponse, error)
 	// CommitUpload 前端直传完成后提交文件记录（按 object_name 由后端重新拼装访问 URL）。
 	CommitUpload(regionID uint, userID uint, filename, objectName, mimeType string, size int64) (*model.FileUpload, error)
+	// GetSTSCredentials 申请 OSS STS 临时凭据（前端用临时 AK/SK/Token 直传 OSS）。
+	// 未配置 STS 时返回 sts.ErrNotConfigured，handler 据此回 501 提示回退普通上传/预签名。
+	GetSTSCredentials(ctx context.Context, regionID uint, userID uint) (*dto.STSCredentialsResponse, error)
 }
 
 type fileService struct {
@@ -210,6 +215,33 @@ func (s *fileService) CommitUpload(regionID uint, userID uint, filename, objectN
 		return nil, fmt.Errorf("记录文件信息失败: %w", err)
 	}
 	return record, nil
+}
+
+// GetSTSCredentials 申请 OSS STS 临时凭据，供前端直传 OSS。
+//
+// 与预签名直传互补：预签名是单对象一次性 URL（本地 SigV4，无网络请求），
+// STS 是一组临时 AK/SK/Token，可在有效期内上传任意多对象（需调用 STS API）。
+// 当前 regionID/userID 仅用于鉴权留痕，凭据本身不绑定用户/地区。
+// 未配置 STS（NoopProvider）时返回 sts.ErrNotConfigured，由 handler 映射为 501。
+func (s *fileService) GetSTSCredentials(ctx context.Context, regionID uint, userID uint) (*dto.STSCredentialsResponse, error) {
+	_ = regionID
+	_ = userID
+
+	creds, err := sts.Get().AssumeRole(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.STSCredentialsResponse{
+		AccessKeyID:     creds.AccessKeyID,
+		AccessKeySecret: creds.AccessKeySecret,
+		SecurityToken:   creds.SecurityToken,
+		Expiration:      creds.Expiration,
+		Bucket:          creds.Bucket,
+		Region:          creds.Region,
+		Endpoint:        creds.Endpoint,
+		ObjectPrefix:    creds.ObjectPrefix,
+		ExpiresIn:       creds.ExpiresIn,
+	}, nil
 }
 
 // guessMIMEByExt 根据扩展名推断 MIME 类型（CommitUpload 兜底用）。

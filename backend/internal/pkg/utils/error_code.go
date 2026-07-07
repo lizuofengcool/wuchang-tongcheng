@@ -43,6 +43,7 @@ const (
 	CodeFileTooLarge   = 1304
 	CodeFileTypeInvalid = 1305
 	CodeFilePresignError = 1306 // 当前存储后端不支持预签名直传
+	CodeFileSTSError    = 1307 // STS 临时凭据不可用（未配置或第三方错误）
 
 	// ===== 用户相关错误 2000-2999 =====
 	CodeUserError          = 2001
@@ -119,6 +120,7 @@ var codeMessages = map[int]string{
 	CodeFileTooLarge:    "文件过大",
 	CodeFileTypeInvalid: "文件类型不支持",
 	CodeFilePresignError: "当前存储不支持预签名直传",
+	CodeFileSTSError:    "STS 临时凭据不可用，请配置 sts 或使用普通上传",
 
 	// 用户相关错误
 	CodeUserError:            "用户错误",
