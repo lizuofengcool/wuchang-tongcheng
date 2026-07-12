@@ -1,6 +1,10 @@
 // 用户状态管理（Pinia）
 import { defineStore } from 'pinia'
-import { login as loginApi, getUserInfo as fetchUserInfo } from '@/api/user'
+import {
+  login as loginApi,
+  loginBySms as loginBySmsApi,
+  getUserInfo as fetchUserInfo
+} from '@/api/user'
 import { myAuth } from '@/api/permission'
 
 export const useUserStore = defineStore('user', {
@@ -27,6 +31,17 @@ export const useUserStore = defineStore('user', {
       localStorage.setItem('token', token)
       localStorage.setItem('userInfo', JSON.stringify(user_info))
       // 登录后立即拉取权限
+      await this.fetchAuth()
+      return res
+    },
+    // 短信验证码登录：响应结构与密码登录一致 { token, expires, user_info }
+    async loginBySms(payload) {
+      const res = await loginBySmsApi(payload)
+      const { token, user_info } = res.data
+      this.token = token
+      this.userInfo = user_info
+      localStorage.setItem('token', token)
+      localStorage.setItem('userInfo', JSON.stringify(user_info))
       await this.fetchAuth()
       return res
     },

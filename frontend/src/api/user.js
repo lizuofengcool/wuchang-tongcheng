@@ -11,6 +11,27 @@ export function login(data) {
   return request.post('/user/login', data)
 }
 
+// 发送短信验证码
+// POST /user/sms/code  body: { phone }
+// mock provider + dev_return_code=true 时响应 data.dev_code 返回验证码明文（联调自动回填）
+export function sendSmsCode(phone) {
+  return request.post('/user/sms/code', { phone })
+}
+
+// 短信验证码登录
+// POST /user/login/sms  body: { phone, code }
+// 响应同 /user/login：{ token, expires, user_info }
+export function loginBySms(data) {
+  return request.post('/user/login/sms', data)
+}
+
+// 第三方 OAuth 登录
+// POST /user/login/oauth/:provider  body: { code }
+// provider 由路径参数提供（如 wechat），响应同 /user/login
+export function loginByOAuth(provider, code) {
+  return request.post(`/user/login/oauth/${provider}`, { code })
+}
+
 // 获取当前用户信息
 export function getUserInfo() {
   return request.get('/user/info')

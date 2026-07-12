@@ -312,6 +312,7 @@ docker-compose up -d
 - ✅ 阿里云 OSS STS 临时凭据直传（pkg/sts：Provider 接口 + NoopProvider 降级 + AliyunProvider 走 sts.aliyuncs.com AssumeRole RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖；file 模块 POST /file/sts 下发临时 AK/SK/Token + OSS 落地信息供前端直传 OSS，一组凭据可复用上传多对象，与 /file/presign 单对象 URL 互补；配置缺失/占位降级 NoopProvider 回 1307；错误码 1307；单元测试 28 用例）
 - ✅ 前端单元测试（Vitest 接入：独立 vitest.config.js 复用 @ 别名 + node 环境 + 内存 localStorage setup；src/utils/format.js 21 用例覆盖 formatTime/formatDate/formatSize 边界与状态文本、src/utils/auth.js 13 用例覆盖 hasPermission/hasRole/hasAllPermissions 含超管直通/数组任一/空码直通；mock api 层切断 router→createWebHistory 的 DOM 依赖链；frontend CI 新增 npm run test 步骤；共 34 用例）
 - ✅ 微信 OAuth 第三方登录（pkg/oauth：Provider 接口 + NoopProvider 降级 + MockProvider 联调 + WeChatProvider 开放平台网站应用 OAuth2 两段式换取；user 模块 UserOAuth 绑定模型 + service.OAuthLogin 命中绑定登录/未命中自动注册+绑定 + 路由 POST /login/oauth/:provider；配置缺失降级，错误码 4006；单元测试 25 个）
+- ✅ 管理后台短信验证码登录（前端登录页 Tab 切换"密码登录/短信登录"；api/user 新增 sendSmsCode/loginBySms/loginByOAuth 封装；stores/user 新增 loginBySms action 复用 token+权限拉取流程；手机号格式校验 + 60s 倒计时 + dev_code 联调自动回填；Vitest 单元测试 3 用例覆盖成功/失败/权限拉取降级）
 
 ### 未实现（待开发）
 - 暂无待开发项，规划功能已全部落地（第三方登录已在 v1.7.0 完成）
