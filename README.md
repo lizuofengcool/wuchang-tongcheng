@@ -269,6 +269,10 @@ docker-compose up -d
   - user 模块新增 UserOAuth 绑定模型（(provider,open_id) 唯一索引 + union_id 索引）+ UserOAuthRepository + service.OAuthLogin：code 换身份 → 命中绑定登录既有用户，未命中自动注册（username=provider_openid，随机占位密码无法走密码登录）+ 写绑定 + 签发 JWT；禁用用户拒绝登录
   - 路由 POST /api/v1/user/login/oauth/:provider（公开，复用 login 限流 5/min）；错误码新增 4006 CodeOAuthError
   - 单元测试 25 个（oauth 包 16：MockProvider 解析/NoopProvider/resolveWeChatProvider 八场景/NewService nil-mock-wechat/Login 空码-未知 provider/WeChatProvider IsAvailable 六场景/未配置/空码/httptest 两段式成功-badcode-userinfoerr-网络错误；user service 9：未配置/provider 未注册/OAuth 错误透传/命中绑定登录/自动注册+绑定/空昵称兜底/禁用用户/写绑定失败/genOAuthUsername 截断）
+- v1.8.0 - 前端 axios 封装单元测试
+  - src/utils/__tests__/request.test.js 18 用例补齐 axios 请求拦截器（JWT Bearer token / X-Region-ID 地区头注入 + rejected 透传）+ 响应拦截器业务码路由（code=0 直通 / 非 0 ElMessage.error / 401·1004·2006·2007·2008 触发未授权流程）+ HTTP 错误码（401·403·500 跳转去重·502·timeout·网络异常）+ 未授权弹窗去重（unauthorizedShown 闭包标志，连续 401 仅弹一次）
+  - mock 策略：惰性 wrapper 包裹 vi.fn 切断 element-plus / @/router / @/stores/user 依赖（与 stores/__tests__ 同风格）；vi.resetModules + 动态 import 重置模块级 unauthorizedShown 闭包，每个用例获取全新 axios 实例与拦截器 handler
+  - 前端单测总数 34 → 68（format 21 + auth 13 + request 18 + region 13 + user 3）
 
 
 ## 功能完成度（对照规划）
@@ -310,7 +314,7 @@ docker-compose up -d
 - ✅ PostGIS 空间查询业务接入（pkg/geo：HaversineKm + BoundingBox + PostGISAvailable 探测；news 模块 GET /api/v1/news/nearby 附近信息查询，PostGIS ST_DWithin 精确球面距离，扩展不可用降级纯 SQL Haversine + 边界框预筛；半径默认 5km/上限 100km 钳制、距离升序加急置顶、distance 字段回填；单元测试 14 用例 + 集成测试）
 - ✅ 预签名直传（Storage 接口新增 PresignPut/AccessURL：MinIO/S3 走本地 SigV4 签名；file 模块 POST /file/presign 换 PUT URL + POST /file/commit 直传后按 object_name 拼装访问 URL 落库；LocalStorage/Qiniu 返回 ErrPresignNotSupported 降级普通上传；错误码 1306；单元测试 16 用例）
 - ✅ 阿里云 OSS STS 临时凭据直传（pkg/sts：Provider 接口 + NoopProvider 降级 + AliyunProvider 走 sts.aliyuncs.com AssumeRole RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖；file 模块 POST /file/sts 下发临时 AK/SK/Token + OSS 落地信息供前端直传 OSS，一组凭据可复用上传多对象，与 /file/presign 单对象 URL 互补；配置缺失/占位降级 NoopProvider 回 1307；错误码 1307；单元测试 28 用例）
-- ✅ 前端单元测试（Vitest 接入：独立 vitest.config.js 复用 @ 别名 + node 环境 + 内存 localStorage setup；src/utils/format.js 21 用例覆盖 formatTime/formatDate/formatSize 边界与状态文本、src/utils/auth.js 13 用例覆盖 hasPermission/hasRole/hasAllPermissions 含超管直通/数组任一/空码直通；mock api 层切断 router→createWebHistory 的 DOM 依赖链；frontend CI 新增 npm run test 步骤；共 34 用例）
+- ✅ 前端单元测试（Vitest 接入：独立 vitest.config.js 复用 @ 别名 + node 环境 + 内存 localStorage setup；src/utils/format.js 21 用例覆盖 formatTime/formatDate/formatSize 边界与状态文本、src/utils/auth.js 13 用例覆盖 hasPermission/hasRole/hasAllPermissions 含超管直通/数组任一/空码直通、src/utils/request.js 18 用例覆盖 axios 拦截器 JWT/X-Region-ID 头注入 + 业务码路由（0/非0/401/2006）+ HTTP 错误码（401/403/500 去重/502/timeout/网络异常）+ 未授权弹窗去重（unauthorizedShown 闭包标志，vi.resetModules 重置模块级状态）；mock api 层切断 router→createWebHistory 的 DOM 依赖链；frontend CI 新增 npm run test 步骤；共 68 用例）
 - ✅ 微信 OAuth 第三方登录（pkg/oauth：Provider 接口 + NoopProvider 降级 + MockProvider 联调 + WeChatProvider 开放平台网站应用 OAuth2 两段式换取；user 模块 UserOAuth 绑定模型 + service.OAuthLogin 命中绑定登录/未命中自动注册+绑定 + 路由 POST /login/oauth/:provider；配置缺失降级，错误码 4006；单元测试 25 个）
 - ✅ 管理后台短信验证码登录（前端登录页 Tab 切换"密码登录/短信登录"；api/user 新增 sendSmsCode/loginBySms/loginByOAuth 封装；stores/user 新增 loginBySms action 复用 token+权限拉取流程；手机号格式校验 + 60s 倒计时 + dev_code 联调自动回填；Vitest 单元测试 3 用例覆盖成功/失败/权限拉取降级）
 
