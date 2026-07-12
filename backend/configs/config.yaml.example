@@ -105,3 +105,16 @@ sts:
   region: ""                  # OSS 区域，如 oss-cn-hangzhou
   endpoint: ""                # OSS 端点，如 https://oss-cn-hangzhou.aliyuncs.com
   object_prefix: "uploads/"   # 对象 key 前缀
+
+# 第三方登录配置（可选）
+#
+# 微信开放平台网站应用 OAuth2 网页授权登录：
+# 前端在微信扫码授权后拿到 code，POST /api/v1/user/login/oauth/wechat {code} 换取 JWT。
+# - provider=""      → 不启用微信登录（接口返回 4006 第三方登录未启用）
+# - provider="mock"  → 联调模式：code 形如 "mock:<openid>[:<nickname>]" 直接构造身份，不访问微信
+# - provider="wechat"→ 真实微信 OAuth，app_id/app_secret 齐全且非占位（your-）才激活，否则降级不启用
+oauth:
+  wechat:
+    provider: ""              # ""/mock/wechat
+    app_id: ""                # 微信开放平台 AppID
+    app_secret: ""            # 微信开放平台 AppSecret

@@ -22,6 +22,24 @@ type Config struct {
 	Map      MapConfig      `mapstructure:"map"`
 	SMS      SMSConfig      `mapstructure:"sms"`
 	STS      STSConfig      `mapstructure:"sts"`
+	OAuth    OAuthConfig    `mapstructure:"oauth"`
+}
+
+// OAuthConfig 第三方登录配置
+type OAuthConfig struct {
+	WeChat WeChatConfig `mapstructure:"wechat"`
+}
+
+// WeChatConfig 微信开放平台网站应用 OAuth 配置
+//
+// provider 取值：
+//   - ""      → 不启用微信登录（/login/oauth/wechat 返回未启用）
+//   - "mock"  → 联调模式：code 形如 "mock:<openid>[:<nickname>]" 直接构造身份，不访问微信
+//   - "wechat"→ 真实微信 OAuth，AppID/AppSecret 齐全且非占位（your-）才激活，否则降级不启用
+type WeChatConfig struct {
+	Provider  string `mapstructure:"provider"`   // ""/mock/wechat
+	AppID     string `mapstructure:"app_id"`     // 微信开放平台 AppID
+	AppSecret string `mapstructure:"app_secret"` // 微信开放平台 AppSecret
 }
 
 // STSConfig 阿里云 OSS STS 临时凭据直传配置

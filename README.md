@@ -50,6 +50,7 @@ wuchang-tongcheng/
   │   │   │   ├── seed/           # 种子数据（地区/权限/admin）
   │   │   │   ├── sms/            # 短信验证码服务（Provider + CodeStore Redis/内存 + 生成/校验）
   │   │   │   ├── sts/            # 阿里云 OSS STS 临时凭据（Provider + NoopProvider 降级 + AssumeRole）
+  │   │   │   ├── oauth/          # 第三方 OAuth 登录（Provider + Mock/WeChat + code 换身份）
 │   │   │   └── utils/          # 工具函数（分页/错误码/helper）
 │   │   └── modules/            # 业务模块（插件，每个含 model/dto/repository/service/handler/plugin.go）
 │   │       ├── user/           # 用户模块
@@ -261,6 +262,13 @@ docker-compose up -d
   - 配置新增 sts 块（与 storage 分离：storage 是后端自用 AK/SK，sts 是下发前端的临时凭据，需独立 RoleArn）；DurationSeconds 范围 900~3600 自动钳制；错误码新增 1307 CodeFileSTSError
   - 前端 src/api/file.js 新增 getSTSCredentials() 封装
   - 单元测试 28 用例：sts 包（percentEncode/canonicalQueryString/签名一致性/IsAvailable 七场景/resolveProvider 四场景/NoopProvider/normalizeObjectPrefix/DurationSeconds 钳制/RoleSessionName 默认/AssumeRole 成功+业务错误+网络错误+非JSON+空凭据+未配置/Init 解析）+ file service 降级路径
+- v1.7.0 - 微信 OAuth 第三方登录（D26）
+  - pkg/oauth 包：Provider 接口 + NoopProvider（降级）+ MockProvider（联调：code="mock:<openid>[:<nickname>]" 直接构造身份不访问网络）+ WeChatProvider（开放平台网站应用 OAuth2，标准库 net/http 无新依赖，与 pkg/sms/sts 同风格）
+  - WeChatProvider 两段式换取：code → sns/oauth2/access_token（access_token+openid+unionid）→ sns/userinfo（nickname+headimgurl），errcode 错误码识别、空凭据校验、5s 超时
+  - 配置 oauth.wechat（provider=""/mock/wechat，AppID/AppSecret 缺失或占位 your- 降级不启用）；resolveWeChatProvider 与 sms/sts 同风格
+  - user 模块新增 UserOAuth 绑定模型（(provider,open_id) 唯一索引 + union_id 索引）+ UserOAuthRepository + service.OAuthLogin：code 换身份 → 命中绑定登录既有用户，未命中自动注册（username=provider_openid，随机占位密码无法走密码登录）+ 写绑定 + 签发 JWT；禁用用户拒绝登录
+  - 路由 POST /api/v1/user/login/oauth/:provider（公开，复用 login 限流 5/min）；错误码新增 4006 CodeOAuthError
+  - 单元测试 25 个（oauth 包 16：MockProvider 解析/NoopProvider/resolveWeChatProvider 八场景/NewService nil-mock-wechat/Login 空码-未知 provider/WeChatProvider IsAvailable 六场景/未配置/空码/httptest 两段式成功-badcode-userinfoerr-网络错误；user service 9：未配置/provider 未注册/OAuth 错误透传/命中绑定登录/自动注册+绑定/空昵称兜底/禁用用户/写绑定失败/genOAuthUsername 截断）
 
 
 ## 功能完成度（对照规划）
@@ -303,9 +311,10 @@ docker-compose up -d
 - ✅ 预签名直传（Storage 接口新增 PresignPut/AccessURL：MinIO/S3 走本地 SigV4 签名；file 模块 POST /file/presign 换 PUT URL + POST /file/commit 直传后按 object_name 拼装访问 URL 落库；LocalStorage/Qiniu 返回 ErrPresignNotSupported 降级普通上传；错误码 1306；单元测试 16 用例）
 - ✅ 阿里云 OSS STS 临时凭据直传（pkg/sts：Provider 接口 + NoopProvider 降级 + AliyunProvider 走 sts.aliyuncs.com AssumeRole RPC API + HMAC-SHA1 签名，标准库 net/http 无新依赖；file 模块 POST /file/sts 下发临时 AK/SK/Token + OSS 落地信息供前端直传 OSS，一组凭据可复用上传多对象，与 /file/presign 单对象 URL 互补；配置缺失/占位降级 NoopProvider 回 1307；错误码 1307；单元测试 28 用例）
 - ✅ 前端单元测试（Vitest 接入：独立 vitest.config.js 复用 @ 别名 + node 环境 + 内存 localStorage setup；src/utils/format.js 21 用例覆盖 formatTime/formatDate/formatSize 边界与状态文本、src/utils/auth.js 13 用例覆盖 hasPermission/hasRole/hasAllPermissions 含超管直通/数组任一/空码直通；mock api 层切断 router→createWebHistory 的 DOM 依赖链；frontend CI 新增 npm run test 步骤；共 34 用例）
+- ✅ 微信 OAuth 第三方登录（pkg/oauth：Provider 接口 + NoopProvider 降级 + MockProvider 联调 + WeChatProvider 开放平台网站应用 OAuth2 两段式换取；user 模块 UserOAuth 绑定模型 + service.OAuthLogin 命中绑定登录/未命中自动注册+绑定 + 路由 POST /login/oauth/:provider；配置缺失降级，错误码 4006；单元测试 25 个）
 
 ### 未实现（待开发）
-- ❌ 第三方登录（微信等）
+- 暂无待开发项，规划功能已全部落地（第三方登录已在 v1.7.0 完成）
 
 ## 许可证
 

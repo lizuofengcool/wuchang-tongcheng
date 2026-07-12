@@ -14,6 +14,7 @@ import (
 	"wuchang-tongcheng/internal/modules/user/service"
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
+	oauthpkg "wuchang-tongcheng/internal/pkg/oauth"
 	"wuchang-tongcheng/internal/pkg/sms"
 )
 
@@ -46,16 +47,19 @@ func (p *Plugin) Version() string {
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 
-	// 自动迁移用户表
-	if err := db.AutoMigrate(&model.User{}); err != nil {
+	// 自动迁移用户表 + 第三方账号绑定表
+	if err := db.AutoMigrate(&model.User{}, &model.UserOAuth{}); err != nil {
 		return err
 	}
 
 	// 初始化依赖链: repository -> service -> handler
 	userRepo := repository.NewUserRepository(db)
+	oauthRepo := repository.NewUserOAuthRepository(db)
 	// 短信验证码服务（按全局 SMS 配置创建；provider 未配置时走 mock，Redis 不可用降级内存存储）
 	smsSvc := sms.NewService(&config.Get().SMS)
-	userService := service.NewUserService(userRepo, smsSvc)
+	// 第三方 OAuth 登录服务（按全局 OAuth 配置创建；未配置时所有 provider 不注册，OAuthLogin 返回未启用）
+	oauthSvc := oauthpkg.NewService(&config.Get().OAuth)
+	userService := service.NewUserService(userRepo, smsSvc, oauthRepo, oauthSvc)
 	p.handler = handler.NewHandler(userService)
 
 	return nil
@@ -73,6 +77,8 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 短信验证码登录：发送验证码 + 验证码登录
 	router.POST("/sms/code", smsLimiter, p.handler.SendSMSCode)
 	router.POST("/login/sms", loginLimiter, p.handler.SMSLogin)
+	// 第三方 OAuth 登录：前端从授权回调拿到 code 后换取 JWT
+	router.POST("/login/oauth/:provider", loginLimiter, p.handler.OAuthLogin)
 
 	// 需要登录的接口
 	auth := coreRouter.WrapGin(middleware.AuthRequired())

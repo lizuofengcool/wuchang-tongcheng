@@ -85,6 +85,7 @@ const (
 	CodeStorageError    = 4003
 	CodeSMSError        = 4004
 	CodeWeChatError     = 4005
+	CodeOAuthError      = 4006 // 第三方登录错误（OAuth 流程：code 换取身份/未配置/网络失败）
 )
 
 // 错误消息映射
@@ -162,6 +163,7 @@ var codeMessages = map[int]string{
 	CodeStorageError:    "存储服务错误",
 	CodeSMSError:        "短信服务错误",
 	CodeWeChatError:     "微信服务错误",
+	CodeOAuthError:      "第三方登录错误",
 }
 
 // GetMessage 获取错误码对应的消息

@@ -94,7 +94,7 @@ func (r *fakeUserRepo) Delete(id uint) error { return nil }
 
 // TestSendSMSCode_NilSMS sms 未启用时返回 ErrSMSNotConfigured
 func TestSendSMSCode_NilSMS(t *testing.T) {
-	svc := NewUserService(newFakeUserRepo(), nil)
+	svc := NewUserService(newFakeUserRepo(), nil, nil, nil)
 	_, err := svc.SendSMSCode(context.Background(), "13800138000")
 	if !errors.Is(err, ErrSMSNotConfigured) {
 		t.Fatalf("err = %v, want ErrSMSNotConfigured", err)
@@ -104,7 +104,7 @@ func TestSendSMSCode_NilSMS(t *testing.T) {
 // TestSendSMSCode_OK sms 启用时透传 dev code
 func TestSendSMSCode_OK(t *testing.T) {
 	sms := &fakeSMSService{devCode: "123456"}
-	svc := NewUserService(newFakeUserRepo(), sms)
+	svc := NewUserService(newFakeUserRepo(), sms, nil, nil)
 	resp, err := svc.SendSMSCode(context.Background(), "13800138000")
 	if err != nil {
 		t.Fatalf("SendSMSCode: %v", err)
@@ -118,7 +118,7 @@ func TestSendSMSCode_OK(t *testing.T) {
 func TestLoginBySMS_VerifyFailed(t *testing.T) {
 	repo := newFakeUserRepo()
 	sms := &fakeSMSService{verifyErr: errors.New("bad code")}
-	svc := NewUserService(repo, sms)
+	svc := NewUserService(repo, sms, nil, nil)
 	_, err := svc.LoginBySMS(context.Background(), 1, "13800138000", "wrong")
 	if !errors.Is(err, ErrSMSCodeInvalid) {
 		t.Fatalf("err = %v, want ErrSMSCodeInvalid", err)
@@ -132,7 +132,7 @@ func TestLoginBySMS_VerifyFailed(t *testing.T) {
 func TestLoginBySMS_NewUserAutoRegister(t *testing.T) {
 	repo := newFakeUserRepo()
 	sms := &fakeSMSService{verifyOK: true}
-	svc := NewUserService(repo, sms)
+	svc := NewUserService(repo, sms, nil, nil)
 	resp, err := svc.LoginBySMS(context.Background(), 1, "13800138000", "correct")
 	if err != nil {
 		t.Fatalf("LoginBySMS: %v", err)
@@ -162,7 +162,7 @@ func TestLoginBySMS_ExistingUser(t *testing.T) {
 	repo.users["13800138000"] = exist
 
 	sms := &fakeSMSService{verifyOK: true}
-	svc := NewUserService(repo, sms)
+	svc := NewUserService(repo, sms, nil, nil)
 	resp, err := svc.LoginBySMS(context.Background(), 1, "13800138000", "correct")
 	if err != nil {
 		t.Fatalf("LoginBySMS: %v", err)
@@ -186,7 +186,7 @@ func TestLoginBySMS_DisabledUser(t *testing.T) {
 	repo.users["13800138000"] = exist
 
 	sms := &fakeSMSService{verifyOK: true}
-	svc := NewUserService(repo, sms)
+	svc := NewUserService(repo, sms, nil, nil)
 	_, err := svc.LoginBySMS(context.Background(), 1, "13800138000", "correct")
 	if !errors.Is(err, ErrUserDisabled) {
 		t.Fatalf("err = %v, want ErrUserDisabled", err)

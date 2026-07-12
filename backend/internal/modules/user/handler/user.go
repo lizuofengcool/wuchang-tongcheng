@@ -118,6 +118,32 @@ func (h *Handler) SMSLogin(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.SuccessWithMessage("登录成功", result))
 }
 
+// OAuthLogin 第三方 OAuth 登录
+// POST /api/v1/user/login/oauth/:provider
+// provider 由路径参数提供（如 wechat），请求体携带前端从第三方授权回调拿到的 code
+func (h *Handler) OAuthLogin(ctx plugin.Context) {
+	provider := ctx.Param("provider")
+	if provider == "" {
+		ctx.JSON(http.StatusOK, response.BadRequest("缺少 provider 参数"))
+		return
+	}
+	var req dto.OAuthLoginRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusOK, response.BadRequest("参数错误"))
+		return
+	}
+	// OAuth 换取身份 + 注册/登录可能涉及外部网络调用（微信 API），给 6s 超时
+	rctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+
+	result, err := h.service.OAuthLogin(rctx, getRegionID(ctx), provider, req.Code)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeOAuthError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.SuccessWithMessage("登录成功", result))
+}
+
 // GetUserInfo 获取当前用户信息
 func (h *Handler) GetUserInfo(ctx plugin.Context) {
 	userID := getUserID(ctx)
