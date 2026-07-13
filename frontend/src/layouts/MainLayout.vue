@@ -70,6 +70,21 @@
               <el-icon><Location /></el-icon>
             </template>
           </el-tree-select>
+          <!-- 消息通知 -->
+          <el-badge
+            :value="unreadCount"
+            :hidden="unreadCount === 0"
+            :max="99"
+            class="message-badge"
+          >
+            <el-icon
+              class="message-icon"
+              :size="20"
+              @click="router.push('/message')"
+            >
+              <Bell />
+            </el-icon>
+          </el-badge>
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="32" :src="userStore.avatar">
@@ -107,11 +122,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useRegionStore } from '@/stores/region'
+import { getUnreadCount } from '@/api/news'
 import { constantRoutes } from '@/router'
 
 const route = useRoute()
@@ -120,6 +136,28 @@ const userStore = useUserStore()
 const regionStore = useRegionStore()
 
 const isCollapse = ref(false)
+
+// ====== 未读消息数轮询 ======
+const unreadCount = ref(0)
+let unreadTimer = null
+
+const loadUnreadCount = async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await getUnreadCount()
+    unreadCount.value = res.data?.count || 0
+  } catch (e) {
+    // 静默：未登录或网络异常不打扰用户
+  }
+}
+
+// 路由切换到 /message 时刷新未读数（用户可能在该页标记已读）
+const stopRouteWatch = router.afterEach((to) => {
+  if (to.path === '/message') {
+    // 进入消息中心后延迟刷新（让页面先标记已读）
+    setTimeout(loadUnreadCount, 800)
+  }
+})
 
 // 从路由派生菜单：非 system/* 的作为顶级菜单，system/* 归入"系统管理"分组
 const menuItems = computed(() => {
@@ -182,6 +220,19 @@ const handleCommand = async (cmd) => {
 onMounted(() => {
   if (!regionStore.loaded) {
     regionStore.loadTree()
+  }
+  // 初始拉取一次未读数 + 每 60s 轮询
+  loadUnreadCount()
+  unreadTimer = setInterval(loadUnreadCount, 60000)
+})
+
+onBeforeUnmount(() => {
+  if (unreadTimer) {
+    clearInterval(unreadTimer)
+    unreadTimer = null
+  }
+  if (typeof stopRouteWatch === 'function') {
+    stopRouteWatch()
   }
 })
 </script>
@@ -257,6 +308,24 @@ onMounted(() => {
 
 .region-select {
   width: 180px;
+}
+
+.message-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.message-icon {
+  cursor: pointer;
+  color: #5a5e66;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.message-icon:hover {
+  color: #409eff;
+  background: #f0f7ff;
 }
 
 .user-info {

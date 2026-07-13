@@ -55,6 +55,12 @@ export const constantRoutes = [
         meta: { title: '头条详情', hidden: true, permission: 'news:read' }
       },
       {
+        path: 'message',
+        name: 'Message',
+        component: () => import('@/views/message/index.vue'),
+        meta: { title: '消息中心', icon: 'Bell' }
+      },
+      {
         path: 'category',
         name: 'Category',
         component: () => import('@/views/category/index.vue'),
