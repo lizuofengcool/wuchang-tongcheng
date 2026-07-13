@@ -77,6 +77,34 @@ describe('news API - 点赞', () => {
   })
 })
 
+describe('news API - 收藏', () => {
+  it('listFavorites → GET /news/favorites，params 透传', async () => {
+    const params = { page: 1, page_size: 10 }
+    await newsApi.listFavorites(params)
+    expect(requestMock).toHaveBeenCalledWith('get', '/news/favorites', { params })
+  })
+
+  it('listFavorites 无参 → params undefined 仍可调用', async () => {
+    await newsApi.listFavorites()
+    expect(requestMock).toHaveBeenCalledWith('get', '/news/favorites', { params: undefined })
+  })
+
+  it('favNews → POST /news/:id/fav（toggle）', async () => {
+    await newsApi.favNews(88)
+    expect(requestMock).toHaveBeenCalledWith('post', '/news/88/fav')
+  })
+
+  it('getNewsFavStatus → GET /news/:id/fav', async () => {
+    await newsApi.getNewsFavStatus(88)
+    expect(requestMock).toHaveBeenCalledWith('get', '/news/88/fav')
+  })
+
+  it('getNewsFavStatus 不同 id 切换路径插值', async () => {
+    await newsApi.getNewsFavStatus(1024)
+    expect(requestMock).toHaveBeenCalledWith('get', '/news/1024/fav')
+  })
+})
+
 describe('news API - 评论', () => {
   it('listComments → GET /news/:id/comments，params 透传', async () => {
     const params = { page: 1, page_size: 20 }

@@ -70,8 +70,9 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// === 公开路由（无需登录，PC/小程序门户浏览） ===
 	router.GET("", readLimiter, p.handler.List)
 	router.GET("/search", searchLimiter, p.handler.Search)
-	// /nearby 需注册在 /:id 之前，避免被 :id 参数路由吞掉
+	// /nearby、/favorites 需注册在 /:id 之前，避免被 :id 参数路由吞掉
 	router.GET("/nearby", nearbyLimiter, p.handler.Nearby)
+	router.GET("/favorites", auth, readLimiter, p.handler.ListFavorites)
 	router.GET("/:id", readLimiter, p.handler.GetByID)
 	router.GET("/:id/comments", p.handler.ListComments)
 

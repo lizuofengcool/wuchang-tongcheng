@@ -273,6 +273,32 @@ func (h *Handler) FavStatus(ctx plugin.Context) {
 	ctx.JSON(http.StatusOK, response.Success(res))
 }
 
+// ListFavorites 我的收藏列表（分页，按收藏时间倒序）
+func (h *Handler) ListFavorites(ctx plugin.Context) {
+	userID, _ := getUserID(ctx)
+	if userID == 0 {
+		ctx.JSON(http.StatusOK, response.Unauthorized("请先登录"))
+		return
+	}
+	pageStr := ctx.Query("page")
+	if pageStr == "" {
+		pageStr = "1"
+	}
+	pageSizeStr := ctx.Query("page_size")
+	if pageSizeStr == "" {
+		pageSizeStr = "10"
+	}
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	pagination, list, err := h.service.ListFavorites(userID, page, pageSize)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Fail(utils.CodeNewsError, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Success(utils.PageResult(list, pagination)))
+}
+
 // ====== 评论 ======
 
 // CreateComment 创建评论

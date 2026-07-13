@@ -55,6 +55,12 @@ export const constantRoutes = [
         meta: { title: '头条详情', hidden: true, permission: 'news:read' }
       },
       {
+        path: 'news/favorites',
+        name: 'NewsFavorites',
+        component: () => import('@/views/news/favorites.vue'),
+        meta: { title: '我的收藏', icon: 'Star' }
+      },
+      {
         path: 'message',
         name: 'Message',
         component: () => import('@/views/message/index.vue'),

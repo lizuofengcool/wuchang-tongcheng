@@ -250,6 +250,44 @@ func (m *mockNewsRepo) DecrFavCount(id uint) error {
 	return nil
 }
 
+// ListFavs 模拟按 created_at 倒序的分页收藏查询。
+// mock 用插入顺序的逆序模拟"最近收藏在前"。
+func (m *mockNewsRepo) ListFavs(userID uint, page, pageSize int) ([]model.NewsFavorite, int64, error) {
+	// 收集该用户全部收藏，按插入顺序（newsID 维护困难，简化为遍历 favs map）
+	type entry struct {
+		newsID    uint
+		createdAt time.Time
+	}
+	var all []entry
+	for newsID, users := range m.favs {
+		if users[userID] {
+			all = append(all, entry{newsID: newsID, createdAt: time.Now()})
+		}
+	}
+	// 反转：最近加入的在前（mock 不维护真实时间，按 newsID 倒序保证可重复）
+	for i, j := 0, len(all)-1; i < j; i, j = i+1, j-1 {
+		all[i], all[j] = all[j], all[i]
+	}
+	total := int64(len(all))
+	offset := (page - 1) * pageSize
+	if offset >= len(all) {
+		return []model.NewsFavorite{}, total, nil
+	}
+	end := offset + pageSize
+	if end > len(all) {
+		end = len(all)
+	}
+	out := make([]model.NewsFavorite, 0, end-offset)
+	for i := offset; i < end; i++ {
+		out = append(out, model.NewsFavorite{
+			UserID:    userID,
+			NewsID:    all[i].newsID,
+			CreatedAt: all[i].createdAt,
+		})
+	}
+	return out, total, nil
+}
+
 func (m *mockNewsRepo) CreateComment(comment *model.NewsComment) error {
 	if m.createCommentErr != nil {
 		return m.createCommentErr
@@ -986,6 +1024,110 @@ func TestNewsService_FavStatus_NotFaved(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, resp.Faved)
 	assert.Equal(t, 2, resp.FavCount)
+}
+
+// ===== ListFavorites =====
+
+func TestNewsService_ListFavorites_Empty(t *testing.T) {
+	repo := newMockNewsRepo()
+	svc := NewNewsService(repo, nil)
+
+	pagination, list, err := svc.ListFavorites(6, 1, 10)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), pagination.Total)
+	assert.Equal(t, 1, pagination.Page)
+	assert.Equal(t, 10, pagination.PageSize)
+	assert.Empty(t, list)
+}
+
+func TestNewsService_ListFavorites_ReturnsFavedNews(t *testing.T) {
+	repo := newMockNewsRepo()
+	n1 := seedNews(repo, 5, 0, 0)
+	n2 := seedNews(repo, 5, 0, 0)
+	n3 := seedNews(repo, 5, 0, 0)
+	// 用户 6 收藏 n1、n2；n3 未收藏
+	repo.favs[n1.ID] = map[uint]bool{6: true}
+	repo.favs[n2.ID] = map[uint]bool{6: true}
+	svc := NewNewsService(repo, nil)
+
+	pagination, list, err := svc.ListFavorites(6, 1, 10)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), pagination.Total)
+	require.Len(t, list, 2)
+	// 两条都应来自被收藏的 news（n1、n2），不应混入 n3
+	gotIDs := map[uint]bool{list[0].ID: true, list[1].ID: true}
+	assert.True(t, gotIDs[n1.ID], "应包含已收藏的 n1")
+	assert.True(t, gotIDs[n2.ID], "应包含已收藏的 n2")
+	assert.False(t, gotIDs[n3.ID], "不应包含未收藏的 n3")
+}
+
+func TestNewsService_ListFavorites_Pagination(t *testing.T) {
+	repo := newMockNewsRepo()
+	// 创建 3 条 news，全部被用户 6 收藏
+	n1 := seedNews(repo, 5, 0, 0)
+	n2 := seedNews(repo, 5, 0, 0)
+	n3 := seedNews(repo, 5, 0, 0)
+	repo.favs[n1.ID] = map[uint]bool{6: true}
+	repo.favs[n2.ID] = map[uint]bool{6: true}
+	repo.favs[n3.ID] = map[uint]bool{6: true}
+	svc := NewNewsService(repo, nil)
+
+	// page_size=2 取第一页，应返回 2 条；total 仍为 3
+	pagination, list, err := svc.ListFavorites(6, 1, 2)
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), pagination.Total)
+	assert.Equal(t, 2, pagination.PageSize)
+	require.Len(t, list, 2)
+
+	// 第二页应返回剩余 1 条
+	pagination2, list2, err := svc.ListFavorites(6, 2, 2)
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), pagination2.Total)
+	require.Len(t, list2, 1)
+
+	// 两页合并应覆盖全部 3 条且无重复
+	allIDs := map[uint]bool{}
+	for _, n := range append(list, list2...) {
+		allIDs[n.ID] = true
+	}
+	assert.Len(t, allIDs, 3)
+	assert.True(t, allIDs[n1.ID])
+	assert.True(t, allIDs[n2.ID])
+	assert.True(t, allIDs[n3.ID])
+}
+
+func TestNewsService_ListFavorites_SkipsDeletedNews(t *testing.T) {
+	repo := newMockNewsRepo()
+	n1 := seedNews(repo, 5, 0, 0)
+	n2 := seedNews(repo, 5, 0, 0)
+	// 用户 6 收藏两条，但 n2 从 byID 中移除模拟"软删除被过滤"
+	repo.favs[n1.ID] = map[uint]bool{6: true}
+	repo.favs[n2.ID] = map[uint]bool{6: true}
+	delete(repo.byID, n2.ID)
+	svc := NewNewsService(repo, nil)
+
+	pagination, list, err := svc.ListFavorites(6, 1, 10)
+	require.NoError(t, err)
+	// total 仍按收藏记录数（2），但实际返回列表只含 n1
+	assert.Equal(t, int64(2), pagination.Total)
+	require.Len(t, list, 1)
+	assert.Equal(t, n1.ID, list[0].ID)
+}
+
+func TestNewsService_ListFavorites_DefaultsInvalidPaging(t *testing.T) {
+	repo := newMockNewsRepo()
+	n1 := seedNews(repo, 5, 0, 0)
+	repo.favs[n1.ID] = map[uint]bool{6: true}
+	svc := NewNewsService(repo, nil)
+
+	// page=0、pageSize=0 应被 utils.NewPagination 规范化为 1/10
+	pagination, list, err := svc.ListFavorites(6, 0, 0)
+	require.NoError(t, err)
+	assert.Equal(t, 1, pagination.Page)
+	assert.Equal(t, 10, pagination.PageSize)
+	assert.Equal(t, int64(1), pagination.Total)
+	require.Len(t, list, 1)
+	assert.Equal(t, n1.ID, list[0].ID)
 }
 
 // ===== CreateComment =====

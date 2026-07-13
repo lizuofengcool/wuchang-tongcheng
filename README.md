@@ -367,6 +367,7 @@ docker-compose up -d
 - ✅ 微信 OAuth 第三方登录（pkg/oauth：Provider 接口 + NoopProvider 降级 + MockProvider 联调 + WeChatProvider 开放平台网站应用 OAuth2 两段式换取；user 模块 UserOAuth 绑定模型 + service.OAuthLogin 命中绑定登录/未命中自动注册+绑定 + 路由 POST /login/oauth/:provider；配置缺失降级，错误码 4006；单元测试 25 个）
 - ✅ 管理后台短信验证码登录（前端登录页 Tab 切换"密码登录/短信登录"；api/user 新增 sendSmsCode/loginBySms/loginByOAuth 封装；stores/user 新增 loginBySms action 复用 token+权限拉取流程；手机号格式校验 + 60s 倒计时 + dev_code 联调自动回填；Vitest 单元测试 3 用例覆盖成功/失败/权限拉取降级）
 - ✅ 前端头条评论 + 消息通知中心（v2.7.0）：news/detail.vue 新增评论区（发表/列表/删除自己的评论/加载更多，超管可删任意评论）+ 新建 views/message/index.vue 消息中心（全部/未读/已读三态筛选 + 批量标记已读 + 单条标记已读 + 来源跳转头条）+ MainLayout 头部未读消息 el-badge 徽标（60s 轮询 + 进入消息页延迟刷新）+ api/news.js 新增 6 个评论/消息 API 封装 + 14 用例单元测试（共 211 用例）
+- ✅ 我的收藏列表（v2.7.1）：补齐收藏功能闭环（此前仅有 toggle 收藏/查询收藏状态，无法查看自己的收藏列表）。后端 news 模块新增 repository.ListFavs（按 created_at 倒序分页）+ service.ListFavorites（分页拉取收藏记录 → FindByIDs 批量回填 NewsInfo，保留收藏顺序，软删除 News 自动过滤）+ handler.ListFavorites + 路由 GET /news/favorites（auth + 60/min 限流，静态路由注册在 /:id 之前避免歧义）；前端 api/news.js 新增 listFavorites/favNews/getNewsFavStatus 封装 + 新建 views/news/favorites.vue 我的收藏页（表格展示标题/类型/价格/浏览/收藏数/状态/发布时间，支持分页 + 取消收藏 + 跳转详情，空态引导）+ 路由 /news/favorites 自动入侧边栏（Star 图标）；后端单元测试 5 用例（空列表/返回已收藏/分页/跳过软删除/非法分页参数兜底）+ 前端 API 单元测试 5 用例（共 216 用例）
 
 ### 未实现（待开发）
 - 暂无待开发项，规划功能已全部落地（第三方登录已在 v1.7.0 完成）

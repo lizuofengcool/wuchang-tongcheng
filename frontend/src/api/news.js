@@ -36,6 +36,23 @@ export function getNewsLikeStatus(id) {
   return request.get(`/news/${id}/like`)
 }
 
+// ====== 收藏 ======
+
+// 我的收藏列表（分页，按收藏时间倒序）
+export function listFavorites(params) {
+  return request.get('/news/favorites', { params })
+}
+
+// 收藏/取消收藏（toggle）
+export function favNews(id) {
+  return request.post(`/news/${id}/fav`)
+}
+
+// 查询当前用户对该头条的收藏状态
+export function getNewsFavStatus(id) {
+  return request.get(`/news/${id}/fav`)
+}
+
 // 发布/取消发布新闻
 export function toggleNewsStatus(id, status) {
   return request.put(`/news/${id}/status`, { status })

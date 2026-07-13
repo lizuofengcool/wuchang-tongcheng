@@ -34,6 +34,8 @@ type NewsRepository interface {
 	DeleteFav(userID, newsID uint) error
 	IncrFavCount(id uint) error
 	DecrFavCount(id uint) error
+	// ListFavs 分页查询某用户的收藏记录（按收藏时间倒序），返回收藏记录与总数
+	ListFavs(userID uint, page, pageSize int) ([]model.NewsFavorite, int64, error)
 	// 评论
 	CreateComment(comment *model.NewsComment) error
 	ListComments(newsID uint, page, pageSize int) ([]model.NewsComment, int64, error)
@@ -322,6 +324,24 @@ func (r *newsRepository) IncrFavCount(id uint) error {
 func (r *newsRepository) DecrFavCount(id uint) error {
 	return r.db.Model(&model.News{}).Where("id = ? AND fav_count > 0", id).
 		UpdateColumn("fav_count", gorm.Expr("fav_count - 1")).Error
+}
+
+// ListFavs 分页查询某用户的收藏记录，按收藏时间倒序。
+// 仅返回收藏关系记录，调用方需按 news_id 批量拉取 News 详情（FindByIDs），
+// 软删除的 News 会被 GORM 自动过滤掉。
+func (r *newsRepository) ListFavs(userID uint, page, pageSize int) ([]model.NewsFavorite, int64, error) {
+	var list []model.NewsFavorite
+	var total int64
+
+	query := r.db.Model(&model.NewsFavorite{}).Where("user_id = ?", userID)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 // ====== 评论 ======
