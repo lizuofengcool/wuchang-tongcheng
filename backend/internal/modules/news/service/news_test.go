@@ -6,6 +6,7 @@ package service
 
 import (
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -251,9 +252,9 @@ func (m *mockNewsRepo) DecrFavCount(id uint) error {
 }
 
 // ListFavs 模拟按 created_at 倒序的分页收藏查询。
-// mock 用插入顺序的逆序模拟"最近收藏在前"。
+// mock 用 newsID 倒序模拟"最近收藏在前"，保证跨页查询顺序稳定（Go map 迭代序随机，
+// 必须显式排序，否则分页会跨页重叠或遗漏）。
 func (m *mockNewsRepo) ListFavs(userID uint, page, pageSize int) ([]model.NewsFavorite, int64, error) {
-	// 收集该用户全部收藏，按插入顺序（newsID 维护困难，简化为遍历 favs map）
 	type entry struct {
 		newsID    uint
 		createdAt time.Time
@@ -264,10 +265,8 @@ func (m *mockNewsRepo) ListFavs(userID uint, page, pageSize int) ([]model.NewsFa
 			all = append(all, entry{newsID: newsID, createdAt: time.Now()})
 		}
 	}
-	// 反转：最近加入的在前（mock 不维护真实时间，按 newsID 倒序保证可重复）
-	for i, j := 0, len(all)-1; i < j; i, j = i+1, j-1 {
-		all[i], all[j] = all[j], all[i]
-	}
+	// 按 newsID 倒序保证可重复（map 迭代序随机，未排序会导致分页跨页重叠/遗漏）
+	sort.Slice(all, func(i, j int) bool { return all[i].newsID > all[j].newsID })
 	total := int64(len(all))
 	offset := (page - 1) * pageSize
 	if offset >= len(all) {
