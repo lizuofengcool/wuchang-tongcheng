@@ -292,6 +292,9 @@ docker-compose up -d
   - setting API 8 用例：getAllSettings / getSettingsByGroup 路径插值 + 不同 group 切换 / createSetting / updateSetting / deleteSetting / batchUpdateSettings items 包裹在 { items } 内 + 空数组兜底
   - mock 策略：vi.mock('@/utils/request') 包裹 get/post/put/delete 四方法，单个 requestMock vi.fn 以首参 method 区分，记录 url + body/params/config；与 stores/__tests__ 同风格 mockReset + Promise.resolve 固定返回值
   - 前端单测总数 106 → 178（format 21 + auth 13 + request 18 + region store 13 + user store 24 + permission directive 17 + user API 17 + category API 7 + news API 10 + region API 7 + file API 8 + permission API 15 + setting API 8）
+- v2.2.0 - category service 单元测试补齐
+  - backend/internal/modules/category/service/category_test.go 24 用例，覆盖纯函数（categoryCacheKeyTree/categoryCacheKeyByID/categoryCacheKeyByParent 缓存键生成 + toCategoryInfo DTO 转换含 NilSafe 路径）+ 构造函数（NewCategoryService 返回 *categoryService 类型断言）+ Create 业务逻辑（顶级 level=1 + Status=0 默认填充 1 + 子级 level=父级+1 + 第三层边界 + 超过 MaxCategoryLevel=3 拒绝 ErrCategoryMaxLevel + 父分类不存在 ErrCategoryParentInvalid + repo Create 错误透传 + 父查询非 NotFound 错误原样透传）+ GetTree（空列表 + 三层多级树递归构建：root→child→grandchild + 兄弟节点）+ GetAll（空列表 + 平铺列表含层级信息 + repo 错误透传）+ Delete（NotFound + HasChildren 阻止 + 叶子节点删除后二次 NotFound）+ Update（NotFound + 全字段更新回写校验 + 仅传 name 时空字符串字段不覆盖原值而 sort 始终被更新为零值）
+  - mock 策略沿用 permission service 风格：内存 mockCategoryRepo 实现 CategoryRepository 全部 7 方法（Create/FindByID/FindByParentID/FindByRegionID/Update/UpdateFields/Delete），byID map + byParent map + byRegion slice 三索引维护；ID 在嵌入 BaseModel 中无法在结构体字面量直接赋值，构造后单独设置；Redis 不可用时 GetJSON 降级 miss、SetJSON no-op，cache-aside 链路自动走 mock repo
 
 
 ## 功能完成度（对照规划）
