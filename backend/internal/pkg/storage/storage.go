@@ -22,7 +22,18 @@ type Storage interface {
 	Save(filename string, reader io.Reader) (url string, err error)
 	// Delete 删除文件
 	Delete(url string) error
+	// PresignPut 生成预签名 PUT 上传 URL，供前端直传对象存储（S3/MinIO 协议）。
+	// 返回：上传URL（前端 PUT 到此 URL）、对象名（提交记录时回传）、最终可访问URL。
+	// 本地存储/七牛云等不支持预签名直传时返回 ErrPresignNotSupported（前端应回退普通上传）。
+	PresignPut(filename string, expiry time.Duration) (uploadURL, objectName, accessURL string, err error)
+	// AccessURL 根据对象名构造可访问 URL（直传后提交记录时由后端重新拼装，避免前端伪造）。
+	// 不支持预签名的存储同样返回 ErrPresignNotSupported。
+	AccessURL(objectName string) (string, error)
 }
+
+// ErrPresignNotSupported 当前存储后端不支持预签名直传（如本地磁盘、七牛云 Kodo）。
+// 调用方应据此返回 501 并提示前端使用普通上传接口。
+var ErrPresignNotSupported = errors.New("storage: presigned upload not supported by this backend")
 
 // 全局存储实例
 var storage Storage
@@ -151,4 +162,15 @@ func (s *LocalStorage) Delete(url string) error {
 		return err
 	}
 	return nil
+}
+
+// PresignPut 本地磁盘不支持预签名直传，返回 ErrPresignNotSupported。
+// 前端应回退到普通上传接口 POST /api/v1/file/upload。
+func (s *LocalStorage) PresignPut(filename string, expiry time.Duration) (string, string, string, error) {
+	return "", "", "", ErrPresignNotSupported
+}
+
+// AccessURL 本地磁盘不支持按对象名构造访问 URL（无对象存储概念）。
+func (s *LocalStorage) AccessURL(objectName string) (string, error) {
+	return "", ErrPresignNotSupported
 }

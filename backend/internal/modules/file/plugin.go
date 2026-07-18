@@ -15,6 +15,7 @@ import (
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/database"
 	"wuchang-tongcheng/internal/pkg/storage"
+	"wuchang-tongcheng/internal/pkg/sts"
 )
 
 // Plugin 文件模块插件
@@ -51,6 +52,9 @@ func (p *Plugin) Init(ctx context.Context) error {
 		_ = storage.Init(nil)
 	}
 
+	// 初始化 STS 临时凭据 provider（未配置时降级 NoopProvider，AssumeRole 返回 ErrNotConfigured）
+	sts.Init(&cfg.STS)
+
 	// 初始化依赖链
 	fileRepo := repository.NewFileRepository(db)
 	fileService := service.NewFileService(fileRepo)
@@ -62,6 +66,11 @@ func (p *Plugin) Init(ctx context.Context) error {
 // RegisterRoutes 注册插件路由
 func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.POST("/upload", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Upload)
+	// 预签名直传：前端先换 PUT URL 直传对象存储，再 /commit 落库（仅 S3/MinIO 支持）
+	router.POST("/presign", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Presign)
+	router.POST("/commit", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.Commit)
+	// STS 临时凭据直传：换取 OSS 临时 AK/SK/Token 直传 OSS（仅 aliyun STS 配置齐全时可用，否则 1307）
+	router.POST("/sts", coreRouter.WrapGin(middleware.RequirePermission("file:upload")), p.handler.STS)
 	router.GET("", coreRouter.WrapGin(middleware.RequirePermission("file:read")), p.handler.List)
 	router.DELETE("/:id", coreRouter.WrapGin(middleware.RequirePermission("file:delete")), p.handler.Delete)
 }

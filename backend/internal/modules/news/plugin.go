@@ -65,10 +65,14 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	writeLimiter := coreRouter.WrapGin(middleware.RateLimit(10, 60, "news_create"))
 	likeLimiter := coreRouter.WrapGin(middleware.RateLimit(30, 60, "news_like"))
 	searchLimiter := coreRouter.WrapGin(middleware.RateLimit(30, 60, "news_search"))
+	nearbyLimiter := coreRouter.WrapGin(middleware.RateLimit(30, 60, "news_nearby"))
 
 	// === 公开路由（无需登录，PC/小程序门户浏览） ===
 	router.GET("", readLimiter, p.handler.List)
 	router.GET("/search", searchLimiter, p.handler.Search)
+	// /nearby、/favorites 需注册在 /:id 之前，避免被 :id 参数路由吞掉
+	router.GET("/nearby", nearbyLimiter, p.handler.Nearby)
+	router.GET("/favorites", auth, readLimiter, p.handler.ListFavorites)
 	router.GET("/:id", readLimiter, p.handler.GetByID)
 	router.GET("/:id/comments", p.handler.ListComments)
 

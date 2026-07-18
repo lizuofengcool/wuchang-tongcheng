@@ -147,3 +147,14 @@ func (s *QiniuStorage) Delete(fileURL string) error {
 	}
 	return nil
 }
+
+// PresignPut 七牛云 Kodo 直传走独立的 uploadToken + 上传 API 流程，与 S3 预签名 URL 协议不兼容。
+// 本实现暂不提供预签名直传，返回 ErrPresignNotSupported，前端应回退普通上传接口。
+func (s *QiniuStorage) PresignPut(filename string, expiry time.Duration) (string, string, string, error) {
+	return "", "", "", ErrPresignNotSupported
+}
+
+// AccessURL 七牛云不支持预签名直传流程，按对象名提交记录的路径同样不可用。
+func (s *QiniuStorage) AccessURL(objectName string) (string, error) {
+	return "", ErrPresignNotSupported
+}

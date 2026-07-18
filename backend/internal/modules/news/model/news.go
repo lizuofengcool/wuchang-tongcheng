@@ -69,6 +69,9 @@ type News struct {
 	CommentCount int        `gorm:"default:0" json:"comment_count"`       // 评论数
 	Status       int        `gorm:"default:0;index" json:"status"`        // 状态 0草稿 1已发布 2下架 3过期
 	PublishedAt  *time.Time `gorm:"index" json:"published_at"`            // 发布时间
+
+	// Distance 仅在"附近"查询时由 SQL 计算并回填，非持久化字段（公里）
+	Distance float64 `gorm:"-" json:"-" `
 }
 
 func (News) TableName() string { return "news" }

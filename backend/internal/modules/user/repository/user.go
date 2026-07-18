@@ -13,6 +13,7 @@ type UserRepository interface {
 	Create(user *model.User) error
 	FindByID(id uint) (*model.User, error)
 	FindByUsername(username string) (*model.User, error)
+	FindByPhone(phone string) (*model.User, error)
 	Update(user *model.User) error
 	UpdateFields(id uint, fields map[string]interface{}) error
 	// 管理后台
@@ -47,6 +48,15 @@ func (r *userRepository) FindByID(id uint) (*model.User, error) {
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	if err := r.db.Where("username = ?", username).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// FindByPhone 根据手机号查询用户
+func (r *userRepository) FindByPhone(phone string) (*model.User, error) {
+	var user model.User
+	if err := r.db.Where("phone = ?", phone).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

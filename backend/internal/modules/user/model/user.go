@@ -20,3 +20,22 @@ type User struct {
 func (User) TableName() string {
 	return "users"
 }
+
+// UserOAuth 第三方账号绑定关系
+//
+// 一个本地用户可绑定多个 provider，同一 (provider, open_id) 全局唯一。
+// 自动注册的 OAuth 用户 username 形如 "wechat_<openid>"，密码为随机占位（无法走密码登录）。
+type UserOAuth struct {
+	database.BaseModel
+	UserID   uint   `gorm:"index;not null" json:"user_id"`
+	Provider string `gorm:"size:32;not null;uniqueIndex:idx_provider_openid,priority:1" json:"provider"` // wechat ...
+	OpenID   string `gorm:"size:128;not null;uniqueIndex:idx_provider_openid,priority:2" json:"open_id"`
+	UnionID  string `gorm:"size:128;index" json:"union_id"` // 联合 ID，同主体多应用唯一，可为空
+	Nickname string `gorm:"size:50" json:"nickname"`
+	Avatar   string `gorm:"size:255" json:"avatar"`
+}
+
+// TableName 表名
+func (UserOAuth) TableName() string {
+	return "user_oauths"
+}

@@ -75,7 +75,7 @@ func setupUserE2E(t *testing.T) *e2eEnv {
 
 	// user 模块依赖链（绕过 database 全局单例，直接注入 DB）
 	uRepo := userRepo.NewUserRepository(db)
-	uSvc := userService.NewUserService(uRepo)
+	uSvc := userService.NewUserService(uRepo, nil, nil, nil) // e2e 不覆盖短信/OAuth 登录，sms/oauth 传 nil
 	h := userHandler.NewHandler(uSvc)
 
 	// 注册 user 路由（与 user/plugin.go RegisterRoutes 保持一致）

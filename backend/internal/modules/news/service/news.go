@@ -50,12 +50,16 @@ type NewsService interface {
 	Delete(id uint, operatorID uint) error
 	GetByID(id uint) (*dto.NewsInfo, error)
 	List(regionID uint, req *dto.NewsListRequest) (*utils.Pagination, []dto.NewsInfo, error)
+	ListNearby(regionID uint, req *dto.NewsNearbyRequest) (*utils.Pagination, []dto.NewsInfo, error)
 	Search(regionID uint, req *dto.NewsSearchRequest) (*utils.Pagination, []dto.NewsInfo, error)
 	Like(userID, newsID uint) (*dto.LikeResponse, error)
 	LikeStatus(userID, newsID uint) (*dto.LikeResponse, error)
 	// 收藏
 	Fav(userID, newsID uint) (*dto.FavResponse, error)
 	FavStatus(userID, newsID uint) (*dto.FavResponse, error)
+	// ListFavorites 分页查询当前用户的收藏列表（按收藏时间倒序）。
+	// 软删除的 News 自动过滤；保留收藏顺序，返回分页信息与 NewsInfo 列表。
+	ListFavorites(userID uint, page, pageSize int) (*utils.Pagination, []dto.NewsInfo, error)
 	// 评论
 	CreateComment(newsID uint, userID uint, userName string, avatar string, req *dto.CreateCommentRequest) (*dto.CommentInfo, error)
 	ListComments(newsID uint, page, pageSize int) ([]dto.CommentInfo, int64, error)
@@ -100,6 +104,7 @@ func toNewsInfo(n *model.News) *dto.NewsInfo {
 		Address:       n.Address,
 		Latitude:      n.Latitude,
 		Longitude:     n.Longitude,
+		Distance:      n.Distance,
 		IsUrgent:      n.IsUrgent,
 		ExpiryTime:    n.ExpiryTime,
 		ViewCount:     n.ViewCount,
@@ -364,6 +369,27 @@ func (s *newsService) List(regionID uint, req *dto.NewsListRequest) (*utils.Pagi
 	return pagination, result, nil
 }
 
+// ListNearby 附近信息查询。走 PostGIS 空间查询（不可用降级 Haversine），
+// 不读列表缓存（按位置动态计算），结果按距离升序、加急置顶。
+func (s *newsService) ListNearby(regionID uint, req *dto.NewsNearbyRequest) (*utils.Pagination, []dto.NewsInfo, error) {
+	pagination := utils.NewPagination(req.Page, req.PageSize)
+	radiusKm := req.RadiusKm
+	if radiusKm <= 0 {
+		radiusKm = 5
+	}
+
+	list, total, err := s.newsRepo.ListNearby(regionID, pagination, req.Latitude, req.Longitude, radiusKm, req.CategoryID, req.ListingType)
+	if err != nil {
+		return nil, nil, err
+	}
+	pagination.Total = total
+	result := make([]dto.NewsInfo, 0, len(list))
+	for i := range list {
+		result = append(result, *toNewsInfo(&list[i]))
+	}
+	return pagination, result, nil
+}
+
 // Like 点赞 toggle
 func (s *newsService) Like(userID, newsID uint) (*dto.LikeResponse, error) {
 	news, err := s.newsRepo.FindByID(newsID)
@@ -475,6 +501,52 @@ func (s *newsService) FavStatus(userID, newsID uint) (*dto.FavResponse, error) {
 		return nil, err
 	}
 	return &dto.FavResponse{Faved: faved, FavCount: news.FavCount}, nil
+}
+
+// ListFavorites 分页查询当前用户的收藏列表。
+// 流程：分页拉取收藏记录 → 按 news_id 批量拉取 News 详情（FindByIDs 自动过滤软删除）→
+// 按收藏时间倒序回填 NewsInfo。已被软删除的 News 不出现在结果中。
+func (s *newsService) ListFavorites(userID uint, page, pageSize int) (*utils.Pagination, []dto.NewsInfo, error) {
+	pagination := utils.NewPagination(page, pageSize)
+
+	favs, total, err := s.newsRepo.ListFavs(userID, pagination.Page, pagination.PageSize)
+	if err != nil {
+		return nil, nil, err
+	}
+	pagination.Total = total
+
+	if len(favs) == 0 {
+		return pagination, []dto.NewsInfo{}, nil
+	}
+
+	// 收集 news_id（保持收藏顺序），去重后批量查询
+	orderedIDs := make([]uint, 0, len(favs))
+	idSet := make(map[uint]struct{}, len(favs))
+	for i := range favs {
+		if _, ok := idSet[favs[i].NewsID]; !ok {
+			idSet[favs[i].NewsID] = struct{}{}
+			orderedIDs = append(orderedIDs, favs[i].NewsID)
+		}
+	}
+
+	newsList, err := s.newsRepo.FindByIDs(orderedIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	// 构建 id -> NewsInfo 映射，便于按收藏顺序回填
+	byID := make(map[uint]*dto.NewsInfo, len(newsList))
+	for i := range newsList {
+		byID[newsList[i].ID] = toNewsInfo(&newsList[i])
+	}
+
+	// 按收藏记录顺序输出（已软删除的 News 不在 byID 中，自动跳过）
+	result := make([]dto.NewsInfo, 0, len(favs))
+	for i := range favs {
+		if info, ok := byID[favs[i].NewsID]; ok {
+			result = append(result, *info)
+		}
+	}
+	return pagination, result, nil
 }
 
 // ====== 评论 ======

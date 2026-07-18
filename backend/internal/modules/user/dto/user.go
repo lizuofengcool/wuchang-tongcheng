@@ -17,6 +17,29 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// SendSMSCodeRequest 发送短信验证码请求
+type SendSMSCodeRequest struct {
+	Phone string `json:"phone" binding:"required"`
+}
+
+// SMSLoginRequest 短信验证码登录请求
+type SMSLoginRequest struct {
+	Phone string `json:"phone" binding:"required"`
+	Code  string `json:"code" binding:"required"`
+}
+
+// OAuthLoginRequest 第三方 OAuth 登录请求
+// provider 由 URL 路径参数 /login/oauth/:provider 提供，请求体只需 code
+type OAuthLoginRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// SendSMSCodeResponse 发送短信验证码响应
+// DevCode 仅在 mock provider + dev_return_code=true 时返回验证码明文（联调用），生产为空
+type SendSMSCodeResponse struct {
+	DevCode string `json:"dev_code,omitempty"`
+}
+
 // LoginResponse 登录响应
 type LoginResponse struct {
 	Token    string `json:"token"`

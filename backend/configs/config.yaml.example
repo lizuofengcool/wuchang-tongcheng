@@ -74,3 +74,47 @@ storage:
 map:
   type: "amap"  # amap, baidu
   key: "your-map-api-key"
+
+# 短信验证码服务配置
+sms:
+  provider: "mock"            # ""/mock（不发短信，dev_return_code=true 时接口返回验证码明文便于联调）/aliyun（dysmsapi RPC API，AK/SK/SignName/TemplateCode 任一缺失降级 mock）
+  sign_name: ""               # 短信签名（aliyun 用）
+  template_code: ""           # 短信模板 code（aliyun 用）
+  access_key: ""              # 短信服务 AK（aliyun 用）
+  secret_key: ""              # 短信服务 SK（aliyun 用）
+  code_ttl: 300               # 验证码有效期（秒），默认 300
+  code_length: 6              # 验证码位数，默认 6
+  max_attempts: 5             # 单次验证码最大尝试次数，超限后作废，默认 5
+  dev_return_code: false      # 开发联调：发送接口返回验证码明文（仅 mock provider 生效，生产务必 false）
+
+# OSS STS 临时凭据直传配置（可选）
+#
+# 用于前端直传 OSS：后端用 access_key/secret_key 调用 STS AssumeRole 扮演 role_arn
+# 指定的 RAM 角色（需授予 OSS 写权限），拿到临时 AK/SK/Token 下发给前端。
+# 与 storage 配置分离（storage 是后端自用 AK/SK；STS 是下发前端的临时凭据）。
+# provider 非 aliyun 或 AK/SK/RoleArn 任一缺失/占位（your-）→ 自动降级 NoopProvider，
+# POST /api/v1/file/sts 返回 1307，前端回退 POST /file/upload 或 POST /file/presign。
+sts:
+  provider: ""                # ""/aliyun（aliyun 且 access_key/secret_key/role_arn 齐全才激活）
+  access_key: ""              # 调用 AssumeRole 的 RAM 用户 AK
+  secret_key: ""              # 调用 AssumeRole 的 RAM 用户 SK
+  role_arn: ""                # 被扮演的 RAM 角色 ARN（如 acs:ram::123456789:role/wuchang-upload）
+  role_session_name: ""       # 会话名，默认 wuchang-upload
+  duration_seconds: 3600      # 凭据有效期（秒），范围 900~3600，默认 3600
+  bucket: ""                  # OSS 桶名（透传前端构造 OSS 客户端）
+  region: ""                  # OSS 区域，如 oss-cn-hangzhou
+  endpoint: ""                # OSS 端点，如 https://oss-cn-hangzhou.aliyuncs.com
+  object_prefix: "uploads/"   # 对象 key 前缀
+
+# 第三方登录配置（可选）
+#
+# 微信开放平台网站应用 OAuth2 网页授权登录：
+# 前端在微信扫码授权后拿到 code，POST /api/v1/user/login/oauth/wechat {code} 换取 JWT。
+# - provider=""      → 不启用微信登录（接口返回 4006 第三方登录未启用）
+# - provider="mock"  → 联调模式：code 形如 "mock:<openid>[:<nickname>]" 直接构造身份，不访问微信
+# - provider="wechat"→ 真实微信 OAuth，app_id/app_secret 齐全且非占位（your-）才激活，否则降级不启用
+oauth:
+  wechat:
+    provider: ""              # ""/mock/wechat
+    app_id: ""                # 微信开放平台 AppID
+    app_secret: ""            # 微信开放平台 AppSecret

@@ -20,6 +20,58 @@ type Config struct {
 	ES       ESConfig       `mapstructure:"elasticsearch"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Map      MapConfig      `mapstructure:"map"`
+	SMS      SMSConfig      `mapstructure:"sms"`
+	STS      STSConfig      `mapstructure:"sts"`
+	OAuth    OAuthConfig    `mapstructure:"oauth"`
+}
+
+// OAuthConfig 第三方登录配置
+type OAuthConfig struct {
+	WeChat WeChatConfig `mapstructure:"wechat"`
+}
+
+// WeChatConfig 微信开放平台网站应用 OAuth 配置
+//
+// provider 取值：
+//   - ""      → 不启用微信登录（/login/oauth/wechat 返回未启用）
+//   - "mock"  → 联调模式：code 形如 "mock:<openid>[:<nickname>]" 直接构造身份，不访问微信
+//   - "wechat"→ 真实微信 OAuth，AppID/AppSecret 齐全且非占位（your-）才激活，否则降级不启用
+type WeChatConfig struct {
+	Provider  string `mapstructure:"provider"`   // ""/mock/wechat
+	AppID     string `mapstructure:"app_id"`     // 微信开放平台 AppID
+	AppSecret string `mapstructure:"app_secret"` // 微信开放平台 AppSecret
+}
+
+// STSConfig 阿里云 OSS STS 临时凭据直传配置
+//
+// 与 storage 配置分离：STS 需要独立的 RAM 角色 ARN（扮演一个授予 OSS 写权限的角色），
+// 凭据由后端用 AccessKey/SecretKey 调用 AssumeRole 换取后下发给前端直传。
+// provider 非 aliyun 或任一必填项缺失/占位时自动降级 NoopProvider（AssumeRole 返回 ErrNotConfigured）。
+type STSConfig struct {
+	Provider        string `mapstructure:"provider"`         // ""/aliyun（aliyun 且 AK/SK/RoleArn 齐全才激活）
+	AccessKey       string `mapstructure:"access_key"`       // 调用 AssumeRole 的 RAM 用户 AK
+	SecretKey       string `mapstructure:"secret_key"`       // 调用 AssumeRole 的 RAM 用户 SK
+	RoleArn         string `mapstructure:"role_arn"`         // 被扮演的 RAM 角色 ARN（授予 OSS 写权限）
+	RoleSessionName string `mapstructure:"role_session_name"` // 会话名，默认 wuchang-upload
+	DurationSeconds int    `mapstructure:"duration_seconds"`  // 凭据有效期（秒），范围 900~3600，默认 3600
+	// OSS 落地信息（透传给前端，构造 OSS 客户端用）
+	Bucket       string `mapstructure:"bucket"`        // OSS 桶名
+	Region       string `mapstructure:"region"`        // OSS 区域，如 oss-cn-hangzhou
+	Endpoint     string `mapstructure:"endpoint"`      // OSS 端点，如 https://oss-cn-hangzhou.aliyuncs.com
+	ObjectPrefix string `mapstructure:"object_prefix"` // 对象 key 前缀，如 uploads/
+}
+
+// SMSConfig 短信验证码服务配置
+type SMSConfig struct {
+	Provider     string `mapstructure:"provider"`        // ""/mock（不发短信，dev 可返回验证码）/aliyun（dysmsapi RPC API，AK/SK/SignName/TemplateCode 未配置降级 mock）
+	SignName     string `mapstructure:"sign_name"`       // 短信签名
+	TemplateCode string `mapstructure:"template_code"`   // 短信模板
+	AccessKey    string `mapstructure:"access_key"`      // 短信服务 AK
+	SecretKey    string `mapstructure:"secret_key"`      // 短信服务 SK
+	CodeTTL      int    `mapstructure:"code_ttl"`        // 验证码有效期（秒），默认 300
+	CodeLength   int    `mapstructure:"code_length"`     // 验证码位数，默认 6
+	MaxAttempts  int    `mapstructure:"max_attempts"`    // 最大尝试次数，默认 5
+	DevReturnCode bool  `mapstructure:"dev_return_code"` // 开发模式：发送接口返回验证码明文（仅 mock provider 生效）
 }
 
 // JWTConfig JWT配置
@@ -209,6 +261,22 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Logger.MaxAge == 0 {
 		cfg.Logger.MaxAge = 30
+	}
+
+	// SMS 默认值
+	if cfg.SMS.CodeTTL == 0 {
+		cfg.SMS.CodeTTL = 300
+	}
+	if cfg.SMS.CodeLength == 0 {
+		cfg.SMS.CodeLength = 6
+	}
+	if cfg.SMS.MaxAttempts == 0 {
+		cfg.SMS.MaxAttempts = 5
+	}
+
+	// STS 默认值
+	if cfg.STS.DurationSeconds == 0 {
+		cfg.STS.DurationSeconds = 3600
 	}
 }
 
