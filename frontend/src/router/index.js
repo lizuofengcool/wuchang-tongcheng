@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { hasPermission } from '@/utils/auth'
 
-const APP_TITLE = import.meta.env.VITE_APP_TITLE || '武昌同城管理后台'
+const APP_TITLE = import.meta.env.VITE_APP_TITLE || '近享同城管理后台'
 
 // 静态路由
 export const constantRoutes = [

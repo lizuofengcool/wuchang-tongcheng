@@ -66,5 +66,10 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 // Close 关闭插件
 func (p *Plugin) Close() error { return nil }
 
+// init 自动注册插件（幂等）
+func init() {
+	plugin.AutoRegister(NewPlugin())
+}
+
 // 确保Plugin实现了plugin.Plugin接口
 var _ plugin.Plugin = (*Plugin)(nil)

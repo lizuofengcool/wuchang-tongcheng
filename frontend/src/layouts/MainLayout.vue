@@ -4,7 +4,7 @@
     <el-aside :width="isCollapse ? '64px' : '210px'" class="sidebar">
       <div class="logo">
         <el-icon :size="24"><Promotion /></el-icon>
-        <span v-show="!isCollapse" class="logo-text">武昌同城</span>
+        <span v-show="!isCollapse" class="logo-text">近享同城</span>
       </div>
       <el-scrollbar>
         <el-menu

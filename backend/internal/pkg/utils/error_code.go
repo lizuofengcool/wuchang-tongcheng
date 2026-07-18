@@ -77,6 +77,28 @@ const (
 	CodeNewsNotFound    = 2402
 	CodeNewsPublishError = 2403
 
+	// ===== 商家模块错误 2500-2599 =====
+	CodeShopError          = 2501
+	CodeShopNotFound       = 2502
+	CodeShopAlreadyExists  = 2503
+	CodeShopAuditError     = 2504
+	CodeShopNotApproved    = 2505
+	CodeShopReviewError    = 2506
+	CodeShopApplyError     = 2507
+
+	// ===== 团购优惠券模块错误 2600-2699 =====
+	CodeGroupBuyError         = 2601
+	CodeGroupBuyNotFound      = 2602
+	CodeGroupBuyExpired       = 2603
+	CodeGroupBuySoldOut       = 2604
+	CodeCouponError           = 2605
+	CodeCouponNotFound        = 2606
+	CodeCouponAlreadyUsed     = 2607
+	CodeCouponExpired         = 2608
+	CodeOrderError            = 2609
+	CodeOrderNotFound         = 2610
+	CodeOrderAlreadyCancelled = 2611
+
 	// ===== 第三方服务错误 4000-4999 =====
 	CodeThirdPartyError = 4001
 	CodeMapAPIError     = 4002
@@ -151,6 +173,28 @@ var codeMessages = map[int]string{
 	CodeNewsError:       "头条错误",
 	CodeNewsNotFound:    "头条不存在",
 	CodeNewsPublishError: "头条发布错误",
+
+	// 商家模块错误
+	CodeShopError:         "商家错误",
+	CodeShopNotFound:      "商家不存在",
+	CodeShopAlreadyExists: "商家已存在",
+	CodeShopAuditError:    "商家审核错误",
+	CodeShopNotApproved:   "商家未通过审核",
+	CodeShopReviewError:   "商家评论错误",
+	CodeShopApplyError:    "商家申请错误",
+
+	// 团购优惠券模块错误
+	CodeGroupBuyError:         "团购错误",
+	CodeGroupBuyNotFound:      "团购不存在",
+	CodeGroupBuyExpired:       "团购已过期",
+	CodeGroupBuySoldOut:       "团购已售罄",
+	CodeCouponError:           "优惠券错误",
+	CodeCouponNotFound:        "优惠券不存在",
+	CodeCouponAlreadyUsed:     "优惠券已使用",
+	CodeCouponExpired:         "优惠券已过期",
+	CodeOrderError:            "订单错误",
+	CodeOrderNotFound:         "订单不存在",
+	CodeOrderAlreadyCancelled: "订单已取消",
 
 	// 第三方服务错误
 	CodeThirdPartyError: "第三方服务错误",

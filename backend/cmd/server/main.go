@@ -1,5 +1,5 @@
 // Package main 服务入口
-// 五常同城本地生活服务平台 - 后端服务入口
+// 近享同城本地生活服务平台 - 后端服务入口
 package main
 
 import (
@@ -17,13 +17,7 @@ import (
 	"wuchang-tongcheng/internal/core/plugin"
 	"wuchang-tongcheng/internal/core/response"
 	"wuchang-tongcheng/internal/core/router"
-	category "wuchang-tongcheng/internal/modules/category"
-	file "wuchang-tongcheng/internal/modules/file"
-	news "wuchang-tongcheng/internal/modules/news"
-	permission "wuchang-tongcheng/internal/modules/permission"
-	region "wuchang-tongcheng/internal/modules/region"
-	setting "wuchang-tongcheng/internal/modules/setting"
-	user "wuchang-tongcheng/internal/modules/user"
+	_ "wuchang-tongcheng/internal/modules" // 自动注册所有业务模块（init 自动注册到 plugin.Manager）
 	"wuchang-tongcheng/internal/pkg/config"
 	"wuchang-tongcheng/internal/pkg/seed"
 	"wuchang-tongcheng/internal/pkg/database"
@@ -51,9 +45,9 @@ var (
 	GitCommit = "unknown"
 )
 
-// @title           五常同城本地生活服务平台 API
+// @title           近享同城本地生活服务平台 API
 // @version         0.2.0
-// @description     五常同城后端服务 API 文档
+// @description     近享同城后端服务 API 文档
 // @BasePath        /api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in   header
@@ -67,7 +61,7 @@ func main() {
 
 	// 显示版本信息
 	if *showVersion {
-		fmt.Printf("五常同城服务 v%s\n", Version)
+		fmt.Printf("近享同城服务 v%s\n", Version)
 		fmt.Printf("Build Time: %s\n", BuildTime)
 		fmt.Printf("Git Commit: %s\n", GitCommit)
 		return
@@ -102,13 +96,14 @@ func main() {
 	defer database.Close()
 	logger.Info("数据库初始化成功")
 
-	// 5. 初始化Redis
+	// 5. 初始化Redis（可选：连不上不阻塞服务启动，降级运行）
 	logger.Info("正在初始化Redis...")
 	if err := redispkg.Init(&cfg.Redis); err != nil {
-		logger.Fatal("Redis初始化失败", zap.Error(err))
+		logger.Warn("Redis初始化失败，业务可降级运行", zap.Error(err))
+	} else {
+		defer redispkg.Close()
+		logger.Info("Redis初始化成功")
 	}
-	defer redispkg.Close()
-	logger.Info("Redis初始化成功")
 
 	// 5.1 初始化RabbitMQ（可选：连不上不阻塞服务启动）
 	logger.Info("正在初始化RabbitMQ...")
@@ -175,24 +170,15 @@ func main() {
 	// 注册根路由
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, response.Success(gin.H{
-			"name":    "五常同城本地生活服务平台",
+			"name":    "近享同城本地生活服务平台",
 			"version": Version,
 			"docs":    "/api/v1/docs",
 		}))
 	})
 
-	// 8. 初始化插件
+	// 8. 初始化插件（模块通过 modules 包的 init() 自动注册到 plugin.Manager）
 	logger.Info("正在初始化插件...")
 	pluginManager := plugin.GetManager()
-
-	// 注册业务模块插件
-	pluginManager.Register(user.NewPlugin())
-	pluginManager.Register(region.NewPlugin())
-	pluginManager.Register(category.NewPlugin())
-	pluginManager.Register(news.NewPlugin())
-	pluginManager.Register(permission.NewPlugin())
-	pluginManager.Register(file.NewPlugin())
-	pluginManager.Register(setting.NewPlugin())
 
 	// 初始化所有插件
 	ctx := context.Background()

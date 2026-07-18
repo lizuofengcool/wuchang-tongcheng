@@ -181,6 +181,11 @@ func (ctx *Context) Query(key string) string {
 	return ctx.c.Query(key)
 }
 
+// DefaultQuery 获取Query参数，带默认值
+func (ctx *Context) DefaultQuery(key, defaultValue string) string {
+	return ctx.c.DefaultQuery(key, defaultValue)
+}
+
 // PostForm 获取表单参数
 func (ctx *Context) PostForm(key string) string {
 	return ctx.c.PostForm(key)

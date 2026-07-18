@@ -72,7 +72,7 @@
             </div>
           </template>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="系统名称">武昌同城本地生活服务平台</el-descriptions-item>
+            <el-descriptions-item label="系统名称">近享同城本地生活服务平台</el-descriptions-item>
             <el-descriptions-item label="管理后台版本">v1.0.0</el-descriptions-item>
             <el-descriptions-item label="后端技术栈">Go + Gin + GORM + PostgreSQL</el-descriptions-item>
             <el-descriptions-item label="前端技术栈">Vue3 + Vite + Element Plus + Pinia</el-descriptions-item>

@@ -4,8 +4,8 @@ import { defineStore } from 'pinia'
 import { getRegionTree } from '@/api/region'
 
 const STORAGE_KEY = 'currentRegionId'
-// 默认地区：武汉市（与后端 DefaultRegionID 一致）
-const DEFAULT_REGION_ID = 2
+// 默认地区：五常市（与后端 DefaultRegionID 一致）
+const DEFAULT_REGION_ID = 3
 
 export const useRegionStore = defineStore('region', {
   state: () => ({

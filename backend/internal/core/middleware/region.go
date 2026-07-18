@@ -9,8 +9,8 @@ import (
 const (
 	// RegionIDKey 地区ID在上下文中的Key
 	RegionIDKey = "region_id"
-	// DefaultRegionID 默认地区ID（武汉市，由 seed 初始化为 id=2）
-	DefaultRegionID = 2
+	// DefaultRegionID 默认地区ID（五常市，由 seed 初始化为 id=3）
+	DefaultRegionID = 3
 )
 
 // Region 地区数据隔离中间件

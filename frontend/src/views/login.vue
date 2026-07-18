@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h1>武昌同城</h1>
+        <h1>近享同城</h1>
         <p>本地生活服务管理后台</p>
       </div>
       <el-form
@@ -43,7 +43,7 @@
         </el-form-item>
       </el-form>
       <div class="login-footer">
-        <span>© {{ year }} 武昌同城 · 管理后台</span>
+        <span>© {{ year }} 近享同城 · 管理后台</span>
       </div>
     </div>
   </div>

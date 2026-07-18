@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "project": {
+    "name": "五常同城",
+    "directory": "D:\\kaifa\\wuchang-tongcheng",
+    "description": "五常同城门户平台，Go + Vue 3 + Next.js",
+    "tech_stack": "Go (Gin) + Vue 3 + Next.js + PostgreSQL + Redis + RabbitMQ + ES",
+    "status": "active",
+    "start_cmd": "start.bat",
+    "stop_cmd": "stop.bat"
+  },
+  "ports": [
+    { "port": 8080, "service_name": "Go 后端 API", "service_type": "api", "url": "http://localhost:8080", "start_cmd": "", "stop_cmd": "" },
+    { "port": 5173, "service_name": "Admin 管理后台", "service_type": "admin", "url": "http://localhost:5173", "start_cmd": "", "stop_cmd": "" },
+    { "port": 3000, "service_name": "PC 门户前端", "service_type": "frontend", "url": "http://localhost:3000/pc", "start_cmd": "", "stop_cmd": "" }
+  ],
+  "credentials": [
+    { "service_name": "PostgreSQL", "username": "postgres", "password": "postgres123", "url": "127.0.0.1:5432", "note": "数据库 wuchang_tongcheng" },
+    { "service_name": "Redis", "username": "", "password": "redis123", "url": "127.0.0.1:6379", "note": "缓存服务" }
+  ]
+}

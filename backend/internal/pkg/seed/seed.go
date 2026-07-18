@@ -60,6 +60,17 @@ var permissionDefs = []permDef{
 	{"file:upload", "文件上传", 3},
 	{"file:read", "文件查看", 3},
 	{"file:delete", "文件删除", 3},
+	// 商家管理
+	{"shop:read", "商家查看", 3},
+	{"shop:create", "商家新建", 3},
+	{"shop:update", "商家更新", 3},
+	{"shop:delete", "商家删除", 3},
+	{"shop:audit", "商家审核", 3},
+	// 团购优惠券
+	{"groupbuy:read", "团购查看", 3},
+	{"groupbuy:create", "团购新建", 3},
+	{"groupbuy:update", "团购更新", 3},
+	{"groupbuy:delete", "团购删除", 3},
 }
 
 // Run 执行种子数据初始化（幂等）
@@ -79,40 +90,41 @@ func Run(db *gorm.DB) error {
 	return nil
 }
 
-// seedRegions 地区：按顺序写入，确保武汉市 id=2（与 DefaultRegionID 对应）
+// seedRegions 地区：按顺序写入，确保五常市 id=3（与 DefaultRegionID 对应）
+// 结构：黑龙江省(id=1) → 哈尔滨市(id=2) → 五常市(id=3) → 4乡镇(id=4-7)
 func seedRegions(db *gorm.DB) error {
 	regions := []regionModel.Region{
-		{Name: "湖北省", Code: "420000", Level: 1, Sort: 1, Status: 1},
-		{Name: "武汉市", Code: "420100", Level: 2, ParentID: 0, Sort: 1, Status: 1},
-		{Name: "武昌区", Code: "420106", Level: 3, Sort: 1, Status: 1},
-		{Name: "洪山区", Code: "420111", Level: 3, Sort: 2, Status: 1},
-		{Name: "江夏区", Code: "420115", Level: 3, Sort: 3, Status: 1},
+		// Level 1 省
+		{Name: "黑龙江省", Code: "230000", Level: 1, Sort: 1, Status: 1},
+		// Level 2 市
+		{Name: "哈尔滨市", Code: "230100", Level: 2, Sort: 1, Status: 1},
+		// Level 3 县级市
+		{Name: "五常市", Code: "230184", Level: 3, Sort: 1, Status: 1},
+		// Level 4 乡镇
+		{Name: "五常镇", Code: "23018401", Level: 4, Sort: 1, Status: 1},
+		{Name: "拉林满族镇", Code: "23018402", Level: 4, Sort: 2, Status: 1},
+		{Name: "山河镇", Code: "23018403", Level: 4, Sort: 3, Status: 1},
+		{Name: "小山子镇", Code: "23018404", Level: 4, Sort: 4, Status: 1},
 	}
-	// 先写省级
-	for i, r := range regions {
-		if r.Level == 1 {
-			if err := firstOrCreateRegion(db, &r); err != nil {
-				return err
+	// 按 Level 逐级写入，确保父级先于子级创建
+	for level := 1; level <= 4; level++ {
+		for i, r := range regions {
+			if r.Level != level {
+				continue
 			}
-			regions[i] = r
-		}
-	}
-	// 再写市级，parent 指向湖北省
-	for i, r := range regions {
-		if r.Level == 2 {
-			province := regions[0]
-			r.ParentID = province.ID
-			if err := firstOrCreateRegion(db, &r); err != nil {
-				return err
+			// 查找父级 ID
+			if level > 1 {
+				parentIdx := -1
+				for j, p := range regions {
+					if p.Level == level-1 {
+						parentIdx = j
+						break
+					}
+				}
+				if parentIdx >= 0 {
+					r.ParentID = regions[parentIdx].ID
+				}
 			}
-			regions[i] = r
-		}
-	}
-	// 最后写区县，parent 指向武汉市
-	wuhan := regions[1]
-	for i, r := range regions {
-		if r.Level == 3 {
-			r.ParentID = wuhan.ID
 			if err := firstOrCreateRegion(db, &r); err != nil {
 				return err
 			}
@@ -217,8 +229,8 @@ func seedAdminUser(db *gorm.DB) error {
 			Gender:   0,
 			Status:   1,
 		}
-		// 默认地区 武汉市(id=2)
-		user.RegionID = 2
+		// 默认地区 五常市(id=3)
+		user.RegionID = 3
 		if err := db.Create(&user).Error; err != nil {
 			return err
 		}

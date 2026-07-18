@@ -6,6 +6,8 @@ import (
 	"context"
 	"io"
 	"sync"
+
+	"gorm.io/gorm"
 )
 
 // Plugin 插件接口，所有业务模块插件必须实现此接口
@@ -20,6 +22,21 @@ type Plugin interface {
 	RegisterRoutes(router RouterGroup)
 	// Close 关闭插件，在服务停止时调用
 	Close() error
+}
+
+// Pluggable 可插拔插件接口（可选实现，用于模块管理）
+// 实现此接口的模块可通过模块管理界面进行安装/卸载
+type Pluggable interface {
+	// Description 模块描述
+	Description() string
+	// Category 模块分类（如：系统、业务、工具）
+	Category() string
+	// Dependencies 依赖的其他模块名称
+	Dependencies() []string
+	// Install 安装模块（建表、初始化数据等）
+	Install(db *gorm.DB) error
+	// Uninstall 卸载模块（删表、清理数据等）
+	Uninstall(db *gorm.DB) error
 }
 
 // RouterGroup 路由组接口，插件通过此接口注册路由
@@ -49,6 +66,8 @@ type Context interface {
 	Param(key string) string
 	// Query 获取Query参数
 	Query(key string) string
+	// DefaultQuery 获取Query参数，带默认值
+	DefaultQuery(key, defaultValue string) string
 	// PostForm 获取表单参数
 	PostForm(key string) string
 	// Bind 绑定请求数据
@@ -213,4 +232,38 @@ func (m *Manager) Unregister(name string) error {
 		}
 	}
 	return nil
+}
+
+// MustRegister 注册插件（幂等，已存在则跳过）
+// 用于 init() 自动注册场景，避免重复注册报错
+func (m *Manager) MustRegister(p Plugin) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	name := p.Name()
+	if _, exists := m.plugins[name]; exists {
+		return
+	}
+	m.plugins[name] = p
+	m.order = append(m.order, name)
+}
+
+// ListPluggable 返回所有实现了 Pluggable 接口的插件
+func (m *Manager) ListPluggable() []Pluggable {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]Pluggable, 0)
+	for _, name := range m.order {
+		if p, ok := m.plugins[name]; ok {
+			if pl, ok := p.(Pluggable); ok {
+				result = append(result, pl)
+			}
+		}
+	}
+	return result
+}
+
+// AutoRegister 自动注册插件（幂等，在模块 init() 中调用）
+// 用法：在模块的 plugin.go 中添加 init() { AutoRegister(NewPlugin()) }
+func AutoRegister(p Plugin) {
+	GetManager().MustRegister(p)
 }
