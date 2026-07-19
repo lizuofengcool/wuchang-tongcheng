@@ -101,6 +101,12 @@ const (
 	CodeOrderNotFound         = 2610
 	CodeOrderAlreadyCancelled = 2611
 
+	// ===== 同城二手物品模块错误 2700-2799 =====
+	CodeErshouError        = 2701
+	CodeErshouNotFound     = 2702
+	CodeErshouPublishError = 2703
+	CodeErshouAuditError   = 2704
+
 	// ===== 第三方服务错误 4000-4999 =====
 	CodeThirdPartyError = 4001
 	CodeMapAPIError     = 4002
@@ -200,6 +206,12 @@ var codeMessages = map[int]string{
 	CodeOrderError:            "订单错误",
 	CodeOrderNotFound:         "订单不存在",
 	CodeOrderAlreadyCancelled: "订单已取消",
+
+	// 同城二手物品模块错误
+	CodeErshouError:        "二手物品错误",
+	CodeErshouNotFound:     "二手物品不存在",
+	CodeErshouPublishError: "二手物品发布错误",
+	CodeErshouAuditError:   "二手物品审核错误",
 
 	// 第三方服务错误
 	CodeThirdPartyError: "第三方服务错误",
