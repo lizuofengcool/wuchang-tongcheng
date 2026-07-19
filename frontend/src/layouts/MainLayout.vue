@@ -1,6 +1,6 @@
 <template>
   <el-container class="main-layout">
-    <!-- 顶部导航栏：Logo + 5 大中心 Tab + 用户区 -->
+    <!-- 顶部导航栏：Logo + 8 大业务领域 Tab + 用户区 -->
     <el-header class="top-header">
       <div class="header-left">
         <div class="logo" @click="router.push('/workspace')">
@@ -168,8 +168,8 @@ const stopRouteWatch = router.afterEach((to) => {
   }
 })
 
-// ====== 一级菜单（顶部 Tab：5 大中心） ======
-// 从 constantRoutes 派生：工作台 / 模块中心 / 中台中心 / 设置中心 / 数据中心
+// ====== 一级菜单（顶部 Tab：8 大业务领域） ======
+// 从 constantRoutes 派生：工作台 / 同城业务 / 商家服务 / 营销活动 / 用户运营 / 社区互动 / 数据中心 / 设置中心
 const rootRoute = computed(() => constantRoutes.find((r) => r.path === '/'))
 
 const topMenus = computed(() => {
@@ -354,7 +354,7 @@ const SidebarItem = {
   white-space: nowrap;
 }
 
-/* 顶部一级 Tab（5 大中心） */
+/* 顶部一级 Tab（8 大业务领域） */
 .top-tabs {
   flex: 1;
   height: 60px;
