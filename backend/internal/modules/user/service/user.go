@@ -166,7 +166,7 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	}
 
 	// 生成Token
-	token, err := jwt.GenerateToken(user.ID, user.Username)
+	token, err := jwt.GenerateTokenWithProfile(user.ID, user.Username, user.Phone, user.Avatar)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func (s *userService) LoginBySMS(ctx context.Context, regionID uint, phone, code
 		return nil, ErrUserDisabled
 	}
 
-	token, err := jwt.GenerateToken(user.ID, user.Username)
+	token, err := jwt.GenerateTokenWithProfile(user.ID, user.Username, user.Phone, user.Avatar)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (s *userService) loginAndIssueToken(user *model.User) (*dto.LoginResponse, 
 	if user.Status == 0 {
 		return nil, ErrUserDisabled
 	}
-	token, err := jwt.GenerateToken(user.ID, user.Username)
+	token, err := jwt.GenerateTokenWithProfile(user.ID, user.Username, user.Phone, user.Avatar)
 	if err != nil {
 		return nil, err
 	}

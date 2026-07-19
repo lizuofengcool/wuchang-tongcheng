@@ -14,6 +14,8 @@ import (
 const (
 	ContextUserID   = "user_id"
 	ContextUsername = "username"
+	ContextUserPhone  = "user_phone"  // 冗余携带的 phone（来自 JWT），用于业务模块冗余存储
+	ContextUserAvatar = "user_avatar" // 冗余携带的 avatar（来自 JWT），同上
 )
 
 // Auth 鉴权中间件
@@ -33,6 +35,8 @@ func Auth() gin.HandlerFunc {
 		if token == "" {
 			c.Set(ContextUserID, uint(0))
 			c.Set(ContextUsername, "guest")
+			c.Set(ContextUserPhone, "")
+			c.Set(ContextUserAvatar, "")
 			c.Next()
 			return
 		}
@@ -42,6 +46,8 @@ func Auth() gin.HandlerFunc {
 		if err != nil {
 			c.Set(ContextUserID, uint(0))
 			c.Set(ContextUsername, "guest")
+			c.Set(ContextUserPhone, "")
+			c.Set(ContextUserAvatar, "")
 			c.Next()
 			return
 		}
@@ -49,6 +55,8 @@ func Auth() gin.HandlerFunc {
 		// 将用户信息存入上下文
 		c.Set(ContextUserID, claims.UserID)
 		c.Set(ContextUsername, claims.Username)
+		c.Set(ContextUserPhone, claims.Phone)
+		c.Set(ContextUserAvatar, claims.Avatar)
 		c.Next()
 	}
 }
@@ -82,6 +90,26 @@ func GetUsername(c *gin.Context) string {
 	if value, exists := c.Get(ContextUsername); exists {
 		if name, ok := value.(string); ok {
 			return name
+		}
+	}
+	return ""
+}
+
+// GetUserPhone 从上下文中获取用户手机号（来自 JWT 冗余字段）
+func GetUserPhone(c *gin.Context) string {
+	if value, exists := c.Get(ContextUserPhone); exists {
+		if phone, ok := value.(string); ok {
+			return phone
+		}
+	}
+	return ""
+}
+
+// GetUserAvatar 从上下文中获取用户头像 URL（来自 JWT 冗余字段）
+func GetUserAvatar(c *gin.Context) string {
+	if value, exists := c.Get(ContextUserAvatar); exists {
+		if avatar, ok := value.(string); ok {
+			return avatar
 		}
 	}
 	return ""

@@ -64,3 +64,6 @@ temp/
 data/
 postgres_data/
 redis_data/
+
+# uniapp x 完整项目目录（独立管理，不入主仓库）
+五常同城uniappx/

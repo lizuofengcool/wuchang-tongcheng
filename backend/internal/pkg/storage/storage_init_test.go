@@ -28,7 +28,7 @@ func TestInit_LocalExplicit(t *testing.T) {
 
 	err := Init(&config.StorageConfig{
 		Type:   "local",
-		Domain: "http://localhost:8080",
+		Domain: "http://localhost:8088",
 	})
 	require.NoError(t, err)
 	got := GetStorage()

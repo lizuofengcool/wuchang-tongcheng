@@ -1,6 +1,33 @@
-// 反向代理：将多个服务通过单端口 5173 暴露
+// 反向代理：将多个服务通过单端口统一暴露
+// 端口从项目根目录 .env 读取，禁止硬编码。
 const http = require('http')
 const httpProxy = require('http-proxy')
+const fs = require('fs')
+const path = require('path')
+
+function loadEnv(filePath) {
+  const env = {}
+  if (!fs.existsSync(filePath)) return env
+  const content = fs.readFileSync(filePath, 'utf8')
+  for (const raw of content.split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const idx = line.indexOf('=')
+    if (idx === -1) continue
+    const key = line.slice(0, idx).trim()
+    const value = line.slice(idx + 1).trim()
+    env[key] = value
+  }
+  return env
+}
+
+const env = loadEnv(path.resolve(__dirname, '../.env'))
+
+const SERVER_PORT = env.WCTC_SERVER_PORT || '8088'
+const ADMIN_PORT = env.WCTC_ADMIN_PORT || '5177'
+const PC_PORT = env.WCTC_PC_PORT || '3010'
+const H5_PORT = env.WCTC_H5_PORT || '5178'
+const PROXY_PORT = parseInt(env.WCTC_PROXY_PORT || '8099', 10)
 
 const proxy = httpProxy.createProxyServer({
   ws: false,
@@ -10,10 +37,10 @@ const proxy = httpProxy.createProxyServer({
 
 // 服务映射
 const routes = {
-  '/pc':   'http://localhost:3000',   // PC 门户 (Next.js)
-  '/h5':   'http://localhost:5174',   // H5 小程序端 (Uni-app)
-  '/api':  'http://localhost:8080',   // 后端 API
-  '/':     'http://localhost:5175',   // 管理后台 (Vue 3)
+  '/pc':   `http://localhost:${PC_PORT}`,   // PC 门户 (Next.js)
+  '/h5':   `http://localhost:${H5_PORT}`,   // H5 小程序端 (Uni-app)
+  '/api':  `http://localhost:${SERVER_PORT}`, // 后端 API
+  '/':     `http://localhost:${ADMIN_PORT}`, // 管理后台 (Vue 3)
 }
 
 // 错误处理
@@ -28,7 +55,6 @@ proxy.on('error', (err, req, res) => {
 const server = http.createServer((req, res) => {
   const url = req.url
   let target = null
-  let pathRewrite = url
 
   // 匹配路由
   if (url.startsWith('/pc')) {
@@ -70,11 +96,10 @@ server.on('upgrade', (req, socket, head) => {
   }
 })
 
-const PORT = 5173
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Proxy running on http://0.0.0.0:${PORT}`)
-  console.log('  /      → 管理后台 (5175)')
-  console.log('  /pc    → PC 门户 (3000)')
-  console.log('  /h5    → H5 小程序 (5174)')
-  console.log('  /api   → 后端 API (8080)')
+server.listen(PROXY_PORT, '0.0.0.0', () => {
+  console.log(`Proxy running on http://0.0.0.0:${PROXY_PORT}`)
+  console.log(`  /      -> 管理后台 (${ADMIN_PORT})`)
+  console.log(`  /pc    -> PC 门户 (${PC_PORT})`)
+  console.log(`  /h5    -> H5 小程序 (${H5_PORT})`)
+  console.log(`  /api   -> 后端 API (${SERVER_PORT})`)
 })

@@ -22,7 +22,8 @@ var permissionChecker PermissionChecker
 var roleCodeFetcher RoleCodeFetcher
 
 // SuperAdminRoleCode 超级管理员角色编码，拥有该角色的用户直通所有权限校验
-const SuperAdminRoleCode = "admin"
+// 依据需求文档 1.9.1 角色定义，统一使用 super_admin（原 admin 已迁移）
+const SuperAdminRoleCode = "super_admin"
 
 // SetPermissionChecker 注入权限校验器
 // 在 permission 插件 Init 时调用：middleware.SetPermissionChecker(svc.HasPermission)

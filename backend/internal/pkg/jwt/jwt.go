@@ -13,6 +13,8 @@ import (
 type Claims struct {
 	UserID   uint   `json:"user_id"`
 	Username string `json:"username"`
+	Phone    string `json:"phone,omitempty"`  // 手机号（冗余携带，便于业务模块冗余存储，避免每次发布都查 users 表）
+	Avatar   string `json:"avatar,omitempty"` // 头像 URL（同上）
 	jwt.RegisteredClaims
 }
 
@@ -33,11 +35,21 @@ func Init(secret string, expire int) {
 	}
 }
 
-// GenerateToken 生成Token
+// GenerateToken 生成Token（仅携带基础信息，兼容旧调用方与测试）
+// 需要携带 phone/avatar 时请使用 GenerateTokenWithProfile。
 func GenerateToken(userID uint, username string) (string, error) {
+	return GenerateTokenWithProfile(userID, username, "", "")
+}
+
+// GenerateTokenWithProfile 生成携带 phone/avatar 的 Token
+// 用于登录场景，业务模块（如 ershou 发布）可从 Context 直接取这些冗余字段，
+// 避免每次发布都额外查询 users 表。
+func GenerateTokenWithProfile(userID uint, username, phone, avatar string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
+		Phone:    phone,
+		Avatar:   avatar,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    issuer,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expireHour) * time.Hour)),

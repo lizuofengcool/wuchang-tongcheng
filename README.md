@@ -97,6 +97,25 @@ wuchang-tongcheng/
 - PostgreSQL 16+
 - Redis 7+
 
+### 端口配置
+
+所有服务端口统一由项目根目录 `.env` 文件管理，修改 `.env` 即可调整端口，禁止硬编码到代码中。
+
+应用服务端口（开发环境）：
+- 后端 API：`8088`（`WCTC_SERVER_PORT`）
+- 管理后台：`5177`（`WCTC_ADMIN_PORT`）
+- PC 门户：`3010`（`WCTC_PC_PORT`）
+- H5 小程序：`5178`（`WCTC_H5_PORT`）
+- 统一开发代理：`8099`（`WCTC_PROXY_PORT`）
+
+基础设施端口（Docker 宿主机映射）：
+- PostgreSQL：`5434`（`WCTC_POSTGRES_PORT`）
+- Redis：`6380`（`WCTC_REDIS_PORT`）
+- RabbitMQ AMQP/MGMT：`5673` / `15673`
+- Elasticsearch：`9210`
+- MinIO API/Console：`9010` / `9011`
+- Nginx HTTP/HTTPS：`8098` / `8443`
+
 ### 1. 启动基础设施
 
 ```bash
@@ -127,7 +146,7 @@ make run
 
 ### 4. 验证服务
 
-访问 http://localhost:8080/health 检查服务状态。
+访问 http://localhost:8088/health 检查服务状态。
 
 ## 开发规范
 

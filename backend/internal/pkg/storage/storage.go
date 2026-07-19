@@ -74,13 +74,26 @@ func Init(cfg *config.StorageConfig) error {
 	return nil
 }
 
+// defaultBackendURL 返回本地后端访问地址，优先读取 .env 中的 WCTC_BACKEND_URL，
+// 其次通过 WCTC_SERVER_PORT 拼装，最后默认 8088。避免硬编码端口。
+func defaultBackendURL() string {
+	if u := os.Getenv("WCTC_BACKEND_URL"); u != "" {
+		return u
+	}
+	port := os.Getenv("WCTC_SERVER_PORT")
+	if port == "" {
+		port = "8088"
+	}
+	return fmt.Sprintf("http://localhost:%s", port)
+}
+
 // GetStorage 获取存储实例
 func GetStorage() Storage {
 	if storage == nil {
 		// 兜底：使用本地存储默认配置
 		storage, _ = NewLocalStorage(&config.StorageConfig{
 			Type:   "local",
-			Domain: "http://localhost:8080",
+			Domain: defaultBackendURL(),
 		})
 	}
 	return storage
@@ -88,9 +101,9 @@ func GetStorage() Storage {
 
 // LocalStorage 本地磁盘存储
 type LocalStorage struct {
-	domain      string // 访问域名
-	basePath    string // 存储根目录
-	urlPrefix   string // URL访问前缀
+	domain    string // 访问域名
+	basePath  string // 存储根目录
+	urlPrefix string // URL访问前缀
 }
 
 // NewLocalStorage 创建本地存储
@@ -106,7 +119,7 @@ func NewLocalStorage(cfg *config.StorageConfig) (*LocalStorage, error) {
 
 	domain := cfg.Domain
 	if domain == "" {
-		domain = "http://localhost:8080"
+		domain = defaultBackendURL()
 	}
 	// 规范化domain，去掉末尾斜杠
 	domain = strings.TrimSuffix(domain, "/")

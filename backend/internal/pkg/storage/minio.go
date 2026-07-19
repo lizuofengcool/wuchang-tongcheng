@@ -4,6 +4,8 @@ package storage
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -113,12 +115,19 @@ func (s *MinIOStorage) ensureBucket(ctx context.Context) error {
 	return nil
 }
 
-// Save 保存文件，返回可访问的 URL
-func (s *MinIOStorage) Save(filename string, reader io.Reader) (string, error) {
-	// 按日期分目录：2026/06/xxx.jpg，避免单目录文件过多
+// generateObjectName 生成唯一对象名：日期目录 + 时间戳 + 随机串 + 扩展名。
+func generateObjectName(filename string) string {
 	dateDir := time.Now().Format("2006/01")
 	ext := filepath.Ext(filename)
-	objectName := fmt.Sprintf("%s/%d%s", dateDir, time.Now().UnixNano(), ext)
+	randBytes := make([]byte, 4)
+	_, _ = rand.Read(randBytes)
+	return fmt.Sprintf("%s/%d-%s%s", dateDir, time.Now().UnixNano(), hex.EncodeToString(randBytes), ext)
+}
+
+// Save 保存文件，返回可访问的 URL
+func (s *MinIOStorage) Save(filename string, reader io.Reader) (string, error) {
+	objectName := generateObjectName(filename)
+	ext := filepath.Ext(filename)
 
 	ctx := context.Background()
 	// 获取文件大小（io.Reader 通常可 Seek，不能则用 -1 让 MinIO 自动分块）
@@ -161,10 +170,8 @@ func (s *MinIOStorage) PresignPut(filename string, expiry time.Duration) (string
 	if expiry <= 0 {
 		expiry = 15 * time.Minute
 	}
-	// 与 Save 保持一致的对象名规则：按日期分目录 + 唯一文件名 + 原扩展名
-	dateDir := time.Now().Format("2006/01")
-	ext := filepath.Ext(filename)
-	objectName := fmt.Sprintf("%s/%d%s", dateDir, time.Now().UnixNano(), ext)
+	// 与 Save 保持一致的对象名规则：按日期分目录 + 时间戳 + 随机串 + 原扩展名
+	objectName := generateObjectName(filename)
 
 	u, err := s.client.PresignedPutObject(context.Background(), s.bucket, objectName, expiry)
 	if err != nil {
@@ -186,7 +193,9 @@ func (s *MinIOStorage) AccessURL(objectName string) (string, error) {
 // getReaderSize 尝试获取 reader 的字节数
 func getReaderSize(r io.Reader) (int64, error) {
 	type sizer interface{ Size() (int64, error) }
-	type seeker interface{ Seek(offset int64, whence int) (int64, error) }
+	type seeker interface {
+		Seek(offset int64, whence int) (int64, error)
+	}
 	if s, ok := r.(sizer); ok {
 		return s.Size()
 	}

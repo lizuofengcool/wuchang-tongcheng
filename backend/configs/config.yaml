@@ -1,64 +1,108 @@
-# 五常同城本地生活服务平台 - 配置文件
+# 五常同城项目配置文件（本地开发，连接本地公用 PG:5432 / Redis:6379）
+# 由 config.yaml.example 复制并按本地环境调整生成。
+
+# 服务配置
 server:
   host: "0.0.0.0"
-  port: 8080
-  mode: "debug"
+  port: 8088
+  mode: "debug"  # debug, release, test
 
+# 数据库配置（连本地公用 PostgreSQL:5432）
 database:
   host: "localhost"
   port: 5432
   user: "postgres"
-  password: "postgres"
+  password: "12345678"
   dbname: "wuchang_tongcheng"
   sslmode: "disable"
   timezone: "Asia/Shanghai"
+  # 连接池配置
   max_open_conns: 100
   max_idle_conns: 10
-  max_lifetime: 3600
+  max_lifetime: 3600  # 秒
 
+# Redis配置（连本地公用 Redis:6379）
 redis:
   host: "localhost"
   port: 6379
-  password: ""
+  password: "redis"
   db: 0
   pool_size: 10
-  default_expiration: 3600
+  default_expiration: 3600  # 秒
 
+# 日志配置
 logger:
-  level: "debug"
-  filename: "logs/app.log"
-  max_size: 100
+  level: "info"  # debug, info, warn, error
+  filename: "./logs/app.log"
+  max_size: 100       # MB
   max_backups: 3
-  max_age: 30
+  max_age: 30         # 天
   compress: false
   console: true
 
+# JWT配置
 jwt:
-  secret: "wuchang-tongcheng-jwt-secret-key-2024"
-  expire: 72
+  secret: "wuchang-tongcheng-secret-key-change-in-production"
+  expire: 24  # 过期时间（小时）
   issuer: "wuchang-tongcheng"
 
+# RabbitMQ配置（本地未启动时后端自动降级运行）
 rabbitmq:
   host: "localhost"
-  port: 5672
-  user: "guest"
-  password: "guest"
-  vhost: "/"
+  port: 5673
+  user: "admin"
+  password: "admin123"
+  vhost: "/wuchang"
 
+# Elasticsearch配置（本地未启动时后端自动降级运行）
 elasticsearch:
   addresses:
-    - "http://localhost:9200"
+    - "http://localhost:9210"
   username: ""
   password: ""
 
+# 对象存储配置
 storage:
-  type: "local"
+  type: "local"  # local（本地磁盘）| minio（S3协议，兼容AWS S3/阿里云OSS/腾讯云COS）| qiniu（七牛云Kodo，AK/SK未配置时自动降级local）
+  access_key: "your-access-key"     # minio/qiniu: access key
+  secret_key: "your-secret-key"    # minio/qiniu: secret key
+  bucket: "wuchang-tongcheng"       # local: 存储目录(默认./uploads)；minio: 桶名；qiniu: 存储空间名
+  domain: "http://localhost:8088"  # local: 访问域名(默认http://localhost:8088)；minio: 服务端点；qiniu: CDN/源站域名
+  region: "us-east-1"               # minio: 区域（本地MinIO可用us-east-1）
+
+# 地图服务配置
+map:
+  type: "amap"  # amap, baidu
+  key: "your-map-api-key"
+
+# 短信验证码服务配置
+sms:
+  provider: "mock"            # ""/mock（不发短信，dev_return_code=true 时接口返回验证码明文便于联调）/aliyun（dysmsapi RPC API，AK/SK/SignName/TemplateCode 任一缺失降级 mock）
+  sign_name: ""               # 短信签名（aliyun 用）
+  template_code: ""           # 短信模板 code（aliyun 用）
+  access_key: ""              # 短信服务 AK（aliyun 用）
+  secret_key: ""              # 短信服务 SK（aliyun 用）
+  code_ttl: 300               # 验证码有效期（秒），默认 300
+  code_length: 6              # 验证码位数，默认 6
+  max_attempts: 5             # 单次验证码最大尝试次数，超限后作废，默认 5
+  dev_return_code: false      # 开发联调：发送接口返回验证码明文（仅 mock provider 生效，生产务必 false）
+
+# OSS STS 临时凭据直传配置（可选）
+sts:
+  provider: ""                # ""/aliyun（aliyun 且 access_key/secret_key/role_arn 齐全才激活）
   access_key: ""
   secret_key: ""
-  bucket: "wuchang-tongcheng"
-  domain: ""
+  role_arn: ""
+  role_session_name: ""
+  duration_seconds: 3600
+  bucket: ""
   region: ""
+  endpoint: ""
+  object_prefix: "uploads/"
 
-map:
-  type: "amap"
-  key: ""
+# 第三方登录配置（可选）
+oauth:
+  wechat:
+    provider: ""              # ""/mock/wechat
+    app_id: ""
+    app_secret: ""
