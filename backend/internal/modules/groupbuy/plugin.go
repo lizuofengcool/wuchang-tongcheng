@@ -33,6 +33,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "groupbuy",
+		DisplayName:  "团购优惠",
+		Category:     "business",
+		Description:  "提供团购商品、优惠券、用户优惠券、团购订单的完整管理",
+		Version:      p.version,
+		Dependencies: []string{"shop"},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

@@ -33,6 +33,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "shop",
+		DisplayName:  "商家入驻",
+		Category:     "business",
+		Description:  "提供店铺入驻、相册、评价及管理后台审核等业务",
+		Version:      p.version,
+		Dependencies: []string{"user"},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

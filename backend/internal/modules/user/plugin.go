@@ -43,6 +43,19 @@ func (p *Plugin) Version() string {
 	return p.version
 }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "user",
+		DisplayName:  "用户中心",
+		Category:     "user",
+		Description:  "实现用户注册、登录、个人信息管理等业务",
+		Version:      p.version,
+		Dependencies: []string{},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

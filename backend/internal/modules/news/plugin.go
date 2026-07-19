@@ -33,6 +33,19 @@ func NewPlugin() *Plugin {
 func (p *Plugin) Name() string    { return p.name }
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "news",
+		DisplayName:  "同城资讯",
+		Category:     "business",
+		Description:  "提供本地分类信息的发布、浏览、管理、收藏、评论、消息通知",
+		Version:      p.version,
+		Dependencies: []string{"category"},
+		Author:       "wuchang",
+	}
+}
+
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 

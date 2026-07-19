@@ -151,6 +151,7 @@ func main() {
 	r.Use(middleware.Recovery(logger.GetLogger()))
 	r.Use(middleware.Region())
 	r.Use(middleware.Auth())
+	r.Use(middleware.ModuleCheck(database.GetDB()))
 
 	// 注册健康检查路由
 	r.GET("/health", func(c *gin.Context) {
@@ -196,7 +197,7 @@ func main() {
 
 	// 注册插件路由
 	rootGroup := r.Group("")
-	pluginManager.RegisterAllRoutes(rootGroup)
+	pluginManager.RegisterAllRoutes(database.GetDB(), rootGroup)
 
 	// Swagger 文档路由（/api/v1/docs 与 /swagger/* 均可访问）
 	// 生成文档命令：swag init -g cmd/server/main.go -o docs

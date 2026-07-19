@@ -36,6 +36,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "file",
+		DisplayName:  "文件存储",
+		Category:     "system",
+		Description:  "提供文件上传功能，支持本地存储，预留MinIO/七牛云",
+		Version:      p.version,
+		Dependencies: []string{},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

@@ -33,6 +33,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "setting",
+		DisplayName:  "系统设置",
+		Category:     "system",
+		Description:  "提供KV配置存储，按group分组，支持多地区",
+		Version:      p.version,
+		Dependencies: []string{},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

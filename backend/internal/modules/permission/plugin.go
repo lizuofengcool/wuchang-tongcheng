@@ -33,6 +33,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "permission",
+		DisplayName:  "权限管理",
+		Category:     "system",
+		Description:  "实现RBAC权限管理：用户-角色-权限",
+		Version:      p.version,
+		Dependencies: []string{"user"},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

@@ -10,12 +10,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// PluginMeta 插件元信息，描述模块的展示与分类等元数据
+// 用于 modules 模块注册表同步、模块总控面板展示、依赖关系分析
+type PluginMeta struct {
+	Name         string   // 模块唯一标识（如 ershou）
+	DisplayName  string   // 中文展示名（如"同城二手"）
+	Category     string   // 分类：system/business/marketing/user/community/middleware
+	Description  string   // 模块描述
+	Version      string   // 版本号
+	Dependencies []string // 依赖的其他模块名
+	Icon         string   // 图标 URL 或 icon class
+	Author       string   // 作者
+	Homepage     string   // 主页 URL
+}
+
 // Plugin 插件接口，所有业务模块插件必须实现此接口
 type Plugin interface {
 	// Name 返回插件名称，必须唯一
 	Name() string
 	// Version 返回插件版本号
 	Version() string
+	// Meta 返回插件元信息（展示名、分类、依赖等），用于 modules 注册表同步
+	Meta() PluginMeta
 	// Init 初始化插件，在服务启动时调用
 	Init(ctx context.Context) error
 	// RegisterRoutes 注册插件的路由
@@ -37,6 +53,25 @@ type Pluggable interface {
 	Install(db *gorm.DB) error
 	// Uninstall 卸载模块（删表、清理数据等）
 	Uninstall(db *gorm.DB) error
+}
+
+// metaProvider 内部元信息提供者接口，用于 MetaFromPlugin 的类型断言
+// 保留此接口便于外部包装器（proxy/decorator）按需扩展，即便 Plugin 已强制要求 Meta()
+type metaProvider interface {
+	Meta() PluginMeta
+}
+
+// MetaFromPlugin 通过类型断言获取插件的元信息。
+// 由于 Plugin 接口已包含 Meta() 方法，常规插件直接调用即可；
+// 对于通过反射/代理加载的外部插件（可能未实现 Meta()），返回基于 Name()/Version() 的默认 PluginMeta。
+func MetaFromPlugin(p Plugin) PluginMeta {
+	if mp, ok := p.(metaProvider); ok {
+		return mp.Meta()
+	}
+	return PluginMeta{
+		Name:    p.Name(),
+		Version: p.Version(),
+	}
 }
 
 // RouterGroup 路由组接口，插件通过此接口注册路由
@@ -188,12 +223,64 @@ func (m *Manager) InitAll(ctx context.Context) error {
 }
 
 // RegisterAllRoutes 注册所有插件的路由
-func (m *Manager) RegisterAllRoutes(router RouterGroup) {
+// 新增 db 参数用于查询 modules 表，跳过 enabled=false 的模块（不注册路由）
+// 若 db 为 nil（如单元测试场景），则按原行为注册全部插件路由
+func (m *Manager) RegisterAllRoutes(db *gorm.DB, router RouterGroup) {
 	plugins := m.List()
 	for _, p := range plugins {
+		// 查询 modules 表，跳过已禁用的模块
+		if db != nil && isModuleDisabled(db, p.Name()) {
+			continue
+		}
 		pluginGroup := router.Group("/api/v1/" + p.Name())
 		p.RegisterRoutes(pluginGroup)
 	}
+}
+
+// isModuleDisabled 查询 modules 表判断模块是否被禁用
+// 表不存在或记录不存在视为启用（不阻塞未同步的模块）
+func isModuleDisabled(db *gorm.DB, name string) bool {
+	type moduleStatus struct {
+		Enabled bool
+	}
+	var status moduleStatus
+	err := db.Table("modules").
+		Select("enabled").
+		Where("name = ?", name).
+		Limit(1).
+		First(&status).Error
+	if err != nil {
+		// 记录不存在或表不存在 → 视为启用
+		return false
+	}
+	return !status.Enabled
+}
+
+// RegisterRoutesFor 运行时动态注册指定模块的路由（用于启用某模块时调用）
+// 调用方应先在 modules 表中将该模块置为 enabled=true，再调用此方法
+func (m *Manager) RegisterRoutesFor(db *gorm.DB, name string, router RouterGroup) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	p, ok := m.plugins[name]
+	if !ok {
+		return ErrPluginNotFound
+	}
+	pluginGroup := router.Group("/api/v1/" + p.Name())
+	p.RegisterRoutes(pluginGroup)
+	return nil
+}
+
+// UnregisterRoutesFor 运行时动态禁用指定模块的路由
+// P0 实现说明：Gin 路由树不支持运行时删除路由，此方法仅返回 nil；
+// 实际拦截由 ModuleCheck 中间件在请求层完成（查询 modules 表，禁用模块返回 403）
+func (m *Manager) UnregisterRoutesFor(name string) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if _, ok := m.plugins[name]; !ok {
+		return ErrPluginNotFound
+	}
+	return nil
 }
 
 // CloseAll 关闭所有插件

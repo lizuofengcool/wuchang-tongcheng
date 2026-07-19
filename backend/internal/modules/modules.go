@@ -16,7 +16,12 @@ import (
 	_ "wuchang-tongcheng/internal/modules/news"
 	_ "wuchang-tongcheng/internal/modules/shop"
 
+	_ "wuchang-tongcheng/internal/modules/ershou"
+
 	_ "wuchang-tongcheng/internal/modules/groupbuy"
+
+	// 模块管理（注册表 + 开关 + 元信息同步，需最后注册，确保同步时其他模块已就绪）
+	_ "wuchang-tongcheng/internal/modules/module"
 
 	// 新增模块在此添加
 )

@@ -33,6 +33,19 @@ func (p *Plugin) Name() string { return p.name }
 // Version 返回插件版本号
 func (p *Plugin) Version() string { return p.version }
 
+// Meta 返回插件元信息
+func (p *Plugin) Meta() plugin.PluginMeta {
+	return plugin.PluginMeta{
+		Name:         "category",
+		DisplayName:  "分类管理",
+		Category:     "system",
+		Description:  "提供本地生活分类管理（如：二手房、招聘、二手物品、车辆等）",
+		Version:      p.version,
+		Dependencies: []string{},
+		Author:       "wuchang",
+	}
+}
+
 // Init 初始化插件
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()

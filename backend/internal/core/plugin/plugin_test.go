@@ -38,6 +38,14 @@ type mockPlugin struct {
 func (p *mockPlugin) Name() string    { return p.name }
 func (p *mockPlugin) Version() string { return p.version }
 
+// Meta 返回 mock 插件的元信息（仅包含 Name/Version，用于满足 Plugin 接口）
+func (p *mockPlugin) Meta() PluginMeta {
+	return PluginMeta{
+		Name:    p.name,
+		Version: p.version,
+	}
+}
+
 func (p *mockPlugin) Init(ctx context.Context) error {
 	p.initCount++
 	if p.callLog != nil {
@@ -301,7 +309,7 @@ func TestRegisterAllRoutes_GroupPath(t *testing.T) {
 	require.NoError(t, m.Register(pNews))
 
 	root := newMockRouterGroup()
-	m.RegisterAllRoutes(root)
+	m.RegisterAllRoutes(nil, root)
 
 	require.Len(t, root.groups, 2)
 	// 子组路径 = /api/v1/{name}
@@ -320,7 +328,7 @@ func TestRegisterAllRoutes_GroupPath(t *testing.T) {
 func TestRegisterAllRoutes_Empty(t *testing.T) {
 	m := newManager()
 	root := newMockRouterGroup()
-	m.RegisterAllRoutes(root)
+	m.RegisterAllRoutes(nil, root)
 	assert.Len(t, root.groups, 0)
 }
 
@@ -331,7 +339,7 @@ func TestRegisterAllRoutes_Order(t *testing.T) {
 		require.NoError(t, m.Register(&mockPlugin{name: n}))
 	}
 	root := newMockRouterGroup()
-	m.RegisterAllRoutes(root)
+	m.RegisterAllRoutes(nil, root)
 
 	require.Len(t, root.groups, 3)
 	assert.Equal(t, "/api/v1/zeta", root.groups[0].groupPath)
