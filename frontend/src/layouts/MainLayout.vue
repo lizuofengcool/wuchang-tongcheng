@@ -1,9 +1,9 @@
 <template>
   <el-container class="main-layout">
-    <!-- 顶部导航栏：Logo + 一级Tab + 用户区 -->
+    <!-- 顶部导航栏：Logo + 5 大中心 Tab + 用户区 -->
     <el-header class="top-header">
       <div class="header-left">
-        <div class="logo" @click="router.push('/dashboard')">
+        <div class="logo" @click="router.push('/workspace')">
           <el-icon :size="22"><Promotion /></el-icon>
           <span class="logo-text">近享同城</span>
         </div>
@@ -47,7 +47,7 @@
           <el-icon
             class="message-icon"
             :size="18"
-            @click="router.push('/content/news/message')"
+            @click="router.push('/workspace/message')"
           >
             <Bell />
           </el-icon>
@@ -80,32 +80,21 @@
         <el-scrollbar class="menu-scrollbar">
           <el-menu
             :default-active="activeMenu"
+            :default-openeds="defaultOpeneds"
             :collapse="isCollapse"
             :collapse-transition="false"
-            :unique-opened="true"
+            :unique-opened="false"
             router
             background-color="#001529"
             text-color="#bfcbd9"
             active-text-color="#409eff"
           >
-            <template v-for="item in sidebarMenus" :key="item.path">
-              <!-- 二级分组菜单（含三级children） -->
-              <el-sub-menu v-if="item.children && item.children.length" :index="item.path">
-                <template #title>
-                  <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
-                  <span>{{ item.title }}</span>
-                </template>
-                <el-menu-item v-for="g in item.children" :key="g.path" :index="g.path">
-                  <el-icon v-if="g.icon"><component :is="g.icon" /></el-icon>
-                  <template #title>{{ g.title }}</template>
-                </el-menu-item>
-              </el-sub-menu>
-              <!-- 二级菜单叶子 -->
-              <el-menu-item v-else :index="item.path">
-                <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
-                <template #title>{{ item.title }}</template>
-              </el-menu-item>
-            </template>
+            <SidebarItem
+              v-for="item in sidebarMenus"
+              :key="item.path"
+              :item="item"
+              :base-path="currentTopPath"
+            />
           </el-menu>
         </el-scrollbar>
       </el-aside>
@@ -143,9 +132,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, h, resolveComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessageBox, ElMessage, ElIcon, ElSubMenu, ElMenuItem } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useRegionStore } from '@/stores/region'
 import { getUnreadCount } from '@/api/news'
@@ -174,80 +163,68 @@ const loadUnreadCount = async () => {
 
 // 路由切换到消息中心时刷新未读数
 const stopRouteWatch = router.afterEach((to) => {
-  if (to.path === '/content/news/message') {
+  if (to.path === '/workspace/message') {
     setTimeout(loadUnreadCount, 800)
   }
 })
 
-// ====== 一级菜单（顶部Tab）======
-// 从 constantRoutes 派生一级菜单：
-// - dashboard（仪表盘）作为第一个 Tab
-// - 7 大分组（content/business/shop-service/marketing/user-op/community/system）作为后续 Tab
+// ====== 一级菜单（顶部 Tab：5 大中心） ======
+// 从 constantRoutes 派生：工作台 / 模块中心 / 中台中心 / 设置中心 / 数据中心
 const rootRoute = computed(() => constantRoutes.find((r) => r.path === '/'))
 
 const topMenus = computed(() => {
   if (!rootRoute.value || !rootRoute.value.children) return []
   return rootRoute.value.children
-    .filter((r) => !r.meta?.hidden)
+    .filter((r) => !r.meta?.hidden && r.meta?.menuGroup)
     .map((r) => ({
       path: '/' + r.path,
       title: r.meta?.title,
       icon: r.meta?.icon,
-      // 保留原始路由对象，便于侧边栏派生
       raw: r
     }))
 })
 
-// ====== 当前激活的一级Tab路径 ======
-// 根据当前路由 matched[1]（一级分组节点）判断
+// ====== 当前激活的一级 Tab 路径 ======
 const currentTopPath = computed(() => {
-  // matched[0] 是根 '/'，matched[1] 是一级分组
   if (route.matched.length >= 2) {
     return route.matched[1].path
   }
-  // dashboard 是一级叶子，没有 children，直接用 path
-  if (route.path.startsWith('/dashboard')) return '/dashboard'
-  if (route.path.startsWith('/profile')) return '/dashboard'
-  return '/dashboard'
+  return '/workspace'
 })
 
-// ====== 侧边栏菜单（当前一级Tab下的二三级菜单）======
+// ====== 侧边栏菜单（当前一级 Tab 下的所有子菜单，递归构建） ======
 const sidebarMenus = computed(() => {
   const current = topMenus.value.find((m) => m.path === currentTopPath.value)
   if (!current || !current.raw?.children) return []
-  return current.raw.children
-    .filter((c) => !c.meta?.hidden)
-    .map((c) => {
-      const child = {
-        path: current.path + '/' + c.path,
-        title: c.meta?.title,
-        icon: c.meta?.icon
-      }
-      // 三级菜单（含 children 的二级节点）
-      if (c.children && c.children.length) {
-        child.children = c.children
-          .filter((g) => !g.meta?.hidden)
-          .map((g) => ({
-            path: current.path + '/' + c.path + '/' + g.path,
-            title: g.meta?.title,
-            icon: g.meta?.icon
-          }))
-      }
-      return child
-    })
+  return buildMenuTree(current.raw.children, current.path)
 })
 
-// ====== 顶部Tab切换 ======
-const onTopMenuSelect = (index) => {
-  const current = topMenus.value.find((m) => m.path === index)
-  if (!current) return
-  // dashboard 直接跳转
-  if (index === '/dashboard') {
-    router.push('/dashboard')
-    return
-  }
-  // 其他模块跳转到 redirect 路径（router.push 会自动跟随 redirect）
-  router.push(index)
+// 递归构建菜单树
+function buildMenuTree(children, basePath) {
+  if (!Array.isArray(children)) return []
+  return children
+    .filter((c) => !c.meta?.hidden)
+    .map((c) => {
+      const path = basePath + '/' + c.path
+      const node = {
+        path,
+        title: c.meta?.title,
+        icon: c.meta?.icon,
+        children: []
+      }
+      if (c.children && c.children.length) {
+        node.children = buildMenuTree(c.children, path)
+      }
+      return node
+    })
+}
+
+// 默认展开第一层（让用户直接看到分组下的子菜单）
+const defaultOpeneds = computed(() => sidebarMenus.value.map((m) => m.path))
+
+// ====== 顶部 Tab 切换 ======
+const onTopMenuSelect = (path) => {
+  router.push(path)
 }
 
 // ====== 面包屑（按 matched 路由构造） ======
@@ -300,6 +277,37 @@ onBeforeUnmount(() => {
     stopRouteWatch()
   }
 })
+
+// ====== 递归菜单组件（内联定义） ======
+const SidebarItem = {
+  name: 'SidebarItem',
+  props: {
+    item: { type: Object, required: true },
+    basePath: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => {
+      const { item } = props
+      const hasChildren = item.children && item.children.length > 0
+
+      const iconNode = item.icon
+        ? h(ElIcon, null, { default: () => h(resolveComponent(item.icon)) })
+        : null
+
+      if (hasChildren) {
+        return h(ElSubMenu, { index: item.path }, {
+          title: () => [iconNode, h('span', null, item.title)],
+          default: () => item.children.map((child) =>
+            h(SidebarItem, { item: child, key: child.path, 'base-path': item.path })
+          )
+        })
+      }
+      return h(ElMenuItem, { index: item.path }, {
+        default: () => [iconNode, h('span', null, item.title)]
+      })
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -346,7 +354,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-/* 顶部一级 Tab（自定义实现，避免 el-menu horizontal 自动收纳） */
+/* 顶部一级 Tab（5 大中心） */
 .top-tabs {
   flex: 1;
   height: 60px;
@@ -371,7 +379,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 18px;
+  padding: 0 24px;
   height: 60px;
   color: #bfcbd9;
   cursor: pointer;
@@ -458,12 +466,6 @@ onBeforeUnmount(() => {
 
 .sidebar :deep(.el-menu) {
   border-right: none;
-}
-
-/* 三级菜单样式微调 */
-.sidebar :deep(.el-menu--inline .el-menu-item) {
-  font-size: 13px;
-  padding-left: 48px !important;
 }
 
 .main-container {
