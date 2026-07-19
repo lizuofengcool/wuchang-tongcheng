@@ -1,22 +1,601 @@
 <template>
-    <view class="page">
-        <view class="content">
-            <text class="title">二手详情</text>
-            <text class="placeholder">页面开发中</text>
-            <text class="id-text">ID: {{ ershouId }}</text>
-            <text class="hint">P2 阶段完善：商品信息、图片轮播、留言、收藏、联系卖家</text>
+    <view class="page" v-if="loaded">
+        <scroll-view class="main-scroll" scroll-y>
+            <!-- 图集轮播 -->
+            <swiper class="gallery" :indicator-dots="images.length > 1" :autoplay="false" :circular="true" @change="onGalleryChange">
+                <swiper-item v-for="(img, idx) in images" :key="idx">
+                    <image class="gallery-img" :src="img" mode="aspectFill" lazy-load="true" @click="previewImage(idx)" />
+                </swiper-item>
+            </swiper>
+            <view class="gallery-index" v-if="images.length > 1">
+                <text class="gallery-index-text">{{ galleryCurrent + 1 }}/{{ images.length }}</text>
+            </view>
+
+            <!-- 价格区 -->
+            <view class="price-section">
+                <view class="price-main-row">
+                    <text class="price-symbol">¥</text>
+                    <text class="price-value">{{ formatPrice(detail.price) }}</text>
+                    <text class="price-unit" v-if="detail.price_unit.length > 0">{{ detail.price_unit }}</text>
+                    <text class="price-original" v-if="detail.original_price > 0 && detail.original_price > detail.price">¥{{ formatPrice(detail.original_price) }}</text>
+                </view>
+                <view class="price-meta">
+                    <view class="meta-tag" v-if="detail.is_urgent">
+                        <text class="meta-tag-text urgent">⚡急转</text>
+                    </view>
+                    <view class="meta-tag" v-if="auction != null">
+                        <text class="meta-tag-text auction">🔨拍卖</text>
+                    </view>
+                    <text class="price-stats">👁 {{ detail.view_count }}  ❤ {{ detail.fav_count }}  💬 {{ detail.message_count }}</text>
+                </view>
+            </view>
+
+            <!-- 标题区 -->
+            <view class="title-section">
+                <text class="title">{{ detail.title }}</text>
+                <text class="summary" v-if="detail.summary.length > 0">{{ detail.summary }}</text>
+                <view class="tag-row" v-if="tags.length > 0">
+                    <view class="tag" v-for="(t, idx) in tags" :key="idx">
+                        <text class="tag-text">{{ t }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 商品属性 -->
+            <view class="attr-section">
+                <text class="section-title">商品属性</text>
+                <view class="attr-grid">
+                    <view class="attr-item">
+                        <text class="attr-label">成色</text>
+                        <text class="attr-value">{{ conditionText(detail.condition) }}</text>
+                    </view>
+                    <view class="attr-item" v-if="detail.brand.length > 0">
+                        <text class="attr-label">品牌</text>
+                        <text class="attr-value">{{ detail.brand }}</text>
+                    </view>
+                    <view class="attr-item" v-if="detail.category_name.length > 0">
+                        <text class="attr-label">分类</text>
+                        <text class="attr-value">{{ detail.category_name }}</text>
+                    </view>
+                    <view class="attr-item" v-if="detail.delivery_method.length > 0">
+                        <text class="attr-label">交付</text>
+                        <text class="attr-value">{{ deliveryText(detail.delivery_method) }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 商品描述 -->
+            <view class="desc-section" v-if="detail.content.length > 0">
+                <text class="section-title">商品描述</text>
+                <text class="desc-content">{{ detail.content }}</text>
+            </view>
+
+            <!-- 位置信息 -->
+            <view class="loc-section" v-if="detail.address.length > 0">
+                <text class="section-title">位置信息</text>
+                <view class="loc-card" @click="openLocation">
+                    <text class="loc-icon">📍</text>
+                    <view class="loc-info">
+                        <text class="loc-address">{{ detail.address }}</text>
+                        <text class="loc-distance" v-if="detail.distance > 0">距您约 {{ formatDistance(detail.distance) }}</text>
+                    </view>
+                    <text class="loc-arrow">›</text>
+                </view>
+            </view>
+
+            <!-- 拍卖信息 -->
+            <view class="auction-section" v-if="auction != null">
+                <er-auction-card :auction="auction" />
+                <view class="bid-btn" @click="goAuction">
+                    <text class="bid-btn-text">前往出价</text>
+                </view>
+            </view>
+
+            <!-- SKU 选择 -->
+            <view class="sku-section" v-if="skus.length > 0">
+                <text class="section-title">规格选择</text>
+                <view class="sku-preview" @click="openSkuPopup">
+                    <text class="sku-preview-text" v-if="selectedSkuText.length > 0">已选：{{ selectedSkuText }}</text>
+                    <text class="sku-preview-text placeholder" v-else>请选择商品规格</text>
+                    <text class="sku-arrow">›</text>
+                </view>
+            </view>
+
+            <!-- 评价区 -->
+            <view class="review-section" v-if="reviews.length > 0">
+                <view class="section-header">
+                    <text class="section-title">评价 ({{ reviewStats.total_reviews }})</text>
+                    <text class="section-more" @click="goAllReviews">全部 ›</text>
+                </view>
+                <view class="rating-row">
+                    <text class="rating-score">{{ reviewStats.avg_rating.toFixed(1) }}</text>
+                    <text class="rating-stars">⭐⭐⭐⭐⭐</text>
+                    <text class="rating-rate">好评率 {{ Math.round(reviewStats.good_rate * 100) }}%</text>
+                </view>
+                <view class="review-item" v-for="(rv, idx) in reviews.slice(0, 2)" :key="idx">
+                    <view class="review-header">
+                        <image class="review-avatar" :src="rv.reviewer_avatar" mode="aspectFill" lazy-load="true" v-if="rv.reviewer_avatar.length > 0" />
+                        <view class="review-avatar-default" v-else>
+                            <text class="review-avatar-text">{{ rv.reviewer_name.length > 0 ? rv.reviewer_name.charAt(0) : 'U' }}</text>
+                        </view>
+                        <text class="review-name">{{ rv.is_anonymous ? '匿名用户' : rv.reviewer_name }}</text>
+                        <text class="review-rating">⭐ {{ rv.rating }}</text>
+                    </view>
+                    <text class="review-content">{{ rv.content }}</text>
+                    <text class="review-time">{{ formatTime(rv.created_at) }}</text>
+                </view>
+            </view>
+
+            <!-- 卖家信息 -->
+            <view class="seller-section" v-if="shop != null">
+                <er-shop-card :shop="shop" @click="goShop" @follow="onFollowShop" />
+            </view>
+
+            <!-- 推荐相似 -->
+            <view class="recommend-section">
+                <text class="section-title">猜你喜欢</text>
+                <scroll-view class="recommend-scroll" scroll-x>
+                    <view class="recommend-item" v-for="(item, idx) in similarList" :key="idx" @click="goDetail(item.id)">
+                        <image class="recommend-img" :src="item.cover_image" mode="aspectFill" lazy-load="true" />
+                        <text class="recommend-title">{{ item.title }}</text>
+                        <text class="recommend-price">¥{{ formatPrice(item.price) }}</text>
+                    </view>
+                </scroll-view>
+            </view>
+
+            <view class="bottom-placeholder"></view>
+        </scroll-view>
+
+        <!-- 底部操作栏 -->
+        <view class="bottom-bar">
+            <view class="bottom-icons">
+                <view class="bottom-icon" @click="onFav">
+                    <text class="bottom-icon-text">{{ hasFaved ? '❤️' : '🤍' }}</text>
+                    <text class="bottom-icon-label">收藏</text>
+                </view>
+                <view class="bottom-icon" @click="onMessage">
+                    <text class="bottom-icon-text">💬</text>
+                    <text class="bottom-icon-label">留言</text>
+                </view>
+                <view class="bottom-icon" @click="onShare">
+                    <text class="bottom-icon-text">📤</text>
+                    <text class="bottom-icon-label">分享</text>
+                </view>
+            </view>
+            <view class="bottom-actions" v-if="auction == null">
+                <view class="action-btn action-contact" @click="onContact">
+                    <text class="action-btn-text">联系卖家</text>
+                </view>
+                <view class="action-btn action-buy" @click="onBuy">
+                    <text class="action-btn-text-white">立即购买</text>
+                </view>
+            </view>
+            <view class="bottom-actions" v-else>
+                <view class="action-btn action-buy" @click="goAuction">
+                    <text class="action-btn-text-white">立即出价</text>
+                </view>
+            </view>
         </view>
+    </view>
+    <view class="loading-page" v-else>
+        <text class="loading-text">加载中...</text>
     </view>
 </template>
 
 <script setup lang="uts">
-    const ershouId = ref('')
+    import { getErshouDetail, fav, favStatus, listMessages, getReviews, getReviewStats, getAuctionDetail, listSKUs, getSimilar, sendMessage } from '@/api/ershou.uts'
+    import { state, checkLogin } from '@/store/index.uts'
+
+    type Detail = {
+        id: number
+        title: string
+        content: string
+        summary: string
+        cover_image: string
+        images: string[]
+        price: number
+        original_price: number
+        price_unit: string
+        condition: string
+        brand: string
+        category_name: string
+        address: string
+        latitude: number
+        longitude: number
+        distance: number
+        delivery_method: string
+        is_urgent: boolean
+        view_count: number
+        fav_count: number
+        message_count: number
+        status: number
+        user_id: number
+        user_name: string
+        user_avatar: string
+        created_at: string
+        shop_id: number
+    }
+
+    type ReviewItem = {
+        id: number
+        reviewer_name: string
+        reviewer_avatar: string
+        rating: number
+        content: string
+        images: string[]
+        is_anonymous: boolean
+        reply: string
+        created_at: string
+    }
+
+    type ReviewStats = {
+        total_reviews: number
+        avg_rating: number
+        good_rate: number
+    }
+
+    type SKUItem = {
+        id: number
+        name: string
+        color: string
+        size: string
+        version: string
+        price: number
+        stock: number
+    }
+
+    type Auction = {
+        id: number
+        ershou_id: number
+        start_price: number
+        step_price: number
+        reserve_price: number
+        bond_amount: number
+        current_bid_price: number
+        current_bid_user_id: number
+        bid_count: number
+        watcher_count: number
+        status: number
+        status_text: string
+        start_time: string | null
+        end_time: string | null
+        auto_extend_enabled: boolean
+        winner_id: number
+        winner_price: number
+        closed_at: string | null
+    }
+
+    type Shop = {
+        id: number
+        shop_name: string
+        logo: string
+        description: string
+        level: number
+        level_text: string
+        follower_count: number
+        item_count: number
+        sold_count: number
+        good_rate: number
+        is_following: boolean
+    }
+
+    type SimilarItem = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+    }
+
+    const ershouId = ref(0)
+    const loaded = ref(false)
+    const detail = ref<Detail>({} as Detail)
+    const images = ref<string[]>([] as string[])
+    const galleryCurrent = ref(0)
+    const hasFaved = ref(false)
+    const reviews = ref<ReviewItem[]>([] as ReviewItem[])
+    const reviewStats = ref<ReviewStats>({ total_reviews: 0, avg_rating: 0, good_rate: 0 } as ReviewStats)
+    const skus = ref<SKUItem[]>([] as SKUItem[])
+    const auction = ref<Auction | null>(null)
+    const shop = ref<Shop | null>(null)
+    const similarList = ref<SimilarItem[]>([] as SimilarItem[])
+    const selectedSkuText = ref('')
+    const tags = ref<string[]>([] as string[])
+
+    const loadDetail = async () => {
+        try {
+            const res = await getErshouDetail(ershouId.value)
+            const data = res.data as UTSJSONObject
+            detail.value = {
+                id: (data['id'] as number) ?? 0,
+                title: (data['title'] as string) ?? '',
+                content: (data['content'] as string) ?? '',
+                summary: (data['summary'] as string) ?? '',
+                cover_image: (data['cover_image'] as string) ?? '',
+                images: (data['images'] as string[]) ?? ([] as string[]),
+                price: (data['price'] as number) ?? 0,
+                original_price: (data['original_price'] as number) ?? 0,
+                price_unit: (data['price_unit'] as string) ?? '',
+                condition: (data['condition'] as string) ?? '',
+                brand: (data['brand'] as string) ?? '',
+                category_name: (data['category_name'] as string) ?? '',
+                address: (data['address'] as string) ?? '',
+                latitude: (data['latitude'] as number) ?? 0,
+                longitude: (data['longitude'] as number) ?? 0,
+                distance: (data['distance'] as number) ?? 0,
+                delivery_method: (data['delivery_method'] as string) ?? '',
+                is_urgent: (data['is_urgent'] as boolean) ?? false,
+                view_count: (data['view_count'] as number) ?? 0,
+                fav_count: (data['fav_count'] as number) ?? 0,
+                message_count: (data['message_count'] as number) ?? 0,
+                status: (data['status'] as number) ?? 0,
+                user_id: (data['user_id'] as number) ?? 0,
+                user_name: (data['user_name'] as string) ?? '',
+                user_avatar: (data['user_avatar'] as string) ?? '',
+                created_at: (data['created_at'] as string) ?? '',
+                shop_id: (data['shop_id'] as number) ?? 0
+            } as Detail
+            // 图集
+            const imgs = detail.value.images
+            if (imgs.length > 0) {
+                images.value = imgs
+            } else if (detail.value.cover_image.length > 0) {
+                images.value = [detail.value.cover_image] as string[]
+            }
+            // 标签
+            const tagList = [] as string[]
+            if (detail.value.is_urgent) tagList.push('急转')
+            if (detail.value.price == 0) tagList.push('免费送')
+            if (detail.value.delivery_method == 'express') tagList.push('支持快递')
+            if (detail.value.delivery_method == 'face') tagList.push('当面交易')
+            tags.value = tagList
+            // 拍卖
+            const auct = data['auction'] as UTSJSONObject
+            if (auct != null) {
+                auction.value = {
+                    id: (auct['id'] as number) ?? 0,
+                    ershou_id: (auct['ershou_id'] as number) ?? ershouId.value,
+                    start_price: (auct['start_price'] as number) ?? 0,
+                    step_price: (auct['step_price'] as number) ?? 0,
+                    reserve_price: (auct['reserve_price'] as number) ?? 0,
+                    bond_amount: (auct['bond_amount'] as number) ?? 0,
+                    current_bid_price: (auct['current_bid_price'] as number) ?? 0,
+                    current_bid_user_id: (auct['current_bid_user_id'] as number) ?? 0,
+                    bid_count: (auct['bid_count'] as number) ?? 0,
+                    watcher_count: (auct['watcher_count'] as number) ?? 0,
+                    status: (auct['status'] as number) ?? 0,
+                    status_text: (auct['status_text'] as string) ?? '',
+                    start_time: (auct['start_time'] as string | null),
+                    end_time: (auct['end_time'] as string | null),
+                    auto_extend_enabled: (auct['auto_extend_enabled'] as boolean) ?? false,
+                    winner_id: (auct['winner_id'] as number) ?? 0,
+                    winner_price: (auct['winner_price'] as number) ?? 0,
+                    closed_at: (auct['closed_at'] as string | null)
+                } as Auction
+            }
+            // 店铺
+            const shopObj = data['shop'] as UTSJSONObject
+            if (shopObj != null) {
+                shop.value = {
+                    id: (shopObj['id'] as number) ?? 0,
+                    shop_name: (shopObj['shop_name'] as string) ?? '',
+                    logo: (shopObj['logo'] as string) ?? '',
+                    description: (shopObj['description'] as string) ?? '',
+                    level: (shopObj['level'] as number) ?? 0,
+                    level_text: (shopObj['level_text'] as string) ?? '',
+                    follower_count: (shopObj['follower_count'] as number) ?? 0,
+                    item_count: (shopObj['item_count'] as number) ?? 0,
+                    sold_count: (shopObj['sold_count'] as number) ?? 0,
+                    good_rate: (shopObj['good_rate'] as number) ?? 0,
+                    is_following: (shopObj['is_following'] as boolean) ?? false
+                } as Shop
+            }
+            loaded.value = true
+            // 收藏状态（登录后）
+            if (checkLogin()) {
+                loadFavStatus()
+                loadReviews()
+                loadSKUs()
+                loadSimilar()
+            } else {
+                loadReviews()
+                loadSKUs()
+                loadSimilar()
+            }
+        } catch (e) {
+            uni.showToast({ title: '加载失败', icon: 'none' })
+        }
+    }
+
+    const loadFavStatus = async () => {
+        try {
+            const res = await favStatus(ershouId.value)
+            const data = res.data as UTSJSONObject
+            hasFaved.value = (data['has_faved'] as boolean) ?? false
+        } catch (e) {}
+    }
+
+    const loadReviews = async () => {
+        try {
+            const res = await getReviews(ershouId.value, { page: 1, page_size: 2 } as UTSJSONObject)
+            const data = res.data as UTSJSONObject
+            reviews.value = (data['list'] as ReviewItem[]) ?? ([] as ReviewItem[])
+        } catch (e) {}
+        try {
+            const rsRes = await getReviewStats(ershouId.value)
+            const rsData = rsRes.data as UTSJSONObject
+            reviewStats.value = {
+                total_reviews: (rsData['total_reviews'] as number) ?? 0,
+                avg_rating: (rsData['avg_rating'] as number) ?? 0,
+                good_rate: (rsData['good_rate'] as number) ?? 0
+            } as ReviewStats
+        } catch (e) {}
+    }
+
+    const loadSKUs = async () => {
+        try {
+            const res = await listSKUs(ershouId.value)
+            const data = res.data as UTSJSONObject
+            skus.value = (data['list'] as SKUItem[]) ?? ([] as SKUItem[])
+        } catch (e) {}
+    }
+
+    const loadSimilar = async () => {
+        try {
+            const res = await getSimilar(ershouId.value, { page: 1, page_size: 6 } as UTSJSONObject)
+            const data = res.data as UTSJSONObject
+            similarList.value = (data['list'] as SimilarItem[]) ?? ([] as SimilarItem[])
+        } catch (e) {}
+    }
+
+    const onGalleryChange = (e: SwiperChangeEvent) => {
+        galleryCurrent.value = e.detail.current
+    }
+
+    const previewImage = (idx: number) => {
+        uni.previewImage({
+            urls: images.value,
+            current: images.value[idx]
+        })
+    }
+
+    const openLocation = () => {
+        if (detail.value.latitude == 0 || detail.value.longitude == 0) return
+        uni.openLocation({
+            latitude: detail.value.latitude,
+            longitude: detail.value.longitude,
+            name: detail.value.title,
+            address: detail.value.address
+        })
+    }
+
+    const onFav = async () => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        try {
+            const res = await fav(ershouId.value)
+            const data = res.data as UTSJSONObject
+            hasFaved.value = (data['has_faved'] as boolean) ?? false
+            detail.value.fav_count = (data['fav_count'] as number) ?? detail.value.fav_count
+            uni.showToast({ title: hasFaved.value ? '已收藏' : '已取消', icon: 'none' })
+        } catch (e) {}
+    }
+
+    const onMessage = () => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '发送留言',
+            editable: true,
+            placeholderText: '说点什么...',
+            success: async (r: ShowModalSuccessCallbackResult) => {
+                if (r.confirm && r.content != null && r.content!.length > 0) {
+                    try {
+                        await sendMessage(ershouId.value, r.content!)
+                        uni.showToast({ title: '留言成功', icon: 'success' })
+                    } catch (e) {}
+                }
+            }
+        })
+    }
+
+    const onShare = () => {
+        uni.showToast({ title: '点击右上角分享', icon: 'none' })
+    }
+
+    const onContact = () => {
+        if (detail.value.user_phone.length > 0) {
+            uni.makePhoneCall({ phoneNumber: detail.value.user_phone })
+        } else {
+            onMessage()
+        }
+    }
+
+    const onBuy = () => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const skuId = skus.value.length > 0 ? skus.value[0].id : 0
+        uni.navigateTo({
+            url: '/pages/ershou/order-detail?ershou_id=' + ershouId.value + '&sku_id=' + skuId + '&action=create'
+        })
+    }
+
+    const goAuction = () => {
+        uni.navigateTo({ url: '/pages/ershou/auction?id=' + ershouId.value })
+    }
+
+    const openSkuPopup = () => {
+        uni.showToast({ title: 'SKU 选择弹窗', icon: 'none' })
+    }
+
+    const goAllReviews = () => {
+        uni.showToast({ title: '评价列表页', icon: 'none' })
+    }
+
+    const goShop = (id: number) => {
+        uni.navigateTo({ url: '/pages/ershou/shop?id=' + id })
+    }
+
+    const onFollowShop = () => {
+        uni.showToast({ title: '关注操作', icon: 'none' })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + id })
+    }
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+
+    const formatDistance = (d: number) : string => {
+        if (d < 1) return Math.round(d * 1000) + 'm'
+        return d.toFixed(1) + 'km'
+    }
+
+    const formatTime = (t: string) : string => {
+        if (t.length == 0) return ''
+        const d = new Date(t)
+        const m = (d.getMonth() + 1).toString()
+        const day = d.getDate().toString()
+        return m + '-' + day
+    }
+
+    const conditionText = (c: string) : string => {
+        if (c == 'new') return '全新'
+        if (c == 'almost_new') return '几乎全新'
+        if (c == 'used') return '有使用痕迹'
+        if (c == 'broken') return '有损坏'
+        return '未知'
+    }
+
+    const deliveryText = (d: string) : string => {
+        if (d == 'face') return '当面交易'
+        if (d == 'self') return '自提'
+        if (d == 'express') return '快递'
+        return '不限'
+    }
 
     onLoad((options: OnLoadOptions) => {
         const id = options['id']
         if (id != null) {
-            ershouId.value = id as string
+            ershouId.value = parseInt(id as string)
+            loadDetail()
         }
+    })
+
+    onShareAppMessage(() : ShareAppMessageOptions => {
+        return {
+            title: detail.value.title,
+            path: '/pages/ershou/detail?id=' + ershouId.value
+        } as ShareAppMessageOptions
     })
 </script>
 
@@ -26,36 +605,452 @@
         background-color: #F5F5F5;
     }
 
-    .content {
+    .loading-page {
         flex: 1;
         align-items: center;
         justify-content: center;
-        padding: 32px;
+        background-color: #F5F5F5;
+    }
+
+    .loading-text {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .main-scroll {
+        flex: 1;
+    }
+
+    .gallery {
+        width: 100%;
+        height: 400px;
+        background-color: #000000;
+    }
+
+    .gallery-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .gallery-index {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background-color: rgba(0,0,0,0.4);
+        border-radius: 12px;
+        padding: 2px 10px;
+    }
+
+    .gallery-index-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .price-section {
+        background-color: #FFFFFF;
+        padding: 12px;
+    }
+
+    .price-main-row {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .price-symbol {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price-value {
+        font-size: 28px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-unit {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 2px;
+    }
+
+    .price-original {
+        font-size: 14px;
+        color: #999;
+        text-decoration: line-through;
+        margin-left: 10px;
+    }
+
+    .price-meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta-tag {
+        margin-right: 6px;
+    }
+
+    .meta-tag-text {
+        font-size: 11px;
+    }
+
+    .meta-tag-text.urgent {
+        color: #EE0A24;
+    }
+
+    .meta-tag-text.auction {
+        color: #FF6B35;
+    }
+
+    .price-stats {
+        font-size: 11px;
+        color: #999;
+        margin-left: auto;
+    }
+
+    .title-section {
+        background-color: #FFFFFF;
+        padding: 12px;
+        margin-top: 8px;
     }
 
     .title {
-        font-size: 20px;
-        font-weight: 600;
+        font-size: 16px;
         color: #333;
-        margin-bottom: 12px;
+        font-weight: 600;
+        line-height: 1.5;
     }
 
-    .placeholder {
-        font-size: 16px;
-        color: #999;
+    .summary {
+        font-size: 13px;
+        color: #666;
+        margin-top: 6px;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .tag {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin-right: 6px;
+        margin-bottom: 4px;
+    }
+
+    .tag-text {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .attr-section, .desc-section, .loc-section, .sku-section, .review-section, .seller-section, .recommend-section {
+        background-color: #FFFFFF;
+        padding: 12px;
+        margin-top: 8px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
         margin-bottom: 8px;
     }
 
-    .id-text {
-        font-size: 13px;
-        color: #BBB;
-        margin-bottom: 16px;
+    .attr-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 
-    .hint {
-        font-size: 12px;
-        color: #BBB;
-        text-align: center;
+    .attr-item {
+        width: 50%;
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .attr-label {
+        font-size: 13px;
+        color: #999;
+        width: 60px;
+    }
+
+    .attr-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .desc-content {
+        font-size: 14px;
+        color: #333;
         line-height: 1.6;
+    }
+
+    .loc-card {
+        flex-direction: row;
+        align-items: center;
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    .loc-icon {
+        font-size: 18px;
+        margin-right: 8px;
+    }
+
+    .loc-info {
+        flex: 1;
+    }
+
+    .loc-address {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .loc-distance {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .loc-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .auction-section {
+        background-color: #FFFFFF;
+        padding: 12px;
+        margin-top: 8px;
+    }
+
+    .bid-btn {
+        background-color: #FF6B35;
+        border-radius: 24px;
+        padding: 10px 0;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .bid-btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .sku-preview {
+        flex-direction: row;
+        align-items: center;
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    .sku-preview-text {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .sku-preview-text.placeholder {
+        color: #999;
+    }
+
+    .sku-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-more {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .rating-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-bottom: 10px;
+    }
+
+    .rating-score {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-right: 8px;
+    }
+
+    .rating-stars {
+        font-size: 12px;
+        margin-right: 8px;
+    }
+
+    .rating-rate {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .review-item {
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+
+    .review-header {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .review-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        margin-right: 6px;
+    }
+
+    .review-avatar-default {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 6px;
+    }
+
+    .review-avatar-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .review-name {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .review-rating {
+        font-size: 12px;
+        color: #FF976A;
+    }
+
+    .review-content {
+        font-size: 13px;
+        color: #333;
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+
+    .review-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 4px;
+    }
+
+    .recommend-scroll {
+        flex-direction: row;
+    }
+
+    .recommend-item {
+        width: 100px;
+        margin-right: 8px;
+    }
+
+    .recommend-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .recommend-title {
+        font-size: 12px;
+        color: #333;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .recommend-price {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .bottom-placeholder {
+        height: 80px;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #E5E5E5;
+    }
+
+    .bottom-icons {
+        flex-direction: row;
+    }
+
+    .bottom-icon {
+        align-items: center;
+        padding: 0 12px;
+    }
+
+    .bottom-icon-text {
+        font-size: 20px;
+    }
+
+    .bottom-icon-label {
+        font-size: 10px;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    .bottom-actions {
+        flex: 1;
+        flex-direction: row;
+        margin-left: 12px;
+    }
+
+    .action-btn {
+        flex: 1;
+        border-radius: 24px;
+        padding: 10px 0;
+        align-items: center;
+        margin-left: 6px;
+    }
+
+    .action-contact {
+        background-color: #FFF5F0;
+    }
+
+    .action-buy {
+        background-color: #FF6B35;
+    }
+
+    .action-btn-text {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .action-btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
     }
 </style>

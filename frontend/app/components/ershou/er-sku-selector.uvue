@@ -1,0 +1,242 @@
+<template>
+    <view class="sku-selector" v-if="groups.length > 0">
+        <view class="sku-group" v-for="(group, gIdx) in groups" :key="gIdx">
+            <view class="group-header">
+                <text class="group-name">{{ group.name }}</text>
+                <text class="group-required" v-if="group.required">*</text>
+            </view>
+            <view class="option-list">
+                <view class="option"
+                    v-for="(opt, oIdx) in group.options"
+                    :key="oIdx"
+                    :class="{ 'option-active': isSelected(gIdx, opt), 'option-disabled': isDisabled(gIdx, opt) }"
+                    @click="onSelect(gIdx, opt)">
+                    <text class="option-text">{{ opt }}</text>
+                </view>
+            </view>
+        </view>
+
+        <view class="qty-row">
+            <text class="qty-label">购买数量</text>
+            <view class="qty-control">
+                <view class="qty-btn" @click="decQty">
+                    <text class="qty-btn-text">-</text>
+                </view>
+                <text class="qty-value">{{ quantity }}</text>
+                <view class="qty-btn" @click="incQty">
+                    <text class="qty-btn-text">+</text>
+                </view>
+            </view>
+        </view>
+
+        <view class="selected-row" v-if="selectedText.length > 0">
+            <text class="selected-label">已选：</text>
+            <text class="selected-text">{{ selectedText }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type SKUGroup = {
+        name: string
+        options: string[]
+        required: boolean
+    }
+
+    type SKUItem = {
+        id: number
+        sku_code: string
+        name: string
+        color: string
+        size: string
+        version: string
+        price: number
+        stock: number
+        status: number
+    }
+
+    const props = withDefaults(defineProps<{
+        groups: SKUGroup[]
+        skus: SKUItem[]
+        maxQty?: number
+    }>(), {
+        maxQty: 99
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'change', selected: UTSJSONObject): void
+    }>()
+
+    const selections = ref<string[]>([] as string[])
+    const quantity = ref(1)
+
+    // 初始化 selections
+    props.groups.forEach((_: SKUGroup, idx: number) => {
+        selections.value.push('')
+    })
+
+    const isSelected = (gIdx: number, opt: string) : boolean => {
+        return selections.value[gIdx] == opt
+    }
+
+    const isDisabled = (gIdx: number, opt: string) : boolean => {
+        // 简化逻辑：库存检查暂不做
+        return false
+    }
+
+    const onSelect = (gIdx: number, opt: string) => {
+        const arr = selections.value.slice()
+        arr[gIdx] = opt
+        selections.value = arr
+        emitChange()
+    }
+
+    const incQty = () => {
+        if (quantity.value < props.maxQty) {
+            quantity.value++
+            emitChange()
+        }
+    }
+
+    const decQty = () => {
+        if (quantity.value > 1) {
+            quantity.value--
+            emitChange()
+        }
+    }
+
+    const selectedText = computed(() : string => {
+        return selections.value.filter((s: string) : boolean => s.length > 0).join(' / ')
+    })
+
+    const emitChange = () => {
+        const selected = {} as UTSJSONObject
+        props.groups.forEach((g: SKUGroup, idx: number) => {
+            if (selections.value[idx].length > 0) {
+                selected[g.name] = selections.value[idx]
+            }
+        })
+        selected['quantity'] = quantity.value
+        emit('change', selected)
+    }
+</script>
+
+<style>
+    .sku-selector {
+        background-color: #FFFFFF;
+        padding: 12px 0;
+    }
+
+    .sku-group {
+        margin-bottom: 16px;
+    }
+
+    .group-header {
+        flex-direction: row;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .group-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .group-required {
+        font-size: 14px;
+        color: #EE0A24;
+        margin-left: 2px;
+    }
+
+    .option-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .option {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border-width: 1px;
+        border-color: #F5F5F5;
+    }
+
+    .option-active {
+        background-color: #FFF5F0;
+        border-color: #FF6B35;
+    }
+
+    .option-disabled {
+        opacity: 0.4;
+    }
+
+    .option-text {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .option-active .option-text {
+        color: #FF6B35;
+    }
+
+    .qty-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .qty-label {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .qty-control {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .qty-btn {
+        width: 32px;
+        height: 32px;
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .qty-btn-text {
+        font-size: 16px;
+        color: #333;
+    }
+
+    .qty-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .selected-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .selected-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .selected-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+</style>

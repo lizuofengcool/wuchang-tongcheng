@@ -1,0 +1,247 @@
+<template>
+    <view class="card" @click="onClick">
+        <view class="image-wrap">
+            <image class="cover" :src="coverImage" mode="aspectFill" lazy-load="true" />
+            <view class="tag-bargain" v-if="item.is_urgent">
+                <text class="tag-bargain-text">急转</text>
+            </view>
+            <view class="tag-auction" v-if="item.is_auction">
+                <text class="tag-auction-text">拍</text>
+            </view>
+        </view>
+        <view class="info">
+            <text class="title">{{ item.title }}</text>
+            <view class="price-row">
+                <text class="price-symbol">¥</text>
+                <text class="price">{{ formatPrice(item.price) }}</text>
+                <text class="price-original" v-if="item.original_price > 0 && item.original_price > item.price">¥{{ formatPrice(item.original_price) }}</text>
+            </view>
+            <view class="meta">
+                <text class="area" v-if="item.address.length > 0">{{ shortAddress(item.address) }}</text>
+                <text class="distance" v-if="item.distance > 0">{{ formatDistance(item.distance) }}</text>
+            </view>
+            <view class="footer">
+                <view class="user">
+                    <image class="avatar" :src="item.user_avatar" mode="aspectFill" lazy-load="true" v-if="item.user_avatar.length > 0" />
+                    <view class="avatar-default" v-else>
+                        <text class="avatar-text">{{ item.user_name.length > 0 ? item.user_name.charAt(0) : 'U' }}</text>
+                    </view>
+                    <text class="user-name">{{ item.user_name }}</text>
+                </view>
+                <view class="stats">
+                    <text class="stat">👁 {{ item.view_count }}</text>
+                    <text class="stat">❤ {{ item.fav_count }}</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type ErshouItem = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        original_price: number
+        price_unit: string
+        address: string
+        distance: number
+        user_name: string
+        user_avatar: string
+        view_count: number
+        fav_count: number
+        is_urgent: boolean
+        is_auction: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        item: ErshouItem
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const coverImage = computed(() : string => {
+        return props.item.cover_image || 'https://via.placeholder.com/200x200?text=No+Image'
+    })
+
+    const onClick = () => {
+        emit('click', props.item.id)
+    }
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+
+    const formatDistance = (d: number) : string => {
+        if (d < 1) return Math.round(d * 1000) + 'm'
+        return d.toFixed(1) + 'km'
+    }
+
+    const shortAddress = (addr: string) : string => {
+        if (addr.length <= 8) return addr
+        return addr.substring(0, 8)
+    }
+</script>
+
+<style>
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .image-wrap {
+        position: relative;
+        width: 100%;
+        height: 200px;
+    }
+
+    .cover {
+        width: 100%;
+        height: 100%;
+    }
+
+    .tag-bargain {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        background-color: #EE0A24;
+        border-radius: 4px;
+        padding: 2px 6px;
+    }
+
+    .tag-bargain-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .tag-auction {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background-color: #FF6B35;
+        border-radius: 4px;
+        padding: 2px 6px;
+    }
+
+    .tag-auction-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .info {
+        padding: 8px;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 6px;
+    }
+
+    .price-symbol {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-original {
+        font-size: 11px;
+        color: #999;
+        text-decoration: line-through;
+        margin-left: 6px;
+    }
+
+    .meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .area {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .distance {
+        font-size: 11px;
+        color: #FF6B35;
+        margin-left: 6px;
+    }
+
+    .footer {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+    }
+
+    .user {
+        flex-direction: row;
+        align-items: center;
+        flex: 1;
+    }
+
+    .avatar {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        margin-right: 4px;
+    }
+
+    .avatar-default {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 4px;
+    }
+
+    .avatar-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .user-name {
+        font-size: 11px;
+        color: #666;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .stats {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .stat {
+        font-size: 10px;
+        color: #999;
+        margin-left: 6px;
+    }
+</style>

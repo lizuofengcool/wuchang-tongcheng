@@ -1,14 +1,445 @@
 <template>
     <view class="page">
-        <view class="content">
-            <text class="title">发布二手</text>
-            <text class="placeholder">页面开发中</text>
-            <text class="hint">P2 阶段完善：标题、价格、分类、图片上传、描述、地区选择</text>
+        <!-- 步骤条 -->
+        <view class="steps">
+            <view class="step-item" v-for="(step, idx) in stepNames" :key="idx" :class="{ active: currentStep >= idx, current: currentStep == idx }">
+                <view class="step-circle">
+                    <text class="step-num">{{ idx + 1 }}</text>
+                </view>
+                <text class="step-name">{{ step }}</text>
+                <view class="step-line" v-if="idx < stepNames.length - 1"></view>
+            </view>
+        </view>
+
+        <scroll-view class="form-scroll" scroll-y>
+            <!-- 步骤1：基本信息 -->
+            <view class="form-section" v-if="currentStep == 0">
+                <view class="form-title">基本信息</view>
+                <view class="form-item">
+                    <text class="form-label">分类<text class="required">*</text></text>
+                    <picker class="form-picker" mode="selector" :range="categoryNames" @change="onCategoryChange">
+                        <text class="form-picker-text" :class="{ placeholder: form.category_id == 0 }">{{ form.category_id == 0 ? '请选择分类' : categoryName }}</text>
+                    </picker>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">品牌</text>
+                    <input class="form-input" placeholder="请输入品牌（选填）" v-model="form.brand" />
+                </view>
+                <view class="form-item">
+                    <text class="form-label">标题<text class="required">*</text></text>
+                    <input class="form-input" placeholder="标题简洁明了（5-50字）" v-model="form.title" maxlength="50" />
+                    <text class="input-count">{{ form.title.length }}/50</text>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">成色<text class="required">*</text></text>
+                    <view class="condition-list">
+                        <view class="condition-item" v-for="(c, idx) in conditions" :key="idx" :class="{ active: form.condition == c.value }" @click="form.condition = c.value">
+                            <text class="condition-text">{{ c.label }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">出手原因</text>
+                    <input class="form-input" placeholder="例：换新闲置（选填）" v-model="form.summary" />
+                </view>
+            </view>
+
+            <!-- 步骤2：价格交易 -->
+            <view class="form-section" v-if="currentStep == 1">
+                <view class="form-title">价格交易</view>
+                <view class="form-item">
+                    <text class="form-label">售价<text class="required">*</text></text>
+                    <view class="price-input-row">
+                        <text class="price-prefix">¥</text>
+                        <input class="form-input price-input" type="digit" placeholder="0.00" v-model="form.price" />
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">原价</text>
+                    <view class="price-input-row">
+                        <text class="price-prefix">¥</text>
+                        <input class="form-input price-input" type="digit" placeholder="原价（选填）" v-model="form.original_price" />
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">议价</text>
+                    <view class="condition-list">
+                        <view class="condition-item" v-for="(u, idx) in priceUnits" :key="idx" :class="{ active: form.price_unit == u.value }" @click="form.price_unit = u.value">
+                            <text class="condition-text">{{ u.label }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">交付方式</text>
+                    <view class="condition-list">
+                        <view class="condition-item" v-for="(d, idx) in deliveries" :key="idx" :class="{ active: form.delivery_method == d.value }" @click="form.delivery_method = d.value">
+                            <text class="condition-text">{{ d.label }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="form-label">急转</text>
+                    <switch :checked="form.is_urgent" @change="onUrgentChange" />
+                    <text class="form-hint">急转商品将在首页金刚位优先曝光</text>
+                </view>
+            </view>
+
+            <!-- 步骤3：图片视频 -->
+            <view class="form-section" v-if="currentStep == 2">
+                <view class="form-title">图片视频</view>
+                <er-image-uploader :maxCount="9" :allowVideo="true" @change="onMediaChange" />
+            </view>
+
+            <!-- 步骤4：详细描述 -->
+            <view class="form-section" v-if="currentStep == 3">
+                <view class="form-title">详细描述</view>
+                <view class="form-item">
+                    <textarea class="form-textarea" placeholder="详细描述商品的使用情况、维修记录、附件等（最多 1000 字）" v-model="form.content" maxlength="1000" />
+                    <text class="input-count">{{ form.content.length }}/1000</text>
+                </view>
+            </view>
+
+            <!-- 步骤5：发布设置 -->
+            <view class="form-section" v-if="currentStep == 4">
+                <view class="form-title">发布设置</view>
+                <view class="form-item">
+                    <text class="form-label">交易位置</text>
+                    <er-location-picker :address="form.address" :poi="form.poi" @change="onLocationChange" />
+                </view>
+                <view class="form-item">
+                    <text class="form-label">联系方式</text>
+                    <input class="form-input" placeholder="手机号（选填）" v-model="form.contact_phone" />
+                </view>
+                <view class="form-item">
+                    <text class="form-label">微信号</text>
+                    <input class="form-input" placeholder="微信号（选填）" v-model="form.contact_wechat" />
+                </view>
+                <view class="form-item">
+                    <text class="form-label">有效期</text>
+                    <picker class="form-picker" mode="selector" :range="expireOptions" @change="onExpireChange">
+                        <text class="form-picker-text">{{ expireDisplay }}</text>
+                    </picker>
+                </view>
+            </view>
+
+            <!-- AI 助手 -->
+            <view class="ai-section" v-if="currentStep == 0 || currentStep == 3">
+                <view class="ai-header">
+                    <text class="ai-icon">🤖</text>
+                    <text class="ai-title">AI 助手</text>
+                </view>
+                <view class="ai-actions">
+                    <view class="ai-btn" @click="aiOptimizeTitle" v-if="currentStep == 0">
+                        <text class="ai-btn-text">优化标题</text>
+                    </view>
+                    <view class="ai-btn" @click="aiGenDesc" v-if="currentStep == 3">
+                        <text class="ai-btn-text">生成描述</text>
+                    </view>
+                    <view class="ai-btn" @click="aiPriceSuggest" v-if="currentStep == 0">
+                        <text class="ai-btn-text">价格建议</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <!-- 底部操作栏 -->
+        <view class="footer">
+            <view class="footer-btn outline" v-if="currentStep > 0" @click="prevStep">
+                <text class="footer-btn-text">上一步</text>
+            </view>
+            <view class="footer-btn outline" @click="saveDraft">
+                <text class="footer-btn-text">存草稿</text>
+            </view>
+            <view class="footer-btn primary" v-if="currentStep < stepNames.length - 1" @click="nextStep">
+                <text class="footer-btn-text-white">下一步</text>
+            </view>
+            <view class="footer-btn primary" v-else @click="submit">
+                <text class="footer-btn-text-white">立即发布</text>
+            </view>
         </view>
     </view>
 </template>
 
 <script setup lang="uts">
+    import { createErshou, updateErshou, getErshouDetail, listBrands, listCategoryAttrsByCate } from '@/api/ershou.uts'
+    import { checkLogin } from '@/store/index.uts'
+
+    type Condition = { label: string, value: string }
+    type PriceUnit = { label: string, value: string }
+    type Delivery = { label: string, value: string }
+    type MediaItem = { type: string, url: string, thumb: string }
+
+    const stepNames = ['基本信息', '价格交易', '图片视频', '详细描述', '发布设置']
+    const conditions = [
+        { label: '全新', value: 'new' },
+        { label: '几乎全新', value: 'almost_new' },
+        { label: '有使用痕迹', value: 'used' },
+        { label: '有损坏', value: 'broken' }
+    ] as Condition[]
+    const priceUnits = [
+        { label: '可议价', value: '元' },
+        { label: '一口价', value: '元' },
+        { label: '面议', value: '面议' },
+        { label: '免费送', value: '免费' }
+    ] as PriceUnit[]
+    const deliveries = [
+        { label: '当面交易', value: 'face' },
+        { label: '自提', value: 'self' },
+        { label: '快递', value: 'express' }
+    ] as Delivery[]
+    const expireOptions = ['7天', '15天', '30天', '60天']
+    const expireDaysMap = [7, 15, 30, 60]
+
+    const categories = ref([
+        { id: 1, name: '数码' },
+        { id: 2, name: '服饰' },
+        { id: 3, name: '家居' },
+        { id: 4, name: '书籍' },
+        { id: 5, name: '母婴' },
+        { id: 6, name: '运动' },
+        { id: 7, name: '虚拟' },
+        { id: 8, name: '其他' }
+    ] as Array<{ id: number, name: string }>)
+
+    const categoryNames = computed(() : string[] => {
+        return categories.value.map((c: { id: number, name: string }) : string => c.name)
+    })
+
+    const currentStep = ref(0)
+    const editId = ref(0)
+    const mediaList = ref<MediaItem[]>([] as MediaItem[])
+
+    const form = reactive({
+        title: '',
+        content: '',
+        summary: '',
+        cover_image: '',
+        images: [] as string[],
+        category_id: 0,
+        price: '',
+        original_price: '',
+        price_unit: '元',
+        condition: 'almost_new',
+        brand: '',
+        contact_phone: '',
+        contact_wechat: '',
+        address: '',
+        poi: '',
+        latitude: 0,
+        longitude: 0,
+        delivery_method: 'face',
+        is_urgent: false,
+        expire_days: 30,
+        expire_idx: 2,
+        status: 1
+    } as UTSJSONObject)
+
+    const categoryName = computed(() : string => {
+        const c = categories.value.find((it: { id: number, name: string }) : boolean => it.id == form.category_id)
+        return c != null ? c!.name : ''
+    })
+
+    const expireDisplay = computed(() : string => {
+        return expireOptions[form.expire_idx]
+    })
+
+    const onCategoryChange = (e: UniPickerChangeEvent) => {
+        const idx = e.detail.value as number
+        form.category_id = categories.value[idx].id
+    }
+
+    const onExpireChange = (e: UniPickerChangeEvent) => {
+        const idx = e.detail.value as number
+        form.expire_idx = idx
+        form.expire_days = expireDaysMap[idx]
+    }
+
+    const onUrgentChange = (e: UniSwitchChangeEvent) => {
+        form.is_urgent = e.detail.value
+    }
+
+    const onMediaChange = (list: MediaItem[]) => {
+        mediaList.value = list
+        const imgs = list.filter((m: MediaItem) : boolean => m.type == 'image').map((m: MediaItem) : string => m.url)
+        form.images = imgs
+        if (imgs.length > 0) form.cover_image = imgs[0]
+    }
+
+    const onLocationChange = (loc: UTSJSONObject) => {
+        form.address = (loc['address'] as string) ?? ''
+        form.poi = (loc['name'] as string) ?? ''
+        form.latitude = (loc['latitude'] as number) ?? 0
+        form.longitude = (loc['longitude'] as number) ?? 0
+    }
+
+    const nextStep = () => {
+        if (currentStep.value == 0) {
+            if (form.title.length < 5) {
+                uni.showToast({ title: '标题至少5字', icon: 'none' })
+                return
+            }
+            if (form.category_id == 0) {
+                uni.showToast({ title: '请选择分类', icon: 'none' })
+                return
+            }
+        }
+        if (currentStep.value == 1) {
+            if (form.price.length == 0 || parseFloat(form.price) <= 0) {
+                uni.showToast({ title: '请填写售价', icon: 'none' })
+                return
+            }
+        }
+        if (currentStep.value == 2) {
+            if (mediaList.value.length == 0) {
+                uni.showToast({ title: '请至少上传1张图片', icon: 'none' })
+                return
+            }
+        }
+        if (currentStep.value < stepNames.length - 1) {
+            currentStep.value++
+        }
+    }
+
+    const prevStep = () => {
+        if (currentStep.value > 0) currentStep.value--
+    }
+
+    const validate = () : boolean => {
+        if (form.title.length < 5) {
+            uni.showToast({ title: '标题至少5字', icon: 'none' })
+            return false
+        }
+        if (form.category_id == 0) {
+            uni.showToast({ title: '请选择分类', icon: 'none' })
+            return false
+        }
+        if (form.price.length == 0 || parseFloat(form.price) <= 0) {
+            uni.showToast({ title: '请填写售价', icon: 'none' })
+            return false
+        }
+        if (mediaList.value.length == 0) {
+            uni.showToast({ title: '请至少上传1张图片', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const buildPayload = (status: number) : UTSJSONObject => {
+        return {
+            title: form.title,
+            content: form.content,
+            summary: form.summary,
+            cover_image: form.cover_image,
+            images: form.images,
+            category_id: form.category_id,
+            price: parseFloat(form.price) ?? 0,
+            original_price: parseFloat(form.original_price) ?? 0,
+            price_unit: form.price_unit,
+            condition: form.condition,
+            brand: form.brand,
+            contact_phone: form.contact_phone,
+            contact_wechat: form.contact_wechat,
+            address: form.address,
+            latitude: form.latitude,
+            longitude: form.longitude,
+            delivery_method: form.delivery_method,
+            is_urgent: form.is_urgent,
+            expire_days: form.expire_days,
+            status: status
+        } as UTSJSONObject
+    }
+
+    const saveDraft = async () => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        try {
+            const payload = buildPayload(0)
+            if (editId.value > 0) {
+                await updateErshou(editId.value, payload)
+            } else {
+                await createErshou(payload)
+            }
+            uni.showToast({ title: '草稿已保存', icon: 'success' })
+        } catch (e) {}
+    }
+
+    const submit = async () => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (!validate()) return
+        try {
+            const payload = buildPayload(1)
+            if (editId.value > 0) {
+                await updateErshou(editId.value, payload)
+            } else {
+                await createErshou(payload)
+            }
+            uni.showToast({ title: '发布成功', icon: 'success' })
+            setTimeout(() => {
+                uni.navigateBack()
+            }, 1000)
+        } catch (e) {}
+    }
+
+    const aiOptimizeTitle = () => {
+        uni.showToast({ title: 'AI 标题优化中...', icon: 'none' })
+    }
+
+    const aiGenDesc = () => {
+        uni.showToast({ title: 'AI 描述生成中...', icon: 'none' })
+    }
+
+    const aiPriceSuggest = () => {
+        uni.showToast({ title: 'AI 价格建议中...', icon: 'none' })
+    }
+
+    const loadEditData = async (id: number) => {
+        try {
+            const res = await getErshouDetail(id)
+            const data = res.data as UTSJSONObject
+            form.title = (data['title'] as string) ?? ''
+            form.content = (data['content'] as string) ?? ''
+            form.summary = (data['summary'] as string) ?? ''
+            form.cover_image = (data['cover_image'] as string) ?? ''
+            form.images = (data['images'] as string[]) ?? ([] as string[])
+            form.category_id = (data['category_id'] as number) ?? 0
+            form.price = ((data['price'] as number) ?? 0).toString()
+            form.original_price = ((data['original_price'] as number) ?? 0).toString()
+            form.price_unit = (data['price_unit'] as string) ?? '元'
+            form.condition = (data['condition'] as string) ?? 'almost_new'
+            form.brand = (data['brand'] as string) ?? ''
+            form.contact_phone = (data['contact_phone'] as string) ?? ''
+            form.contact_wechat = (data['contact_wechat'] as string) ?? ''
+            form.address = (data['address'] as string) ?? ''
+            form.latitude = (data['latitude'] as number) ?? 0
+            form.longitude = (data['longitude'] as number) ?? 0
+            form.delivery_method = (data['delivery_method'] as string) ?? 'face'
+            form.is_urgent = (data['is_urgent'] as boolean) ?? false
+            // 还原 mediaList
+            const imgs = form.images
+            mediaList.value = imgs.map((url: string) : MediaItem => {
+                return { type: 'image', url: url, thumb: '' } as MediaItem
+            })
+        } catch (e) {}
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        if (!checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => uni.navigateBack(), 1000)
+            return
+        }
+        const id = options['id']
+        if (id != null) {
+            editId.value = parseInt(id as string)
+            uni.setNavigationBarTitle({ title: '编辑商品' })
+            loadEditData(editId.value)
+        }
+    })
 </script>
 
 <style>
@@ -17,30 +448,261 @@
         background-color: #F5F5F5;
     }
 
-    .content {
-        flex: 1;
-        align-items: center;
-        justify-content: center;
-        padding: 32px;
+    .steps {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 16px 12px;
     }
 
-    .title {
-        font-size: 20px;
+    .step-item {
+        flex: 1;
+        align-items: center;
+        position: relative;
+    }
+
+    .step-circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #E5E5E5;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .step-item.active .step-circle {
+        background-color: #FF6B35;
+    }
+
+    .step-num {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .step-name {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .step-item.active .step-name {
+        color: #FF6B35;
+    }
+
+    .step-item.current .step-name {
         font-weight: 600;
+    }
+
+    .step-line {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        right: -50%;
+        height: 1px;
+        background-color: #E5E5E5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .form-section {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin: 8px;
+        border-radius: 12px;
+    }
+
+    .form-title {
+        font-size: 15px;
         color: #333;
+        font-weight: 600;
         margin-bottom: 12px;
     }
 
-    .placeholder {
-        font-size: 16px;
+    .form-item {
+        margin-bottom: 16px;
+        position: relative;
+    }
+
+    .form-label {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .form-input {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .form-textarea {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #333;
+        height: 120px;
+    }
+
+    .form-picker {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 10px 12px;
+    }
+
+    .form-picker-text {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .form-picker-text.placeholder {
         color: #999;
+    }
+
+    .input-count {
+        position: absolute;
+        bottom: 4px;
+        right: 8px;
+        font-size: 10px;
+        color: #BBB;
+    }
+
+    .condition-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .condition-item {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border-width: 1px;
+        border-color: #F5F5F5;
+    }
+
+    .condition-item.active {
+        background-color: #FFF5F0;
+        border-color: #FF6B35;
+    }
+
+    .condition-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .condition-item.active .condition-text {
+        color: #FF6B35;
+    }
+
+    .price-input-row {
+        flex-direction: row;
+        align-items: center;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 0 12px;
+    }
+
+    .price-prefix {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price-input {
+        flex: 1;
+    }
+
+    .form-hint {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .ai-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin: 8px;
+        border-radius: 12px;
+    }
+
+    .ai-header {
+        flex-direction: row;
+        align-items: center;
         margin-bottom: 8px;
     }
 
-    .hint {
+    .ai-icon {
+        font-size: 16px;
+        margin-right: 6px;
+    }
+
+    .ai-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .ai-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .ai-btn {
+        background-color: #FFF5F0;
+        border-radius: 16px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+
+    .ai-btn-text {
         font-size: 12px;
-        color: #BBB;
-        text-align: center;
-        line-height: 1.6;
+        color: #FF6B35;
+    }
+
+    .footer {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 10px 12px;
+        border-top-width: 1px;
+        border-top-color: #E5E5E5;
+    }
+
+    .footer-btn {
+        flex: 1;
+        border-radius: 24px;
+        padding: 10px 0;
+        align-items: center;
+        margin: 0 4px;
+    }
+
+    .footer-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #DDDDDD;
+    }
+
+    .footer-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .footer-btn-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .footer-btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
     }
 </style>

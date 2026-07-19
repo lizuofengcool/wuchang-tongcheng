@@ -1,0 +1,238 @@
+<template>
+    <view class="uploader">
+        <view class="media-list">
+            <view class="media-item" v-for="(item, idx) in mediaList" :key="idx">
+                <image class="media-image" :src="item.url" mode="aspectFill" lazy-load="true" v-if="item.type == 'image'" />
+                <view class="video-wrap" v-else-if="item.type == 'video'">
+                    <image class="media-image" :src="item.thumb" mode="aspectFill" lazy-load="true" v-if="item.thumb.length > 0" />
+                    <view class="video-mask" v-else>
+                        <text class="video-icon">▶</text>
+                    </view>
+                </view>
+                <view class="cover-tag" v-if="idx == 0">
+                    <text class="cover-tag-text">封面</text>
+                </view>
+                <view class="remove-btn" @click.stop="onRemove(idx)">
+                    <text class="remove-icon">×</text>
+                </view>
+            </view>
+
+            <!-- 添加图片按钮 -->
+            <view class="add-btn" v-if="canAddImage" @click="chooseImage">
+                <text class="add-icon">+</text>
+                <text class="add-text">图片</text>
+                <text class="add-count">{{ mediaList.length }}/{{ maxCount }}</text>
+            </view>
+
+            <!-- 添加视频按钮 -->
+            <view class="add-btn video-add" v-if="canAddVideo && videoList.length == 0" @click="chooseVideo">
+                <text class="add-icon">▶</text>
+                <text class="add-text">视频</text>
+            </view>
+        </view>
+        <view class="hint-row" v-if="hint.length > 0">
+            <text class="hint-text">{{ hint }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type MediaItem = {
+        type: string  // image / video
+        url: string
+        thumb: string
+    }
+
+    const props = withDefaults(defineProps<{
+        maxCount?: number
+        allowVideo?: boolean
+        hint?: string
+    }>(), {
+        maxCount: 9,
+        allowVideo: true,
+        hint: '最多上传9张图片，首张为封面，可上传1个视频'
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'change', list: MediaItem[]): void
+    }>()
+
+    const mediaList = ref<MediaItem[]>([] as MediaItem[])
+    const videoList = computed(() : MediaItem[] => {
+        return mediaList.value.filter((m: MediaItem) : boolean => m.type == 'video')
+    })
+    const imageList = computed(() : MediaItem[] => {
+        return mediaList.value.filter((m: MediaItem) : boolean => m.type == 'image')
+    })
+
+    const canAddImage = computed(() : boolean => {
+        return mediaList.value.length < props.maxCount
+    })
+
+    const canAddVideo = computed(() : boolean => {
+        return props.allowVideo
+    })
+
+    const chooseImage = () => {
+        const remaining = props.maxCount - mediaList.value.length
+        if (remaining <= 0) {
+            uni.showToast({ title: '已达上限', icon: 'none' })
+            return
+        }
+        uni.chooseImage({
+            count: remaining,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                const paths = res.tempFilePaths
+                paths.forEach((p: string) => {
+                    mediaList.value.push({
+                        type: 'image',
+                        url: p,
+                        thumb: ''
+                    } as MediaItem)
+                })
+                emitChange()
+            }
+        })
+    }
+
+    const chooseVideo = () => {
+        uni.chooseVideo({
+            success: (res: ChooseVideoSuccessCallbackResult) => {
+                mediaList.value.push({
+                    type: 'video',
+                    url: res.tempFilePath,
+                    thumb: res.thumbTempFilePath ?? ''
+                } as MediaItem)
+                emitChange()
+            }
+        })
+    }
+
+    const onRemove = (idx: number) => {
+        mediaList.value.splice(idx, 1)
+        emitChange()
+    }
+
+    const emitChange = () => {
+        emit('change', mediaList.value)
+    }
+</script>
+
+<style>
+    .uploader {
+        background-color: #FFFFFF;
+    }
+
+    .media-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .media-item {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .media-image {
+        width: 100%;
+        height: 100%;
+    }
+
+    .video-wrap {
+        width: 100%;
+        height: 100%;
+        background-color: #000000;
+    }
+
+    .video-mask {
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-icon {
+        font-size: 32px;
+        color: #FFFFFF;
+    }
+
+    .cover-tag {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        background-color: #FF6B35;
+        padding: 1px 6px;
+        border-top-right-radius: 6px;
+    }
+
+    .cover-tag-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 20px;
+        height: 20px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .remove-icon {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .add-btn {
+        width: 100px;
+        height: 100px;
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border-width: 1px;
+        border-style: dashed;
+        border-color: #DDDDDD;
+    }
+
+    .add-icon {
+        font-size: 24px;
+        color: #999;
+    }
+
+    .add-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .add-count {
+        font-size: 10px;
+        color: #BBB;
+        margin-top: 2px;
+    }
+
+    .video-add .add-icon {
+        color: #FF6B35;
+    }
+
+    .hint-row {
+        margin-top: 4px;
+    }
+
+    .hint-text {
+        font-size: 11px;
+        color: #BBB;
+    }
+</style>

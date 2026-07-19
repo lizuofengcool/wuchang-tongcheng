@@ -1,0 +1,91 @@
+<template>
+    <view class="price-wrap">
+        <text class="price-symbol">¥</text>
+        <text class="price-main">{{ formatPrice(price) }}</text>
+        <text class="price-unit" v-if="priceUnit.length > 0">{{ priceUnit }}</text>
+        <text class="price-original" v-if="originalPrice > 0 && originalPrice > price">¥{{ formatPrice(originalPrice) }}</text>
+        <view class="price-bargain" v-if="bargainable">
+            <text class="price-bargain-text">可议价</text>
+        </view>
+        <view class="price-free" v-if="price == 0 && showFreeTag">
+            <text class="price-free-text">免费送</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    withDefaults(defineProps<{
+        price: number
+        originalPrice?: number
+        priceUnit?: string
+        bargainable?: boolean
+        showFreeTag?: boolean
+    }>(), {
+        originalPrice: 0,
+        priceUnit: '',
+        bargainable: false,
+        showFreeTag: true
+    } as any)
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+</script>
+
+<style>
+    .price-wrap {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .price-symbol {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price-main {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-unit {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-left: 2px;
+    }
+
+    .price-original {
+        font-size: 12px;
+        color: #999;
+        text-decoration: line-through;
+        margin-left: 8px;
+    }
+
+    .price-bargain {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-left: 6px;
+    }
+
+    .price-bargain-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .price-free {
+        background-color: #07C160;
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-left: 6px;
+    }
+
+    .price-free-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+</style>

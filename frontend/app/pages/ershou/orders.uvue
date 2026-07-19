@@ -1,0 +1,442 @@
+<template>
+    <view class="page">
+        <!-- 顶部 Tab -->
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+
+        <!-- 订单列表 -->
+        <scroll-view class="order-list" scroll-y @scrolltolower="loadMore">
+            <view class="order-card" v-for="order in orderList" :key="order.id">
+                <!-- 商家信息 -->
+                <view class="shop-row" @click="goShop(order.shop_id)">
+                    <text class="shop-icon">🏪</text>
+                    <text class="shop-name">{{ order.shop_name || '个人卖家' }}</text>
+                    <text class="status-text">{{ getStatusText(order.status) }}</text>
+                </view>
+
+                <!-- 商品信息 -->
+                <view class="goods-row" @click="goDetail(order.item_id)">
+                    <image class="goods-img" :src="order.cover_image" mode="aspectFill" lazy-load="true" />
+                    <view class="goods-info">
+                        <text class="goods-title">{{ order.title }}</text>
+                        <view class="goods-meta">
+                            <text class="goods-price">¥{{ formatPrice(order.price) }}</text>
+                            <text class="goods-qty">x{{ order.quantity }}</text>
+                        </view>
+                    </view>
+                    <view class="goods-amount">
+                        <text class="amount-label">实付款</text>
+                        <text class="amount-value">¥{{ formatPrice(order.total_amount) }}</text>
+                    </view>
+                </view>
+
+                <!-- 操作按钮 -->
+                <view class="action-row">
+                    <view class="action-btn outline" v-if="order.status == 'pending_pay'" @click="doAction('pay', order)">
+                        <text class="btn-text primary">去支付</text>
+                    </view>
+                    <view class="action-btn outline" v-if="order.status == 'pending_ship'" @click="doAction('remind', order)">
+                        <text class="btn-text">提醒发货</text>
+                    </view>
+                    <view class="action-btn outline" v-if="order.status == 'shipped' || order.status == 'pending_receive'" @click="doAction('logistics', order)">
+                        <text class="btn-text">查看物流</text>
+                    </view>
+                    <view class="action-btn outline" v-if="order.status == 'shipped' || order.status == 'pending_receive'" @click="doAction('confirm', order)">
+                        <text class="btn-text primary">确认收货</text>
+                    </view>
+                    <view class="action-btn outline" v-if="order.status == 'completed' && !order.is_reviewed" @click="doAction('review', order)">
+                        <text class="btn-text primary">去评价</text>
+                    </view>
+                    <view class="action-btn outline" v-if="['cancelled', 'completed'].includes(order.status)" @click="doAction('delete', order)">
+                        <text class="btn-text">删除订单</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 加载状态 -->
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && orderList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <er-empty-state v-if="orderList.length == 0 && !loading" icon="📋" text="暂无相关订单" btn-text="去逛逛" @click="goHome" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getOrderList, payOrder, cancelOrder, confirmReceive } from '@/api/ershou.uts'
+
+    type Tab = { key: string, name: string }
+    type OrderItem = {
+        id: number
+        item_id: number
+        shop_id: number
+        shop_name: string
+        title: string
+        cover_image: string
+        price: number
+        quantity: number
+        total_amount: number
+        status: string
+        is_reviewed: boolean
+    }
+
+    const tabs = ref([
+        { key: 'all', name: '全部' },
+        { key: 'pending_pay', name: '待付款' },
+        { key: 'pending_ship', name: '待发货' },
+        { key: 'shipped', name: '已发货' },
+        { key: 'pending_receive', name: '待收货' },
+        { key: 'completed', name: '已完成' },
+        { key: 'cancelled', name: '已取消' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const orderList = ref([] as OrderItem[])
+    const page = ref(1)
+    const pageSize = 10
+    const loading = ref(false)
+    const hasMore = ref(true)
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const status = tabs.value[currentTab.value].key
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        if (status != 'all') {
+            params['status'] = status
+        }
+
+        getOrderList(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200) {
+                const list = (res.data && (res.data as UTSJSONObject)['list']) as OrderItem[] ?? [] as OrderItem[]
+                if (reset) {
+                    orderList.value = list
+                } else {
+                    orderList.value = orderList.value.concat(list)
+                }
+                hasMore.value = list.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadList(true)
+    }
+
+    const getStatusText = (status: string): string => {
+        const map: UTSJSONObject = {
+            pending_pay: '待付款',
+            pending_ship: '待发货',
+            shipped: '已发货',
+            pending_receive: '待收货',
+            completed: '已完成',
+            cancelled: '已取消'
+        } as UTSJSONObject
+        const v = (map[status] as string) ?? status
+        return v
+    }
+
+    const formatPrice = (price: number): string => {
+        return (price / 100).toFixed(2)
+    }
+
+    const doAction = (action: string, order: OrderItem) => {
+        if (action == 'pay') {
+            uni.showModal({
+                title: '支付订单',
+                content: '确认支付 ¥' + formatPrice(order.total_amount) + ' ？',
+                success: (res) => {
+                    if (res.confirm) {
+                        payOrder(order.id, {} as UTSJSONObject).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '支付成功', icon: 'success' })
+                                loadList(true)
+                            } else {
+                                uni.showToast({ title: r.message || '支付失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (action == 'remind') {
+            uni.showToast({ title: '已提醒卖家发货', icon: 'success' })
+        } else if (action == 'logistics') {
+            uni.navigateTo({ url: '/pages/ershou/order-detail?id=' + order.id })
+        } else if (action == 'confirm') {
+            uni.showModal({
+                title: '确认收货',
+                content: '确认已收到商品？',
+                success: (res) => {
+                    if (res.confirm) {
+                        confirmReceive(order.id).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '收货成功', icon: 'success' })
+                                loadList(true)
+                            } else {
+                                uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (action == 'review') {
+            uni.navigateTo({ url: '/pages/ershou/review-create?order_id=' + order.id + '&item_id=' + order.item_id })
+        } else if (action == 'delete') {
+            uni.showModal({
+                title: '删除订单',
+                content: '删除后无法恢复，确认删除？',
+                success: (res) => {
+                    if (res.confirm) {
+                        cancelOrder(order.id).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '删除成功', icon: 'success' })
+                                loadList(true)
+                            } else {
+                                uni.showToast({ title: r.message || '删除失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        }
+    }
+
+    const goDetail = (itemId: number) => {
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + itemId })
+    }
+
+    const goShop = (shopId: number) => {
+        if (shopId == 0) return
+        uni.navigateTo({ url: '/pages/ershou/shop?id=' + shopId })
+    }
+
+    const goHome = () => {
+        uni.navigateTo({ url: '/pages/ershou/index' })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom: 1px solid #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .order-list {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .order-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .shop-row {
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .shop-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .shop-name {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .status-text {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .goods-row {
+        flex-direction: row;
+        padding: 12px 0;
+    }
+
+    .goods-img {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .goods-info {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .goods-title {
+        font-size: 14px;
+        color: #333;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .goods-meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .goods-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .goods-qty {
+        font-size: 12px;
+        color: #999;
+        margin-left: 8px;
+    }
+
+    .goods-amount {
+        align-items: flex-end;
+    }
+
+    .amount-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .amount-value {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top: 1px solid #F5F5F5;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border-radius: 16px;
+        border: 1px solid #DDDDDD;
+        margin-left: 8px;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+    }
+
+    .btn-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .btn-text.primary {
+        color: #FF6B35;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

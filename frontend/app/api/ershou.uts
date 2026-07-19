@@ -1,0 +1,415 @@
+// 二手交易模块 API 封装
+// 对应后端 backend/internal/modules/ershou/plugin.go 路由清单（100+ API）
+// 路由前缀：/ershou（由 request.uts 中 BASE_URL 拼接为 /api/v1/ershou）
+// 按场景分组：商品/收藏/留言/搜索/推荐/订单/拍卖/评价/举报/店铺/用户/目录/统计
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 商品 =====
+// 商品列表（公开）
+export const listErshous = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou', params)
+}
+
+// 商品详情（公开）
+export const getErshouDetail = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/' + id)
+}
+
+// 发布商品（需登录）
+export const createErshou = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou', data)
+}
+
+// 更新商品（需登录）
+export const updateErshou = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/' + id, data)
+}
+
+// 删除商品（需登录）
+export const deleteErshou = (id: number) : Promise<ApiResult> => {
+    return del('/ershou/' + id)
+}
+
+// 我的发布（需登录）
+export const listMine = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/mine', params)
+}
+
+// 附近商品（公开）
+export const nearby = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/nearby', params)
+}
+
+// ===== 收藏 =====
+// 收藏/取消收藏（需登录）
+export const fav = (id: number) : Promise<ApiResult> => {
+    return post('/ershou/' + id + '/fav', null)
+}
+
+// 收藏状态（公开）
+export const favStatus = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/' + id + '/fav')
+}
+
+// 我的收藏列表（需登录）
+export const listMyFavorites = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/favorites', params)
+}
+
+// ===== 留言 =====
+// 发送留言（需登录）
+export const sendMessage = (ershouId: number, content: string) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/messages', { content: content } as UTSJSONObject)
+}
+
+// 留言列表（公开）
+export const listMessages = (ershouId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/messages', params)
+}
+
+// ===== 搜索 =====
+// 搜索（公开，走 Elasticsearch）
+export const search = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/search', params)
+}
+
+// 高级搜索（公开）
+export const advancedSearch = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/search', params)
+}
+
+// 热搜榜（公开）—— 后端统计接口 /statistics/hot-items 替代
+export const getHotSearch = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/statistics/hot-items', params)
+}
+
+// 搜索历史（本地存储）
+export const getSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('ershou_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+// 清空搜索历史
+export const clearSearchHistory = () => {
+    uni.removeStorageSync('ershou_search_history')
+}
+
+// 添加搜索历史
+export const addSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('ershou_search_history', list)
+}
+
+// ===== 推荐 =====
+// 相似商品（公开）—— 用同分类列表近似
+export const getSimilar = (ershouId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId, params)
+}
+
+// 个性化推荐（公开）—— 走热门商品接口
+export const getPersonalRecommend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/statistics/hot-items', params)
+}
+
+// 热门商品
+export const getHotItems = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/statistics/hot-items', params)
+}
+
+// 价格趋势
+export const getPriceTrend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/statistics/price-trend', params)
+}
+
+// ===== 订单 =====
+// 创建订单（需登录）
+export const createOrder = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders', data)
+}
+
+// 订单列表（需登录）
+export const getOrderList = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/orders', params)
+}
+
+// 订单详情（需登录）
+export const getOrderDetail = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/orders/' + id)
+}
+
+// 支付订单
+export const payOrder = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + id + '/pay', data)
+}
+
+// 卖家发货
+export const shipOrder = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + id + '/ship', data)
+}
+
+// 买家确认收货
+export const confirmReceive = (id: number) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + id + '/receive', null)
+}
+
+// 取消订单
+export const cancelOrder = (id: number) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + id + '/cancel', null)
+}
+
+// 更新订单状态（状态机）
+export const updateOrderStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/orders/' + id + '/status', data)
+}
+
+// ===== 物流 =====
+export const createLogistics = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + orderId + '/logistics', data)
+}
+
+export const getLogistics = (orderId: number) : Promise<ApiResult> => {
+    return get('/ershou/orders/' + orderId + '/logistics')
+}
+
+export const updateLogistics = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/orders/' + orderId + '/logistics', data)
+}
+
+// ===== 担保 =====
+export const createEscrow = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + orderId + '/escrow', data)
+}
+
+export const getEscrow = (orderId: number) : Promise<ApiResult> => {
+    return get('/ershou/orders/' + orderId + '/escrow')
+}
+
+export const releaseEscrow = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + orderId + '/escrow/release', data)
+}
+
+// ===== 退款 =====
+export const createRefund = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + orderId + '/refund', data)
+}
+
+export const getRefund = (orderId: number) : Promise<ApiResult> => {
+    return get('/ershou/orders/' + orderId + '/refund')
+}
+
+export const listRefunds = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/refunds', params)
+}
+
+export const processRefund = (refundId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/refunds/' + refundId + '/process', data)
+}
+
+// ===== 拍卖 =====
+// 拍卖列表（公开）
+export const getAuctionList = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/auctions', params)
+}
+
+// 商品拍卖详情（公开）
+export const getAuctionDetail = (ershouId: number) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/auction')
+}
+
+// 创建拍卖（需登录）
+export const createAuction = (ershouId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/auction', data)
+}
+
+// 出价（需登录）
+export const bidAuction = (ershouId: number, bidPrice: number) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/auction/bid', { bid_price: bidPrice } as UTSJSONObject)
+}
+
+// 手动截拍（需登录）
+export const endAuction = (ershouId: number) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/auction/end', null)
+}
+
+// ===== SKU =====
+export const listSKUs = (ershouId: number) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/skus')
+}
+
+export const createSKU = (ershouId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/skus', data)
+}
+
+export const updateSKU = (ershouId: number, skuId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/' + ershouId + '/skus/' + skuId, data)
+}
+
+export const deleteSKU = (ershouId: number, skuId: number) : Promise<ApiResult> => {
+    return del('/ershou/' + ershouId + '/skus/' + skuId)
+}
+
+// ===== 评价 =====
+// 创建评价（需登录）
+export const createReview = (orderId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/orders/' + orderId + '/reviews', data)
+}
+
+// 评价列表（公开）
+export const getReviews = (ershouId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/reviews', params)
+}
+
+// 评价统计（公开）
+export const getReviewStats = (ershouId: number) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/reviews/stats')
+}
+
+// 评价详情（公开）
+export const getReviewDetail = (reviewId: number) : Promise<ApiResult> => {
+    return get('/ershou/reviews/' + reviewId)
+}
+
+// 回复评价（需登录）
+export const replyReview = (reviewId: number, reply: string) : Promise<ApiResult> => {
+    return post('/ershou/reviews/' + reviewId + '/reply', { reply: reply } as UTSJSONObject)
+}
+
+// ===== 举报 =====
+export const createReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/reports', data)
+}
+
+// ===== 店铺 =====
+// 店铺列表（公开）
+export const listShops = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/shops', params)
+}
+
+// 店铺详情（公开）
+export const getShopDetail = (shopId: number) : Promise<ApiResult> => {
+    return get('/ershou/shops/' + shopId)
+}
+
+// 我的店铺（需登录）
+export const getMyShop = () : Promise<ApiResult> => {
+    return get('/ershou/shops/mine')
+}
+
+// 创建店铺（需登录）
+export const createShop = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/shops', data)
+}
+
+// 更新店铺（需登录）
+export const updateShop = (shopId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/ershou/shops/' + shopId, data)
+}
+
+// 关注店铺
+export const followShop = (shopId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/shops/' + shopId + '/follow', data)
+}
+
+// 取消关注
+export const unfollowShop = (shopId: number) : Promise<ApiResult> => {
+    return del('/ershou/shops/' + shopId + '/follow')
+}
+
+// 我关注的店铺
+export const listFollowingShops = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/shops/following', params)
+}
+
+// 店铺粉丝
+export const listShopFollowers = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/shops/' + shopId + '/followers', params)
+}
+
+// 店铺商品（走商品列表 shop_id 过滤）
+export const getShopItems = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    const q = params ?? ({} as UTSJSONObject)
+    q['shop_id'] = shopId
+    return get('/ershou', q)
+}
+
+// ===== 用户信用 =====
+export const getUserCredit = () : Promise<ApiResult> => {
+    return get('/ershou/credit')
+}
+
+// 卖家统计
+export const getSellerStats = () : Promise<ApiResult> => {
+    return get('/ershou/statistics/seller')
+}
+
+// ===== 目录：标签/品牌/型号/分类属性 =====
+export const listTags = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/tags', params)
+}
+
+export const listHotTags = () : Promise<ApiResult> => {
+    return get('/ershou/tags/hot')
+}
+
+export const getTag = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/tags/' + id)
+}
+
+export const listBrands = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/brands', params)
+}
+
+export const getBrand = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/brands/' + id)
+}
+
+export const listModelsByBrand = (brandId: number) : Promise<ApiResult> => {
+    return get('/ershou/brands/' + brandId + '/models')
+}
+
+export const listModels = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/models', params)
+}
+
+export const getModel = (id: number) : Promise<ApiResult> => {
+    return get('/ershou/models/' + id)
+}
+
+export const listCategoryAttrs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/ershou/category-attrs', params)
+}
+
+export const listCategoryAttrsByCate = (categoryId: number) : Promise<ApiResult> => {
+    return get('/ershou/categories/' + categoryId + '/attrs')
+}
+
+// ===== 推广 =====
+export const listPromotions = (ershouId: number) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/promotions')
+}
+
+export const getPromotionStats = (ershouId: number) : Promise<ApiResult> => {
+    return get('/ershou/' + ershouId + '/promotions/stats')
+}
+
+export const createPromotion = (ershouId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/ershou/' + ershouId + '/promotions', data)
+}
+
+// ===== 审核规则（启用列表，C 端发布时使用） =====
+export const listEnabledAuditRules = () : Promise<ApiResult> => {
+    return get('/ershou/audit-rules/enabled')
+}

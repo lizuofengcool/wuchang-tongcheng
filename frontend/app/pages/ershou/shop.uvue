@@ -1,0 +1,483 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <!-- Banner + 店铺信息 -->
+            <view class="shop-header">
+                <image class="banner" :src="shop.banner" mode="aspectFill" lazy-load="true" v-if="shop.banner" />
+                <view class="banner-placeholder" v-else>
+                    <text class="banner-placeholder-text">{{ shop.name }}</text>
+                </view>
+                <view class="shop-info-card">
+                    <image class="shop-logo" :src="shop.logo" mode="aspectFill" lazy-load="true" v-if="shop.logo" />
+                    <view class="shop-logo-placeholder" v-else>
+                        <text class="shop-logo-text">{{ shop.name.charAt(0) }}</text>
+                    </view>
+                    <view class="shop-meta">
+                        <view class="shop-name-row">
+                            <text class="shop-name">{{ shop.name }}</text>
+                            <er-credit-badge :score="shop.credit_score" :show-label="false" />
+                        </view>
+                        <text class="shop-desc">{{ shop.description || '暂无简介' }}</text>
+                        <view class="shop-stats">
+                            <view class="stat-item">
+                                <text class="stat-value">{{ shop.item_count }}</text>
+                                <text class="stat-label">商品</text>
+                            </view>
+                            <view class="stat-item">
+                                <text class="stat-value">{{ shop.follower_count }}</text>
+                                <text class="stat-label">粉丝</text>
+                            </view>
+                            <view class="stat-item">
+                                <text class="stat-value">{{ shop.sold_count }}</text>
+                                <text class="stat-label">已售</text>
+                            </view>
+                            <view class="stat-item">
+                                <text class="stat-value">{{ shop.rating.toFixed(1) }}</text>
+                                <text class="stat-label">好评</text>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+                <view class="action-row">
+                    <view class="follow-btn" :class="{ followed: shop.is_followed }" @click="toggleFollow">
+                        <text class="follow-text">{{ shop.is_followed ? '已关注' : '+ 关注' }}</text>
+                    </view>
+                    <view class="contact-btn" @click="contactSeller">
+                        <text class="contact-text">联系卖家</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 商品列表 Tab -->
+            <view class="tab-bar">
+                <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                    <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                    <view class="tab-line" v-if="currentTab == idx"></view>
+                </view>
+            </view>
+
+            <!-- 排序栏 -->
+            <view class="sort-bar">
+                <view class="sort-item" v-for="(s, idx) in sorts" :key="idx" @click="switchSort(idx)">
+                    <text class="sort-text" :class="{ active: currentSort == idx }">{{ s }}</text>
+                </view>
+            </view>
+
+            <!-- 商品列表 -->
+            <view class="goods-list">
+                <er-item-list v-for="item in goodsList" :key="item.id" :item="item" @click="goDetail" />
+            </view>
+
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && goodsList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <er-empty-state v-if="goodsList.length == 0 && !loading" icon="📦" text="暂无商品" btn-text="去首页" @click="goHome" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getShopDetail, followShop, unfollowShop, getShopItems } from '@/api/ershou.uts'
+
+    type Shop = {
+        id: number
+        name: string
+        logo: string
+        banner: string
+        description: string
+        credit_score: number
+        item_count: number
+        follower_count: number
+        sold_count: number
+        rating: number
+        is_followed: boolean
+    }
+    type Goods = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        original_price: number
+        condition: string
+        user_name: string
+        user_avatar: string
+        address: string
+        view_count: number
+        fav_count: number
+    }
+
+    const shopId = ref(0)
+    const shop = ref({
+        id: 0, name: '', logo: '', banner: '', description: '',
+        credit_score: 0, item_count: 0, follower_count: 0, sold_count: 0,
+        rating: 0, is_followed: false
+    } as Shop)
+    const tabs = ref([
+        { key: 'all', name: '全部' },
+        { key: 'popular', name: '热销' },
+        { key: 'new', name: '最新' },
+        { key: 'cheap', name: '低价' }
+    ] as { key: string, name: string }[])
+    const currentTab = ref(0)
+    const sorts = ref(['综合', '价格', '销量', '新品'] as string[])
+    const currentSort = ref(0)
+    const goodsList = ref([] as Goods[])
+    const page = ref(1)
+    const pageSize = 10
+    const loading = ref(false)
+    const hasMore = ref(true)
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            shopId.value = parseInt(id as string)
+            loadShop()
+            loadGoods(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadShop()
+        loadGoods(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+
+    const loadShop = () => {
+        getShopDetail(shopId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                shop.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    logo: (d['logo'] as string) ?? '',
+                    banner: (d['banner'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    credit_score: (d['credit_score'] as number) ?? 0,
+                    item_count: (d['item_count'] as number) ?? 0,
+                    follower_count: (d['follower_count'] as number) ?? 0,
+                    sold_count: (d['sold_count'] as number) ?? 0,
+                    rating: (d['rating'] as number) ?? 0,
+                    is_followed: (d['is_followed'] as boolean) ?? false
+                } as Shop
+            }
+        })
+    }
+
+    const loadGoods = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const tabKey = tabs.value[currentTab.value].key
+        const params: UTSJSONObject = {
+            shop_id: shopId.value,
+            page: page.value,
+            page_size: pageSize,
+            sort: tabKey
+        } as UTSJSONObject
+
+        getShopItems(shopId.value, params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200) {
+                const list = (res.data && (res.data as UTSJSONObject)['list']) as Goods[] ?? ([] as Goods[])
+                if (reset) {
+                    goodsList.value = list
+                } else {
+                    goodsList.value = goodsList.value.concat(list)
+                }
+                hasMore.value = list.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadGoods(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadGoods(true)
+    }
+
+    const switchSort = (idx: number) => {
+        currentSort.value = idx
+        loadGoods(true)
+    }
+
+    const toggleFollow = () => {
+        if (shop.value.is_followed) {
+            unfollowShop(shopId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    shop.value.is_followed = false
+                    shop.value.follower_count = Math.max(0, shop.value.follower_count - 1)
+                    uni.showToast({ title: '已取消关注', icon: 'none' })
+                }
+            })
+        } else {
+            followShop(shopId.value, {} as UTSJSONObject).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    shop.value.is_followed = true
+                    shop.value.follower_count = shop.value.follower_count + 1
+                    uni.showToast({ title: '关注成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const contactSeller = () => {
+        uni.showToast({ title: '聊天功能开发中', icon: 'none' })
+    }
+
+    const goDetail = (item: any) => {
+        const id = (item as UTSJSONObject)['id'] as number
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + id })
+    }
+
+    const goHome = () => {
+        uni.navigateTo({ url: '/pages/ershou/index' })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .shop-header {
+        background-color: #FFFFFF;
+        margin-bottom: 8px;
+    }
+
+    .banner {
+        width: 100%;
+        height: 160px;
+        background-color: #F5F5F5;
+    }
+
+    .banner-placeholder {
+        width: 100%;
+        height: 160px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .banner-placeholder-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .shop-info-card {
+        flex-direction: row;
+        padding: 12px 16px;
+        margin-top: -30px;
+    }
+
+    .shop-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        border: 2px solid #FFFFFF;
+        background-color: #F5F5F5;
+    }
+
+    .shop-logo-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        border: 2px solid #FFFFFF;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .shop-logo-text {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .shop-meta {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .shop-name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .shop-name {
+        font-size: 18px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .shop-desc {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .shop-stats {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .stat-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        padding: 12px 16px;
+        border-top: 1px solid #F5F5F5;
+    }
+
+    .follow-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 20px;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .follow-btn.followed {
+        background-color: #F5F5F5;
+    }
+
+    .follow-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 500;
+    }
+
+    .follow-btn.followed .follow-text {
+        color: #999;
+    }
+
+    .contact-btn {
+        flex: 1;
+        background-color: #FFFFFF;
+        border: 1px solid #FF6B35;
+        border-radius: 20px;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .contact-text {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom: 1px solid #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .sort-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 8px 16px;
+        border-bottom: 1px solid #E5E5E5;
+    }
+
+    .sort-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .sort-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .sort-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .goods-list {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

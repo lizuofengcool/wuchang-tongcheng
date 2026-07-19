@@ -1,0 +1,291 @@
+<template>
+    <view class="list-item" @click="onClick">
+        <view class="image-wrap">
+            <image class="cover" :src="coverImage" mode="aspectFill" lazy-load="true" />
+            <view class="badge-auction" v-if="item.is_auction">
+                <text class="badge-auction-text">拍卖中</text>
+            </view>
+        </view>
+        <view class="info">
+            <text class="title">{{ item.title }}</text>
+            <view class="tag-row" v-if="item.is_urgent || item.is_auction">
+                <view class="tag tag-urgent" v-if="item.is_urgent">
+                    <text class="tag-text-urgent">急转</text>
+                </view>
+                <view class="tag tag-bargain" v-if="item.bargainable">
+                    <text class="tag-text-bargain">可议价</text>
+                </view>
+                <view class="tag tag-featured" v-if="item.featured">
+                    <text class="tag-text-featured">精选</text>
+                </view>
+            </view>
+            <text class="summary" v-if="item.summary.length > 0">{{ item.summary }}</text>
+            <view class="price-row">
+                <text class="price-symbol">¥</text>
+                <text class="price">{{ formatPrice(item.price) }}</text>
+                <text class="price-original" v-if="item.original_price > 0 && item.original_price > item.price">¥{{ formatPrice(item.original_price) }}</text>
+                <text class="condition" v-if="item.condition.length > 0">{{ conditionText(item.condition) }}</text>
+            </view>
+            <view class="meta">
+                <view class="user">
+                    <image class="avatar" :src="item.user_avatar" mode="aspectFill" lazy-load="true" v-if="item.user_avatar.length > 0" />
+                    <text class="user-name">{{ item.user_name }}</text>
+                </view>
+                <view class="location">
+                    <text class="area" v-if="item.address.length > 0">{{ item.address }}</text>
+                    <text class="distance" v-if="item.distance > 0">·{{ formatDistance(item.distance) }}</text>
+                </view>
+            </view>
+            <view class="stats">
+                <text class="stat">浏览{{ item.view_count }}</text>
+                <text class="stat">收藏{{ item.fav_count }}</text>
+                <text class="stat">留言{{ item.message_count }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type ErshouItem = {
+        id: number
+        title: string
+        summary: string
+        cover_image: string
+        price: number
+        original_price: number
+        condition: string
+        address: string
+        distance: number
+        user_name: string
+        user_avatar: string
+        view_count: number
+        fav_count: number
+        message_count: number
+        is_urgent: boolean
+        is_auction: boolean
+        bargainable: boolean
+        featured: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        item: ErshouItem
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const coverImage = computed(() : string => {
+        return props.item.cover_image || 'https://via.placeholder.com/200x200?text=No+Image'
+    })
+
+    const onClick = () => {
+        emit('click', props.item.id)
+    }
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+
+    const formatDistance = (d: number) : string => {
+        if (d < 1) return Math.round(d * 1000) + 'm'
+        return d.toFixed(1) + 'km'
+    }
+
+    const conditionText = (c: string) : string => {
+        if (c == 'new') return '全新'
+        if (c == 'almost_new') return '几乎全新'
+        if (c == 'used') return '有使用痕迹'
+        if (c == 'broken') return '有损坏'
+        return c
+    }
+</script>
+
+<style>
+    .list-item {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+    }
+
+    .image-wrap {
+        position: relative;
+        width: 110px;
+        height: 110px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+
+    .cover {
+        width: 100%;
+        height: 100%;
+    }
+
+    .badge-auction {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(255, 107, 53, 0.85);
+        padding: 2px 0;
+        align-items: center;
+    }
+
+    .badge-auction-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .info {
+        flex: 1;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+    }
+
+    .tag-urgent {
+        background-color: #FFE5E5;
+    }
+
+    .tag-text-urgent {
+        font-size: 10px;
+        color: #EE0A24;
+    }
+
+    .tag-bargain {
+        background-color: #FFF5F0;
+    }
+
+    .tag-text-bargain {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .tag-featured {
+        background-color: #FFF8E5;
+    }
+
+    .tag-text-featured {
+        font-size: 10px;
+        color: #FF976A;
+    }
+
+    .summary {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 4px;
+    }
+
+    .price-symbol {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-original {
+        font-size: 11px;
+        color: #999;
+        text-decoration: line-through;
+        margin-left: 6px;
+    }
+
+    .condition {
+        font-size: 11px;
+        color: #666;
+        margin-left: 6px;
+    }
+
+    .meta {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 4px;
+    }
+
+    .user {
+        flex-direction: row;
+        align-items: center;
+        flex: 1;
+    }
+
+    .avatar {
+        width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        margin-right: 4px;
+    }
+
+    .user-name {
+        font-size: 11px;
+        color: #666;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .location {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .area {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .distance {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .stats {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .stat {
+        font-size: 10px;
+        color: #BBB;
+        margin-right: 8px;
+    }
+</style>

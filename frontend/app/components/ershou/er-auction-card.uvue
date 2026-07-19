@@ -1,0 +1,230 @@
+<template>
+    <view class="auction-card">
+        <view class="header">
+            <view class="title-wrap">
+                <text class="title">拍卖中</text>
+                <text class="status">{{ auction.status_text }}</text>
+            </view>
+            <view class="countdown" v-if="isOngoing">
+                <text class="countdown-label">距截拍</text>
+                <text class="countdown-time">{{ countdownText }}</text>
+            </view>
+        </view>
+        <view class="price-area">
+            <view class="price-col">
+                <text class="label">起拍价</text>
+                <text class="value">¥{{ formatPrice(auction.start_price) }}</text>
+            </view>
+            <view class="price-col">
+                <text class="label">当前价</text>
+                <text class="value highlight">¥{{ formatPrice(auction.current_bid_price) }}</text>
+            </view>
+            <view class="price-col" v-if="auction.reserve_price > 0">
+                <text class="label">保留价</text>
+                <text class="value muted">¥{{ formatPrice(auction.reserve_price) }}</text>
+            </view>
+            <view class="price-col" v-if="auction.step_price > 0">
+                <text class="label">加价幅度</text>
+                <text class="value">¥{{ formatPrice(auction.step_price) }}</text>
+            </view>
+        </view>
+        <view class="meta">
+            <view class="meta-item">
+                <text class="meta-label">出价次数</text>
+                <text class="meta-value">{{ auction.bid_count }}次</text>
+            </view>
+            <view class="meta-item">
+                <text class="meta-label">围观人数</text>
+                <text class="meta-value">{{ auction.watcher_count }}人</text>
+            </view>
+            <view class="meta-item" v-if="auction.bond_amount > 0">
+                <text class="meta-label">保证金</text>
+                <text class="meta-value">¥{{ formatPrice(auction.bond_amount) }}</text>
+            </view>
+        </view>
+        <view class="footer">
+            <text class="rule-text">📌 拍卖规则：出价后不可撤销，截拍时最高价者得</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Auction = {
+        id: number
+        ershou_id: number
+        start_price: number
+        step_price: number
+        reserve_price: number
+        bond_amount: number
+        current_bid_price: number
+        current_bid_user_id: number
+        bid_count: number
+        watcher_count: number
+        status: number
+        status_text: string
+        start_time: string | null
+        end_time: string | null
+        auto_extend_enabled: boolean
+        winner_id: number
+        winner_price: number
+        closed_at: string | null
+    }
+
+    const props = withDefaults(defineProps<{
+        auction: Auction
+    }>(), {} as any)
+
+    const isOngoing = computed(() : boolean => {
+        return props.auction.status == 1 || props.auction.status == 0
+    })
+
+    const countdownText = computed(() : string => {
+        const endTs = parseTime(props.auction.end_time)
+        if (endTs == 0) return '--'
+        const now = Date.now()
+        let diff = Math.floor((endTs - now) / 1000)
+        if (diff <= 0) return '已截拍'
+        const days = Math.floor(diff / 86400)
+        diff = diff % 86400
+        const hours = Math.floor(diff / 3600)
+        diff = diff % 3600
+        const mins = Math.floor(diff / 60)
+        const secs = diff % 60
+        if (days > 0) return days + '天' + hours + '时'
+        if (hours > 0) return hours + '时' + mins + '分'
+        return mins + '分' + secs + '秒'
+    })
+
+    const parseTime = (t: string | null) : number => {
+        if (t == null) return 0
+        if (t.length == 0) return 0
+        const d = new Date(t!)
+        return d.getTime()
+    }
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+</script>
+
+<style>
+    .auction-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .title-wrap {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-right: 8px;
+    }
+
+    .status {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .countdown {
+        background-color: #FFE5E5;
+        border-radius: 4px;
+        padding: 2px 8px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .countdown-label {
+        font-size: 10px;
+        color: #EE0A24;
+        margin-right: 4px;
+    }
+
+    .countdown-time {
+        font-size: 12px;
+        color: #EE0A24;
+        font-weight: 600;
+    }
+
+    .price-area {
+        flex-direction: row;
+        background-color: #FFF8F5;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .price-col {
+        flex: 1;
+        align-items: center;
+    }
+
+    .label {
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 4px;
+    }
+
+    .value {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .highlight {
+        color: #FF6B35;
+        font-size: 18px;
+    }
+
+    .muted {
+        color: #999;
+    }
+
+    .meta {
+        flex-direction: row;
+        margin-bottom: 10px;
+    }
+
+    .meta-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .meta-label {
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 2px;
+    }
+
+    .meta-value {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .footer {
+        background-color: #FAFAFA;
+        border-radius: 6px;
+        padding: 8px;
+    }
+
+    .rule-text {
+        font-size: 11px;
+        color: #999;
+    }
+</style>

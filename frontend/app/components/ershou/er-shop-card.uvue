@@ -1,0 +1,219 @@
+<template>
+    <view class="shop-card" @click="onClick">
+        <view class="logo-wrap">
+            <image class="logo" :src="logo" mode="aspectFill" lazy-load="true" v-if="logo.length > 0" />
+            <view class="logo-default" v-else>
+                <text class="logo-default-text">{{ firstChar }}</text>
+            </view>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ shop.shop_name }}</text>
+                <view class="level-badge">
+                    <text class="level-text">{{ shop.level_text }}</text>
+                </view>
+            </view>
+            <text class="desc" v-if="shop.description.length > 0">{{ shop.description }}</text>
+            <view class="stats">
+                <view class="stat-item">
+                    <text class="stat-num">{{ shop.item_count }}</text>
+                    <text class="stat-label">商品</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item">
+                    <text class="stat-num">{{ shop.follower_count }}</text>
+                    <text class="stat-label">粉丝</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item">
+                    <text class="stat-num">{{ shop.sold_count }}</text>
+                    <text class="stat-label">已售</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item">
+                    <text class="stat-num">{{ goodRatePercent }}</text>
+                    <text class="stat-label">好评</text>
+                </view>
+            </view>
+        </view>
+        <view class="action" v-if="showFollowBtn">
+            <view class="follow-btn" :class="{ 'followed': shop.is_following }" @click.stop="onFollow">
+                <text class="follow-text">{{ shop.is_following ? '已关注' : '+ 关注' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type ShopInfo = {
+        id: number
+        shop_name: string
+        logo: string
+        description: string
+        level: number
+        level_text: string
+        follower_count: number
+        item_count: number
+        sold_count: number
+        good_rate: number
+        is_following: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        shop: ShopInfo
+        showFollowBtn?: boolean
+    }>(), {
+        showFollowBtn: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'follow'): void
+    }>()
+
+    const logo = computed(() : string => props.shop.logo)
+    const firstChar = computed(() : string => {
+        if (props.shop.shop_name.length == 0) return 'S'
+        return props.shop.shop_name.charAt(0)
+    })
+
+    const goodRatePercent = computed(() : string => {
+        return Math.round(props.shop.good_rate * 100) + '%'
+    })
+
+    const onClick = () => {
+        emit('click', props.shop.id)
+    }
+
+    const onFollow = () => {
+        emit('follow')
+    }
+</script>
+
+<style>
+    .shop-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .logo-wrap {
+        margin-right: 10px;
+    }
+
+    .logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+    }
+
+    .logo-default {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-default-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .level-badge {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-left: 6px;
+    }
+
+    .level-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .desc {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .stats {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .stat-item {
+        align-items: center;
+        padding: 0 8px;
+    }
+
+    .stat-num {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 10px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 14px;
+        background-color: #E5E5E5;
+    }
+
+    .action {
+        margin-left: 8px;
+    }
+
+    .follow-btn {
+        background-color: #FF6B35;
+        border-radius: 16px;
+        padding: 6px 12px;
+    }
+
+    .followed {
+        background-color: #F5F5F5;
+    }
+
+    .follow-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .followed .follow-text {
+        color: #999;
+    }
+</style>

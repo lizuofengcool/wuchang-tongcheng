@@ -1,0 +1,541 @@
+<template>
+    <view class="page">
+        <!-- 顶部筛选条 -->
+        <view class="filter-bar">
+            <view class="filter-item" v-for="(item, idx) in sorts" :key="idx" @click="changeSort(item.key)">
+                <text class="filter-text" :class="{ active: currentSort == item.key }">{{ item.name }}</text>
+                <text class="filter-arrow" v-if="item.key == 'price_asc' || item.key == 'price_desc'">{{ currentSort == item.key ? '↑' : '↓' }}</text>
+            </view>
+            <view class="filter-item" @click="toggleFilterPanel">
+                <text class="filter-text">筛选</text>
+                <text class="filter-arrow">▼</text>
+            </view>
+            <view class="filter-item" @click="toggleViewMode">
+                <text class="filter-icon">{{ viewMode == 'list' ? '▦' : '☰' }}</text>
+            </view>
+        </view>
+
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <!-- 列表模式 -->
+            <view class="list-wrap" v-if="viewMode == 'list'">
+                <er-item-list v-for="item in list" :key="item.id" :item="item" @click="goDetail" />
+            </view>
+            <!-- 大图模式（双列网格） -->
+            <view class="grid-wrap" v-else>
+                <view class="grid-col">
+                    <er-item-card v-for="item in leftCol" :key="item.id" :item="transformToCard(item)" @click="goDetail" />
+                </view>
+                <view class="grid-col">
+                    <er-item-card v-for="item in rightCol" :key="item.id" :item="transformToCard(item)" @click="goDetail" />
+                </view>
+            </view>
+
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <er-empty-state v-if="list.length == 0 && !loading" icon="🔍" text="没有找到相关商品" btnText="重置筛选" @click="resetFilter" />
+        </scroll-view>
+
+        <!-- 筛选弹窗 -->
+        <view class="filter-mask" v-if="showFilter" @click="closeFilter"></view>
+        <view class="filter-panel" v-if="showFilter">
+            <scroll-view class="filter-content" scroll-y>
+                <!-- 分类 -->
+                <view class="filter-section">
+                    <text class="filter-section-title">分类</text>
+                    <view class="filter-options">
+                        <view class="filter-opt" :class="{ active: filterCategory == 0 }" @click="setCategory(0)">
+                            <text class="filter-opt-text">全部</text>
+                        </view>
+                        <view class="filter-opt" v-for="c in categories" :key="c.id" :class="{ active: filterCategory == c.id }" @click="setCategory(c.id)">
+                            <text class="filter-opt-text">{{ c.name }}</text>
+                        </view>
+                    </view>
+                </view>
+                <!-- 成色 -->
+                <view class="filter-section">
+                    <text class="filter-section-title">成色</text>
+                    <view class="filter-options">
+                        <view class="filter-opt" :class="{ active: filterCondition == '' }" @click="setCondition('')">
+                            <text class="filter-opt-text">全部</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterCondition == 'new' }" @click="setCondition('new')">
+                            <text class="filter-opt-text">全新</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterCondition == 'almost_new' }" @click="setCondition('almost_new')">
+                            <text class="filter-opt-text">几乎全新</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterCondition == 'used' }" @click="setCondition('used')">
+                            <text class="filter-opt-text">有使用痕迹</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterCondition == 'broken' }" @click="setCondition('broken')">
+                            <text class="filter-opt-text">有损坏</text>
+                        </view>
+                    </view>
+                </view>
+                <!-- 价格区间 -->
+                <view class="filter-section">
+                    <text class="filter-section-title">价格区间</text>
+                    <view class="price-input-row">
+                        <input class="price-input" type="number" placeholder="最低价" v-model="minPrice" />
+                        <text class="price-dash">-</text>
+                        <input class="price-input" type="number" placeholder="最高价" v-model="maxPrice" />
+                    </view>
+                </view>
+                <!-- 交付方式 -->
+                <view class="filter-section">
+                    <text class="filter-section-title">交付方式</text>
+                    <view class="filter-options">
+                        <view class="filter-opt" :class="{ active: filterDelivery == '' }" @click="setDelivery('')">
+                            <text class="filter-opt-text">全部</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterDelivery == 'face' }" @click="setDelivery('face')">
+                            <text class="filter-opt-text">当面交易</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterDelivery == 'self' }" @click="setDelivery('self')">
+                            <text class="filter-opt-text">自提</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterDelivery == 'express' }" @click="setDelivery('express')">
+                            <text class="filter-opt-text">快递</text>
+                        </view>
+                    </view>
+                </view>
+                <!-- 选项 -->
+                <view class="filter-section">
+                    <text class="filter-section-title">选项</text>
+                    <view class="filter-options">
+                        <view class="filter-opt" :class="{ active: filterAuction }" @click="filterAuction = !filterAuction">
+                            <text class="filter-opt-text">拍卖</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterEscrow }" @click="filterEscrow = !filterEscrow">
+                            <text class="filter-opt-text">担保交易</text>
+                        </view>
+                        <view class="filter-opt" :class="{ active: filterUrgent }" @click="filterUrgent = !filterUrgent">
+                            <text class="filter-opt-text">急转</text>
+                        </view>
+                    </view>
+                </view>
+            </scroll-view>
+            <view class="filter-footer">
+                <view class="filter-btn-reset" @click="resetFilter">
+                    <text class="filter-btn-text">重置</text>
+                </view>
+                <view class="filter-btn-confirm" @click="applyFilter">
+                    <text class="filter-btn-text-white">确定</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listErshous, nearby } from '@/api/ershou.uts'
+
+    type Category = { id: number, name: string }
+    type ListItem = {
+        id: number
+        title: string
+        summary: string
+        cover_image: string
+        price: number
+        original_price: number
+        condition: string
+        address: string
+        distance: number
+        user_name: string
+        user_avatar: string
+        view_count: number
+        fav_count: number
+        message_count: number
+        is_urgent: boolean
+        is_auction: boolean
+        bargainable: boolean
+        featured: boolean
+    }
+
+    const categories = ref<Category[]>([
+        { id: 1, name: '数码' },
+        { id: 2, name: '服饰' },
+        { id: 3, name: '家居' },
+        { id: 4, name: '书籍' },
+        { id: 5, name: '母婴' },
+        { id: 6, name: '运动' },
+        { id: 7, name: '虚拟' },
+        { id: 8, name: '其他' }
+    ] as Category[])
+
+    const sorts = [
+        { key: 'popular', name: '综合' },
+        { key: 'latest', name: '最新' },
+        { key: 'price_asc', name: '价格' },
+        { key: 'distance', name: '距离' }
+    ] as Array<{ key: string, name: string }>
+
+    const currentSort = ref('popular')
+    const viewMode = ref('list')
+    const showFilter = ref(false)
+    const filterCategory = ref(0)
+    const filterCondition = ref('')
+    const filterDelivery = ref('')
+    const filterAuction = ref(false)
+    const filterEscrow = ref(false)
+    const filterUrgent = ref(false)
+    const minPrice = ref('')
+    const maxPrice = ref('')
+
+    const list = ref<ListItem[]>([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const leftCol = computed(() : ListItem[] => {
+        return list.value.filter((_: ListItem, idx: number) : boolean => idx % 2 == 0)
+    })
+
+    const rightCol = computed(() : ListItem[] => {
+        return list.value.filter((_: ListItem, idx: number) : boolean => idx % 2 == 1)
+    })
+
+    const transformToCard = (item: ListItem) : UTSJSONObject => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            price: item.price,
+            original_price: item.original_price,
+            price_unit: '',
+            address: item.address,
+            distance: item.distance,
+            user_name: item.user_name,
+            user_avatar: item.user_avatar,
+            view_count: item.view_count,
+            fav_count: item.fav_count,
+            is_urgent: item.is_urgent,
+            is_auction: item.is_auction
+        } as UTSJSONObject
+    }
+
+    const buildParams = () : UTSJSONObject => {
+        const params = {
+            page: page.value,
+            page_size: pageSize,
+            sort: currentSort.value
+        } as UTSJSONObject
+        if (filterCategory.value > 0) params['category_id'] = filterCategory.value
+        if (filterCondition.value.length > 0) params['condition'] = filterCondition.value
+        if (filterDelivery.value.length > 0) params['delivery_method'] = filterDelivery.value
+        if (filterAuction.value) params['is_auction'] = true
+        if (filterEscrow.value) params['escrow_enabled'] = true
+        if (filterUrgent.value) params['is_urgent'] = true
+        if (minPrice.value.length > 0) params['min_price'] = parseFloat(minPrice.value)
+        if (maxPrice.value.length > 0) params['max_price'] = parseFloat(maxPrice.value)
+        return params
+    }
+
+    const loadData = async () => {
+        if (loading.value || !hasMore.value) return
+        loading.value = true
+        try {
+            const params = buildParams()
+            let res: ApiResult
+            if (currentSort.value == 'distance') {
+                // 距离排序走 nearby 接口
+                res = await nearby(params)
+            } else {
+                res = await listErshous(params)
+            }
+            const data = res.data as UTSJSONObject
+            const arr = data['list'] as ListItem[] ?? ([] as ListItem[])
+            if (page.value == 1) {
+                list.value = arr
+            } else {
+                list.value = list.value.concat(arr)
+            }
+            hasMore.value = arr.length >= pageSize
+        } catch (e) {
+            // 忽略
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        page.value++
+        loadData()
+    }
+
+    const changeSort = (key: string) => {
+        // 价格切换
+        if (key == 'price_asc' && currentSort.value == 'price_asc') {
+            currentSort.value = 'price_desc'
+        } else if (key == 'price_asc') {
+            currentSort.value = 'price_asc'
+        } else {
+            currentSort.value = key
+        }
+        refresh()
+    }
+
+    const toggleViewMode = () => {
+        viewMode.value = viewMode.value == 'list' ? 'grid' : 'list'
+    }
+
+    const toggleFilterPanel = () => {
+        showFilter.value = !showFilter.value
+    }
+
+    const closeFilter = () => {
+        showFilter.value = false
+    }
+
+    const setCategory = (id: number) => {
+        filterCategory.value = id
+    }
+
+    const setCondition = (c: string) => {
+        filterCondition.value = c
+    }
+
+    const setDelivery = (d: string) => {
+        filterDelivery.value = d
+    }
+
+    const resetFilter = () => {
+        filterCategory.value = 0
+        filterCondition.value = ''
+        filterDelivery.value = ''
+        filterAuction.value = false
+        filterEscrow.value = false
+        filterUrgent.value = false
+        minPrice.value = ''
+        maxPrice.value = ''
+        currentSort.value = 'popular'
+        refresh()
+    }
+
+    const applyFilter = () => {
+        showFilter.value = false
+        refresh()
+    }
+
+    const refresh = () => {
+        page.value = 1
+        hasMore.value = true
+        list.value = [] as ListItem[]
+        loadData()
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const cid = options['category_id']
+        if (cid != null) filterCategory.value = parseInt(cid as string)
+        const sort = options['sort']
+        if (sort != null) currentSort.value = sort as string
+        const auction = options['auction']
+        if (auction != null) filterAuction.value = true
+        const urgent = options['urgent']
+        if (urgent != null) filterUrgent.value = true
+        loadData()
+    })
+
+    onPullDownRefresh(() => {
+        refresh()
+        setTimeout(() => {
+            uni.stopPullDownRefresh()
+        }, 1000)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .filter-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .filter-item {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filter-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .filter-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .filter-arrow {
+        font-size: 10px;
+        color: #999;
+        margin-left: 2px;
+    }
+
+    .filter-icon {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .list-scroll {
+        flex: 1;
+        padding: 10px;
+    }
+
+    .list-wrap, .grid-wrap {
+        flex-direction: row;
+    }
+
+    .grid-wrap {
+        flex: 1;
+    }
+
+    .grid-col {
+        flex: 1;
+        margin: 0 4px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .filter-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .filter-panel {
+        position: fixed;
+        top: 80px;
+        right: 0;
+        bottom: 0;
+        width: 80%;
+        background-color: #FFFFFF;
+        border-top-left-radius: 12px;
+    }
+
+    .filter-content {
+        flex: 1;
+        padding: 16px;
+    }
+
+    .filter-section {
+        margin-bottom: 20px;
+    }
+
+    .filter-section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .filter-options {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .filter-opt {
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+
+    .filter-opt.active {
+        background-color: #FFF5F0;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .filter-opt-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .filter-opt.active .filter-opt-text {
+        color: #FF6B35;
+    }
+
+    .price-input-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .price-input {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .price-dash {
+        font-size: 14px;
+        color: #999;
+        margin: 0 8px;
+    }
+
+    .filter-footer {
+        flex-direction: row;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .filter-btn-reset {
+        flex: 1;
+        padding: 14px 0;
+        align-items: center;
+        background-color: #FFFFFF;
+    }
+
+    .filter-btn-confirm {
+        flex: 1;
+        padding: 14px 0;
+        align-items: center;
+        background-color: #FF6B35;
+    }
+
+    .filter-btn-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .filter-btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

@@ -1,0 +1,767 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <!-- 状态进度条 -->
+            <view class="status-bar card">
+                <view class="status-current">
+                    <text class="status-current-text">{{ getStatusText(order.status) }}</text>
+                    <text class="status-tip" v-if="order.status == 'pending_pay'">请尽快完成支付</text>
+                    <text class="status-tip" v-if="order.status == 'pending_ship'">等待卖家发货</text>
+                    <text class="status-tip" v-if="order.status == 'shipped'">商品已发出，请耐心等待</text>
+                    <text class="status-tip" v-if="order.status == 'pending_receive'">请确认收货</text>
+                    <text class="status-tip" v-if="order.status == 'completed'">订单已完成</text>
+                    <text class="status-tip" v-if="order.status == 'cancelled'">订单已取消</text>
+                </view>
+                <view class="steps">
+                    <view class="step" v-for="(step, idx) in steps" :key="idx">
+                        <view class="step-dot" :class="{ done: idx <= currentStepIdx, active: idx == currentStepIdx }">
+                            <text class="step-dot-text">{{ idx + 1 }}</text>
+                        </view>
+                        <text class="step-label" :class="{ active: idx <= currentStepIdx }">{{ step }}</text>
+                        <view class="step-line" v-if="idx < steps.length - 1" :class="{ done: idx < currentStepIdx }"></view>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 商品信息 -->
+            <view class="goods-card card" @click="goDetail">
+                <image class="goods-img" :src="order.cover_image" mode="aspectFill" lazy-load="true" />
+                <view class="goods-info">
+                    <text class="goods-title">{{ order.title }}</text>
+                    <view class="goods-meta">
+                        <text class="goods-price">¥{{ formatPrice(order.price) }}</text>
+                        <text class="goods-qty">x{{ order.quantity }}</text>
+                    </view>
+                    <text class="goods-sku" v-if="order.sku_desc">规格：{{ order.sku_desc }}</text>
+                </view>
+            </view>
+
+            <!-- 物流跟踪 -->
+            <view class="card" v-if="logistics && logistics.company">
+                <view class="card-title-row">
+                    <text class="card-title">物流跟踪</text>
+                    <text class="card-action" @click="copyLogisticsNo">复制单号</text>
+                </view>
+                <view class="logistics-info">
+                    <text class="logistics-line">{{ logistics.company }} {{ logistics.tracking_no }}</text>
+                    <text class="logistics-status" v-if="logistics.status">{{ logistics.status }}</text>
+                </view>
+                <view class="logistics-trace" v-if="logistics.latest_trace">
+                    <text class="trace-time">{{ logistics.latest_trace.time }}</text>
+                    <text class="trace-text">{{ logistics.latest_trace.content }}</text>
+                </view>
+            </view>
+
+            <!-- 担保交易 -->
+            <view class="card" v-if="escrow && escrow.id">
+                <view class="card-title-row">
+                    <text class="card-title">担保交易</text>
+                    <text class="escrow-status">{{ getEscrowStatusText(escrow.status) }}</text>
+                </view>
+                <view class="escrow-row">
+                    <text class="escrow-label">担保金额</text>
+                    <text class="escrow-value">¥{{ formatPrice(escrow.amount) }}</text>
+                </view>
+                <view class="escrow-row" v-if="escrow.status == 'held' && order.status == 'completed'">
+                    <view class="release-btn" @click="releaseEscrowAction">
+                        <text class="release-btn-text">释放给卖家</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 退款信息 -->
+            <view class="card" v-if="refund && refund.id">
+                <view class="card-title-row">
+                    <text class="card-title">退款信息</text>
+                    <text class="refund-status">{{ getRefundStatusText(refund.status) }}</text>
+                </view>
+                <view class="refund-row">
+                    <text class="refund-label">退款金额</text>
+                    <text class="refund-value">¥{{ formatPrice(refund.amount) }}</text>
+                </view>
+                <view class="refund-row">
+                    <text class="refund-label">退款原因</text>
+                    <text class="refund-value">{{ refund.reason }}</text>
+                </view>
+            </view>
+
+            <!-- 评价信息 -->
+            <view class="card" v-if="review && review.id">
+                <view class="card-title-row">
+                    <text class="card-title">我的评价</text>
+                    <text class="card-action" @click="goReviewCreate">修改</text>
+                </view>
+                <view class="review-stars">
+                    <text class="star" v-for="i in 5" :key="i" :class="{ active: i <= review.rating }">★</text>
+                </view>
+                <text class="review-content">{{ review.content }}</text>
+            </view>
+
+            <!-- 订单信息 -->
+            <view class="card">
+                <text class="card-title">订单信息</text>
+                <view class="info-row">
+                    <text class="info-label">订单编号</text>
+                    <text class="info-value" @click="copyOrderNo">{{ order.order_no }} 复制</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">下单时间</text>
+                    <text class="info-value">{{ order.created_at }}</text>
+                </view>
+                <view class="info-row" v-if="order.pay_time">
+                    <text class="info-label">支付时间</text>
+                    <text class="info-value">{{ order.pay_time }}</text>
+                </view>
+                <view class="info-row" v-if="order.ship_time">
+                    <text class="info-label">发货时间</text>
+                    <text class="info-value">{{ order.ship_time }}</text>
+                </view>
+                <view class="info-row" v-if="order.receive_time">
+                    <text class="info-label">收货时间</text>
+                    <text class="info-value">{{ order.receive_time }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">支付方式</text>
+                    <text class="info-value">{{ order.pay_method || '在线支付' }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">商品金额</text>
+                    <text class="info-value">¥{{ formatPrice(order.item_amount) }}</text>
+                </view>
+                <view class="info-row" v-if="order.freight > 0">
+                    <text class="info-label">运费</text>
+                    <text class="info-value">¥{{ formatPrice(order.freight) }}</text>
+                </view>
+                <view class="info-row total-row">
+                    <text class="info-label">实付款</text>
+                    <text class="info-value danger">¥{{ formatPrice(order.total_amount) }}</text>
+                </view>
+            </view>
+
+            <view style="height: 80px"></view>
+        </scroll-view>
+
+        <!-- 底部操作栏 -->
+        <view class="bottom-bar">
+            <view class="bottom-btn outline" v-if="order.status == 'pending_pay'" @click="doAction('pay')">
+                <text class="bottom-btn-text primary">立即支付</text>
+            </view>
+            <view class="bottom-btn outline" v-if="order.status == 'pending_pay'" @click="doAction('cancel')">
+                <text class="bottom-btn-text">取消订单</text>
+            </view>
+            <view class="bottom-btn outline" v-if="order.status == 'shipped' || order.status == 'pending_receive'" @click="doAction('logistics')">
+                <text class="bottom-btn-text">查看物流</text>
+            </view>
+            <view class="bottom-btn primary" v-if="order.status == 'shipped' || order.status == 'pending_receive'" @click="doAction('confirm')">
+                <text class="bottom-btn-text white">确认收货</text>
+            </view>
+            <view class="bottom-btn outline" v-if="order.status == 'completed' && !review" @click="doAction('review')">
+                <text class="bottom-btn-text primary">去评价</text>
+            </view>
+            <view class="bottom-btn outline" v-if="['pending_pay', 'pending_ship'].includes(order.status)" @click="doAction('refund')">
+                <text class="bottom-btn-text">申请退款</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getOrderDetail, payOrder, cancelOrder, confirmReceive, getLogistics, getEscrow, releaseEscrow, createRefund, getReviews } from '@/api/ershou.uts'
+
+    type OrderInfo = {
+        id: number
+        order_no: string
+        status: string
+        item_id: number
+        title: string
+        cover_image: string
+        price: number
+        quantity: number
+        sku_desc: string
+        item_amount: number
+        freight: number
+        total_amount: number
+        pay_method: string
+        pay_time: string
+        ship_time: string
+        receive_time: string
+        created_at: string
+    }
+    type Logistics = {
+        company: string
+        tracking_no: string
+        status: string
+        latest_trace: { time: string, content: string } | null
+    }
+    type Escrow = {
+        id: number
+        status: string
+        amount: number
+    }
+    type Refund = {
+        id: number
+        status: string
+        amount: number
+        reason: string
+    }
+    type Review = {
+        id: number
+        rating: number
+        content: string
+    }
+
+    const orderId = ref(0)
+    const order = ref({
+        id: 0, order_no: '', status: '', item_id: 0, title: '', cover_image: '',
+        price: 0, quantity: 1, sku_desc: '', item_amount: 0, freight: 0, total_amount: 0,
+        pay_method: '', pay_time: '', ship_time: '', receive_time: '', created_at: ''
+    } as OrderInfo)
+    const logistics = ref(null as Logistics | null)
+    const escrow = ref(null as Escrow | null)
+    const refund = ref(null as Refund | null)
+    const review = ref(null as Review | null)
+    const steps = ref(['下单', '付款', '发货', '收货', '完成'] as string[])
+
+    const currentStepIdx = computed((): number => {
+        const s = order.value.status
+        if (s == 'pending_pay') return 0
+        if (s == 'pending_ship') return 1
+        if (s == 'shipped') return 2
+        if (s == 'pending_receive') return 2
+        if (s == 'completed') return 4
+        if (s == 'cancelled') return 0
+        return 0
+    })
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            orderId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    const loadDetail = () => {
+        uni.showLoading({ title: '加载中' })
+        getOrderDetail(orderId.value).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                order.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    status: (d['status'] as string) ?? '',
+                    item_id: (d['item_id'] as number) ?? 0,
+                    title: (d['title'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    price: (d['price'] as number) ?? 0,
+                    quantity: (d['quantity'] as number) ?? 1,
+                    sku_desc: (d['sku_desc'] as string) ?? '',
+                    item_amount: (d['item_amount'] as number) ?? 0,
+                    freight: (d['freight'] as number) ?? 0,
+                    total_amount: (d['total_amount'] as number) ?? 0,
+                    pay_method: (d['pay_method'] as string) ?? '',
+                    pay_time: (d['pay_time'] as string) ?? '',
+                    ship_time: (d['ship_time'] as string) ?? '',
+                    receive_time: (d['receive_time'] as string) ?? '',
+                    created_at: (d['created_at'] as string) ?? ''
+                } as OrderInfo
+                loadExtras()
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadExtras = () => {
+        if (order.value.status == 'shipped' || order.value.status == 'pending_receive' || order.value.status == 'completed') {
+            getLogistics(orderId.value).then((res: ApiResult) => {
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    logistics.value = {
+                        company: (d['company'] as string) ?? '',
+                        tracking_no: (d['tracking_no'] as string) ?? '',
+                        status: (d['status'] as string) ?? '',
+                        latest_trace: (d['latest_trace'] as { time: string, content: string }) ?? null
+                    } as Logistics
+                }
+            })
+            getEscrow(orderId.value).then((res: ApiResult) => {
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    escrow.value = {
+                        id: (d['id'] as number) ?? 0,
+                        status: (d['status'] as string) ?? '',
+                        amount: (d['amount'] as number) ?? 0
+                    } as Escrow
+                }
+            })
+        }
+    }
+
+    const getStatusText = (status: string): string => {
+        const map: UTSJSONObject = {
+            pending_pay: '等待付款',
+            pending_ship: '待发货',
+            shipped: '已发货',
+            pending_receive: '待收货',
+            completed: '已完成',
+            cancelled: '已取消'
+        } as UTSJSONObject
+        return (map[status] as string) ?? status
+    }
+
+    const getEscrowStatusText = (status: string): string => {
+        const map: UTSJSONObject = {
+            held: '担保中',
+            released: '已释放',
+            refunded: '已退款'
+        } as UTSJSONObject
+        return (map[status] as string) ?? status
+    }
+
+    const getRefundStatusText = (status: string): string => {
+        const map: UTSJSONObject = {
+            pending: '处理中',
+            approved: '已同意',
+            rejected: '已拒绝',
+            completed: '已退款'
+        } as UTSJSONObject
+        return (map[status] as string) ?? status
+    }
+
+    const formatPrice = (price: number): string => {
+        return (price / 100).toFixed(2)
+    }
+
+    const copyOrderNo = () => {
+        uni.setClipboardData({ data: order.value.order_no })
+    }
+
+    const copyLogisticsNo = () => {
+        if (logistics.value) {
+            uni.setClipboardData({ data: logistics.value!.tracking_no })
+        }
+    }
+
+    const doAction = (action: string) => {
+        if (action == 'pay') {
+            uni.showModal({
+                title: '支付订单',
+                content: '确认支付 ¥' + formatPrice(order.value.total_amount) + ' ？',
+                success: (res) => {
+                    if (res.confirm) {
+                        payOrder(orderId.value, {} as UTSJSONObject).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '支付成功', icon: 'success' })
+                                loadDetail()
+                            } else {
+                                uni.showToast({ title: r.message || '支付失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (action == 'cancel') {
+            uni.showModal({
+                title: '取消订单',
+                content: '确认取消该订单？',
+                success: (res) => {
+                    if (res.confirm) {
+                        cancelOrder(orderId.value).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '已取消', icon: 'success' })
+                                loadDetail()
+                            } else {
+                                uni.showToast({ title: r.message || '取消失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (action == 'logistics') {
+            uni.showToast({ title: '查看物流详情', icon: 'none' })
+        } else if (action == 'confirm') {
+            uni.showModal({
+                title: '确认收货',
+                content: '确认已收到商品？',
+                success: (res) => {
+                    if (res.confirm) {
+                        confirmReceive(orderId.value).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '收货成功', icon: 'success' })
+                                loadDetail()
+                            } else {
+                                uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (action == 'review') {
+            uni.navigateTo({ url: '/pages/ershou/review-create?order_id=' + orderId.value + '&item_id=' + order.value.item_id })
+        } else if (action == 'refund') {
+            uni.showModal({
+                title: '申请退款',
+                content: '确认申请退款？',
+                success: (res) => {
+                    if (res.confirm) {
+                        const params: UTSJSONObject = {
+                            reason: '买家申请退款'
+                        } as UTSJSONObject
+                        createRefund(orderId.value, params).then((r: ApiResult) => {
+                            if (r.code == 200) {
+                                uni.showToast({ title: '已申请', icon: 'success' })
+                                loadDetail()
+                            } else {
+                                uni.showToast({ title: r.message || '申请失败', icon: 'none' })
+                            }
+                        })
+                    }
+                }
+            })
+        }
+    }
+
+    const releaseEscrowAction = () => {
+        uni.showModal({
+            title: '释放担保金',
+            content: '确认将担保金释放给卖家？',
+            success: (res) => {
+                if (res.confirm && escrow.value) {
+                    releaseEscrow(orderId.value, {} as UTSJSONObject).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已释放', icon: 'success' })
+                            loadDetail()
+                        } else {
+                            uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goDetail = () => {
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + order.value.item_id })
+    }
+
+    const goReviewCreate = () => {
+        uni.navigateTo({ url: '/pages/ershou/review-create?order_id=' + orderId.value + '&item_id=' + order.value.item_id })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .status-bar {
+        align-items: center;
+    }
+
+    .status-current {
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .status-current-text {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .status-tip {
+        font-size: 13px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .steps {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+        position: relative;
+    }
+
+    .step {
+        align-items: center;
+        flex: 1;
+        position: relative;
+    }
+
+    .step-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #E5E5E5;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .step-dot.done {
+        background-color: #FF8A5C;
+    }
+
+    .step-dot.active {
+        background-color: #FF6B35;
+    }
+
+    .step-dot-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .step-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .step-label.active {
+        color: #FF6B35;
+    }
+
+    .step-line {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        right: -50%;
+        height: 2px;
+        background-color: #E5E5E5;
+    }
+
+    .step-line.done {
+        background-color: #FF8A5C;
+    }
+
+    .goods-card {
+        flex-direction: row;
+    }
+
+    .goods-img {
+        width: 90px;
+        height: 90px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .goods-info {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .goods-title {
+        font-size: 14px;
+        color: #333;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .goods-meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .goods-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .goods-qty {
+        font-size: 12px;
+        color: #999;
+        margin-left: 8px;
+    }
+
+    .goods-sku {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .card-title-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .card-action {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .logistics-info, .logistics-trace {
+        margin-bottom: 8px;
+    }
+
+    .logistics-line {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .logistics-status {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-top: 4px;
+    }
+
+    .trace-time {
+        font-size: 12px;
+        color: #999;
+        margin-right: 8px;
+    }
+
+    .trace-text {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .escrow-row, .refund-row {
+        flex-direction: row;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .escrow-label, .refund-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .escrow-value, .refund-value {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .escrow-status, .refund-status {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .release-btn {
+        background-color: #FF6B35;
+        border-radius: 16px;
+        padding: 6px 16px;
+        align-self: flex-end;
+        margin-top: 8px;
+    }
+
+    .release-btn-text {
+        font-size: 13px;
+        color: #FFFFFF;
+    }
+
+    .review-stars {
+        flex-direction: row;
+        margin-bottom: 8px;
+    }
+
+    .star {
+        font-size: 18px;
+        color: #E5E5E5;
+        margin-right: 4px;
+    }
+
+    .star.active {
+        color: #FF6B35;
+    }
+
+    .review-content {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .info-row {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .info-value.danger {
+        color: #EE0A24;
+        font-weight: 600;
+    }
+
+    .total-row {
+        border-top: 1px solid #F5F5F5;
+        margin-top: 4px;
+        padding-top: 12px;
+    }
+
+    .bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 16px;
+        border-top: 1px solid #E5E5E5;
+        justify-content: flex-end;
+    }
+
+    .bottom-btn {
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin-left: 8px;
+        border: 1px solid #FF6B35;
+    }
+
+    .bottom-btn.outline {
+        background-color: #FFFFFF;
+        border: 1px solid #DDDDDD;
+    }
+
+    .bottom-btn.primary {
+        background-color: #FF6B35;
+        border: 1px solid #FF6B35;
+    }
+
+    .bottom-btn-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .bottom-btn-text.primary {
+        color: #FF6B35;
+    }
+
+    .bottom-btn-text.white {
+        color: #FFFFFF;
+    }
+</style>

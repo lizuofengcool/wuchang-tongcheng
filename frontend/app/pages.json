@@ -3,7 +3,8 @@
         "autoscan": true,
         "custom": {
             "^uni-(.*)": "@/uni_modules/uni-$1/components/uni-$1/uni-$1.uvue",
-            "^custom-(.*)": "@/components/custom-$1/custom-$1.uvue"
+            "^custom-(.*)": "@/components/custom-$1/custom-$1.uvue",
+            "^er-(.*)": "@/components/ershou/er-$1.uvue"
         }
     },
     "pages": [
@@ -118,6 +119,21 @@
             }
         },
         {
+            "path": "pages/ershou/index",
+            "style": {
+                "navigationBarTitleText": "二手市场",
+                "navigationStyle": "custom",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/ershou/list",
+            "style": {
+                "navigationBarTitleText": "商品列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
             "path": "pages/ershou/detail",
             "style": {
                 "navigationBarTitleText": "二手详情"
@@ -133,6 +149,52 @@
             "path": "pages/ershou/search",
             "style": {
                 "navigationBarTitleText": "搜索二手"
+            }
+        },
+        {
+            "path": "pages/ershou/orders",
+            "style": {
+                "navigationBarTitleText": "我的订单",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/ershou/order-detail",
+            "style": {
+                "navigationBarTitleText": "订单详情"
+            }
+        },
+        {
+            "path": "pages/ershou/auction",
+            "style": {
+                "navigationBarTitleText": "拍卖出价"
+            }
+        },
+        {
+            "path": "pages/ershou/review-create",
+            "style": {
+                "navigationBarTitleText": "发布评价"
+            }
+        },
+        {
+            "path": "pages/ershou/shop",
+            "style": {
+                "navigationBarTitleText": "店铺主页",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/ershou/my-published",
+            "style": {
+                "navigationBarTitleText": "我的发布",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/ershou/messages",
+            "style": {
+                "navigationBarTitleText": "消息中心",
+                "enablePullDownRefresh": true
             }
         }
     ],
@@ -199,6 +261,54 @@
             {
                 "name": "骑手工作台",
                 "path": "pages/rider/index"
+            },
+            {
+                "name": "二手首页",
+                "path": "pages/ershou/index"
+            },
+            {
+                "name": "二手列表",
+                "path": "pages/ershou/list"
+            },
+            {
+                "name": "二手详情",
+                "path": "pages/ershou/detail"
+            },
+            {
+                "name": "发布二手",
+                "path": "pages/ershou/publish"
+            },
+            {
+                "name": "二手搜索",
+                "path": "pages/ershou/search"
+            },
+            {
+                "name": "我的订单",
+                "path": "pages/ershou/orders"
+            },
+            {
+                "name": "订单详情",
+                "path": "pages/ershou/order-detail"
+            },
+            {
+                "name": "拍卖出价",
+                "path": "pages/ershou/auction"
+            },
+            {
+                "name": "发布评价",
+                "path": "pages/ershou/review-create"
+            },
+            {
+                "name": "店铺主页",
+                "path": "pages/ershou/shop"
+            },
+            {
+                "name": "我的发布",
+                "path": "pages/ershou/my-published"
+            },
+            {
+                "name": "消息中心",
+                "path": "pages/ershou/messages"
             }
         ]
     }

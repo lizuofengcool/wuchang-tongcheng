@@ -1,0 +1,590 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <!-- 拍卖商品信息 -->
+            <view class="item-card card" @click="goDetail">
+                <image class="item-img" :src="auction.cover_image" mode="aspectFill" lazy-load="true" />
+                <view class="item-info">
+                    <text class="item-title">{{ auction.title }}</text>
+                    <text class="item-desc">{{ auction.description }}</text>
+                </view>
+            </view>
+
+            <!-- 拍卖价格区 -->
+            <view class="price-card card">
+                <view class="price-row">
+                    <text class="price-label">起拍价</text>
+                    <text class="price-value">¥{{ formatPrice(auction.start_price) }}</text>
+                </view>
+                <view class="price-row current">
+                    <text class="price-label">当前价</text>
+                    <text class="price-value primary">¥{{ formatPrice(auction.current_price) }}</text>
+                </view>
+                <view class="price-row">
+                    <text class="price-label">加价幅度</text>
+                    <text class="price-value">¥{{ formatPrice(auction.bid_step) }}</text>
+                </view>
+                <view class="price-row">
+                    <text class="price-label">保留价</text>
+                    <text class="price-value" v-if="auction.reserve_price > 0">¥{{ formatPrice(auction.reserve_price) }}</text>
+                    <text class="price-value" v-else>无</text>
+                </view>
+                <view class="price-row">
+                    <text class="price-label">保证金</text>
+                    <text class="price-value" v-if="auction.deposit > 0">¥{{ formatPrice(auction.deposit) }}</text>
+                    <text class="price-value" v-else>无</text>
+                </view>
+            </view>
+
+            <!-- 截拍倒计时 -->
+            <view class="countdown-card card">
+                <text class="countdown-label">距截拍</text>
+                <text class="countdown-value" :class="{ urgent: isUrgent }">{{ countdownText }}</text>
+                <text class="countdown-tip" v-if="auction.status == 'ended'">拍卖已结束</text>
+            </view>
+
+            <!-- 出价记录 -->
+            <view class="card">
+                <view class="card-title-row">
+                    <text class="card-title">出价记录</text>
+                    <text class="bid-count">{{ auction.bid_count }}次出价</text>
+                </view>
+                <view class="bid-list" v-if="bidList.length > 0">
+                    <view class="bid-item" v-for="(bid, idx) in bidList" :key="idx">
+                        <view class="bid-rank">
+                            <text class="rank-text" :class="{ first: idx == 0 }">{{ idx + 1 }}</text>
+                        </view>
+                        <text class="bid-user">{{ maskUser(bid.user_name) }}</text>
+                        <text class="bid-price">¥{{ formatPrice(bid.price) }}</text>
+                        <text class="bid-time">{{ bid.bid_time }}</text>
+                    </view>
+                </view>
+                <view class="empty" v-else>
+                    <text class="empty-text">暂无出价，快来首个出价</text>
+                </view>
+            </view>
+
+            <!-- 规则说明 -->
+            <view class="card">
+                <text class="card-title">拍卖规则</text>
+                <view class="rule-item" v-for="(rule, idx) in rules" :key="idx">
+                    <text class="rule-dot">·</text>
+                    <text class="rule-text">{{ rule }}</text>
+                </view>
+            </view>
+
+            <view style="height: 100px"></view>
+        </scroll-view>
+
+        <!-- 底部出价栏 -->
+        <view class="bottom-bar" v-if="auction.status == 'ongoing'">
+            <view class="bid-info">
+                <text class="bid-info-label">当前价</text>
+                <text class="bid-info-value">¥{{ formatPrice(auction.current_price) }}</text>
+            </view>
+            <view class="bid-input-row">
+                <view class="bid-input-btn" @click="decrementBid">
+                    <text class="bid-input-btn-text">-</text>
+                </view>
+                <input class="bid-input" type="number" v-model="bidValue" :placeholder="minBidPlaceholder" />
+                <view class="bid-input-btn" @click="incrementBid">
+                    <text class="bid-input-btn-text">+</text>
+                </view>
+            </view>
+            <view class="bid-submit-btn" @click="showBidConfirm">
+                <text class="bid-submit-text">出价</text>
+            </view>
+        </view>
+
+        <view class="bottom-bar" v-else-if="auction.status == 'ended'">
+            <view class="ended-tip">
+                <text class="ended-tip-text">拍卖已结束</text>
+                <text class="ended-winner" v-if="auction.winner_name">中标人：{{ maskUser(auction.winner_name) }}</text>
+            </view>
+        </view>
+
+        <view class="bottom-bar" v-else>
+            <view class="ended-tip">
+                <text class="ended-tip-text">拍卖未开始</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getAuctionDetail, bidAuction } from '@/api/ershou.uts'
+
+    type Auction = {
+        id: number
+        item_id: number
+        title: string
+        description: string
+        cover_image: string
+        start_price: number
+        current_price: number
+        reserve_price: number
+        bid_step: number
+        deposit: number
+        bid_count: number
+        start_time: string
+        end_time: string
+        status: string
+        winner_name: string
+    }
+    type Bid = {
+        user_name: string
+        price: number
+        bid_time: string
+    }
+
+    const auctionId = ref(0)
+    const auction = ref({
+        id: 0, item_id: 0, title: '', description: '', cover_image: '',
+        start_price: 0, current_price: 0, reserve_price: 0, bid_step: 100,
+        deposit: 0, bid_count: 0, start_time: '', end_time: '', status: 'ongoing',
+        winner_name: ''
+    } as Auction)
+    const bidList = ref([] as Bid[])
+    const bidValue = ref('')
+    const countdownText = ref('')
+    const isUrgent = ref(false)
+    const rules = ref([
+        '竞拍前需支付保证金，未中标将原路退还',
+        '每次出价不得低于当前价+加价幅度',
+        '拍卖结束后，中标者需在 24 小时内完成付款',
+        '若中标者未按时付款，保证金不予退还',
+        '卖家设有保留价，未达保留价则流拍',
+        '拍卖期间，卖家不得擅自取消拍卖'
+    ] as string[])
+
+    const minBidPlaceholder = computed((): string => {
+        return '最低 ¥' + formatPrice(auction.value.current_price + auction.value.bid_step)
+    })
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            auctionId.value = parseInt(id as string)
+            loadAuction()
+        }
+    })
+
+    const loadAuction = () => {
+        uni.showLoading({ title: '加载中' })
+        getAuctionDetail(auctionId.value).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                auction.value = {
+                    id: (d['id'] as number) ?? 0,
+                    item_id: (d['item_id'] as number) ?? 0,
+                    title: (d['title'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    start_price: (d['start_price'] as number) ?? 0,
+                    current_price: (d['current_price'] as number) ?? 0,
+                    reserve_price: (d['reserve_price'] as number) ?? 0,
+                    bid_step: (d['bid_step'] as number) ?? 100,
+                    deposit: (d['deposit'] as number) ?? 0,
+                    bid_count: (d['bid_count'] as number) ?? 0,
+                    start_time: (d['start_time'] as string) ?? '',
+                    end_time: (d['end_time'] as string) ?? '',
+                    status: (d['status'] as string) ?? 'ongoing',
+                    winner_name: (d['winner_name'] as string) ?? ''
+                } as Auction
+                bidList.value = (d['bids'] as Bid[]) ?? ([] as Bid[])
+                updateCountdown()
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const updateCountdown = () => {
+        if (auction.value.status != 'ongoing') {
+            countdownText.value = '已结束'
+            return
+        }
+        const endTs = parseTime(auction.value.end_time)
+        const nowTs = Date.now()
+        const diff = endTs - nowTs
+        if (diff <= 0) {
+            countdownText.value = '已结束'
+            return
+        }
+        const days = Math.floor(diff / (24 * 3600 * 1000))
+        const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000))
+        const minutes = Math.floor((diff % (3600 * 1000)) / (60 * 1000))
+        const seconds = Math.floor((diff % (60 * 1000)) / 1000)
+        if (days > 0) {
+            countdownText.value = days + '天 ' + padZero(hours) + ':' + padZero(minutes) + ':' + padZero(seconds)
+        } else {
+            countdownText.value = padZero(hours) + ':' + padZero(minutes) + ':' + padZero(seconds)
+        }
+        isUrgent.value = diff < 10 * 60 * 1000
+        setTimeout(updateCountdown, 1000)
+    }
+
+    const parseTime = (timeStr: string): number => {
+        if (timeStr.length == 0) return Date.now() + 3600 * 1000
+        return Date.parse(timeStr)
+    }
+
+    const padZero = (n: number): string => {
+        return (n < 10 ? '0' + n : '' + n)
+    }
+
+    const formatPrice = (price: number): string => {
+        return (price / 100).toFixed(2)
+    }
+
+    const maskUser = (name: string): string => {
+        if (name.length <= 1) return name
+        if (name.length == 2) return name[0] + '*'
+        return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
+    }
+
+    const incrementBid = () => {
+        const cur = bidValue.value.length > 0 ? parseFloat(bidValue.value) : auction.value.current_price / 100
+        const newVal = cur + auction.value.bid_step / 100
+        bidValue.value = newVal.toFixed(2)
+    }
+
+    const decrementBid = () => {
+        const cur = bidValue.value.length > 0 ? parseFloat(bidValue.value) : (auction.value.current_price + auction.value.bid_step) / 100
+        const minVal = (auction.value.current_price + auction.value.bid_step) / 100
+        const newVal = cur - auction.value.bid_step / 100
+        if (newVal >= minVal) {
+            bidValue.value = newVal.toFixed(2)
+        }
+    }
+
+    const showBidConfirm = () => {
+        if (bidValue.value.length == 0) {
+            uni.showToast({ title: '请输入出价金额', icon: 'none' })
+            return
+        }
+        const val = parseFloat(bidValue.value) * 100
+        const minVal = auction.value.current_price + auction.value.bid_step
+        if (val < minVal) {
+            uni.showToast({ title: '出价不能低于 ¥' + formatPrice(minVal), icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '确认出价',
+            content: '确认出价 ¥' + formatPrice(val) + ' ？',
+            success: (res) => {
+                if (res.confirm) {
+                    doBid(val)
+                }
+            }
+        })
+    }
+
+    const doBid = (price: number) => {
+        uni.showLoading({ title: '提交中' })
+        bidAuction(auctionId.value, price).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '出价成功', icon: 'success' })
+                bidValue.value = ''
+                loadAuction()
+            } else {
+                uni.showToast({ title: res.message || '出价失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const goDetail = () => {
+        uni.navigateTo({ url: '/pages/ershou/detail?id=' + auction.value.item_id })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .item-card {
+        flex-direction: row;
+    }
+
+    .item-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .item-info {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .item-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 500;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .item-desc {
+        font-size: 13px;
+        color: #666;
+        margin-top: 8px;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .price-row {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 6px 0;
+    }
+
+    .price-row.current {
+        background-color: #FFF5F0;
+        margin: 4px -16px;
+        padding: 12px 16px;
+    }
+
+    .price-label {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .price-value {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .price-value.primary {
+        color: #FF6B35;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .countdown-card {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .countdown-label {
+        font-size: 14px;
+        color: #666;
+        margin-right: 8px;
+    }
+
+    .countdown-value {
+        font-size: 20px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .countdown-value.urgent {
+        color: #EE0A24;
+    }
+
+    .countdown-tip {
+        font-size: 13px;
+        color: #999;
+        margin-left: 8px;
+    }
+
+    .card-title-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .bid-count {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .bid-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .bid-rank {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #F5F5F5;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .rank-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .rank-text.first {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .bid-user {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .bid-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .bid-time {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .empty {
+        padding: 24px 0;
+        align-items: center;
+    }
+
+    .empty-text {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .rule-item {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .rule-dot {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-right: 8px;
+    }
+
+    .rule-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        line-height: 20px;
+    }
+
+    .bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 16px;
+        border-top: 1px solid #E5E5E5;
+        align-items: center;
+    }
+
+    .bid-info {
+        margin-right: 12px;
+    }
+
+    .bid-info-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .bid-info-value {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .bid-input-row {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        border: 1px solid #E5E5E5;
+        border-radius: 20px;
+        margin-right: 8px;
+    }
+
+    .bid-input-btn {
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bid-input-btn-text {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bid-input {
+        flex: 1;
+        height: 32px;
+        font-size: 14px;
+        color: #333;
+        text-align: center;
+    }
+
+    .bid-submit-btn {
+        background-color: #FF6B35;
+        border-radius: 20px;
+        padding: 8px 20px;
+    }
+
+    .bid-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .ended-tip {
+        flex: 1;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .ended-tip-text {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .ended-winner {
+        font-size: 13px;
+        color: #FF6B35;
+        margin-top: 4px;
+    }
+</style>

@@ -1,0 +1,105 @@
+<template>
+    <view class="loc-picker" @click="onPick">
+        <view class="loc-content" v-if="address.length > 0">
+            <text class="loc-icon">📍</text>
+            <view class="loc-info">
+                <text class="loc-address">{{ address }}</text>
+                <text class="loc-poi" v-if="poi.length > 0">{{ poi }}</text>
+            </view>
+            <text class="loc-arrow">›</text>
+        </view>
+        <view class="loc-empty" v-else>
+            <text class="loc-icon">📍</text>
+            <text class="loc-placeholder">{{ placeholder }}</text>
+            <text class="loc-arrow">›</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        address?: string
+        latitude?: number
+        longitude?: number
+        poi?: string
+        placeholder?: string
+    }>(), {
+        address: '',
+        latitude: 0,
+        longitude: 0,
+        poi: '',
+        placeholder: '选择交易位置（支持多地交易）'
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'change', location: UTSJSONObject): void
+    }>()
+
+    const onPick = () => {
+        uni.chooseLocation({
+            success: (res: ChooseLocationSuccessCallbackResult) => {
+                const loc = {
+                    address: res.address,
+                    name: res.name,
+                    latitude: res.latitude,
+                    longitude: res.longitude
+                } as UTSJSONObject
+                emit('change', loc)
+            },
+            fail: (_: UniError) => {
+                // 用户取消或定位失败
+                uni.showToast({ title: '定位取消', icon: 'none' })
+            }
+        })
+    }
+</script>
+
+<style>
+    .loc-picker {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .loc-content {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .loc-empty {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .loc-icon {
+        font-size: 18px;
+        margin-right: 8px;
+    }
+
+    .loc-info {
+        flex: 1;
+    }
+
+    .loc-address {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .loc-poi {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .loc-placeholder {
+        font-size: 14px;
+        color: #999;
+        flex: 1;
+    }
+
+    .loc-arrow {
+        font-size: 20px;
+        color: #CCCCCC;
+    }
+</style>
