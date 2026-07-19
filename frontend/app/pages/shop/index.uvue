@@ -1,0 +1,114 @@
+<template>
+    <view class="page">
+        <!-- 店铺信息 -->
+        <view class="shop-header">
+            <view class="shop-info">
+                <text class="shop-name">{{ shopName }}</text>
+                <view class="status-switch" @click="toggleStatus">
+                    <text class="status-text">{{ isOpen ? '营业中' : '已打烊' }}</text>
+                </view>
+            </view>
+        </view>
+        <!-- 功能入口 -->
+        <view class="grid">
+            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
+                <text class="grid-icon">{{ item.icon }}</text>
+                <text class="grid-name">{{ item.name }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+
+    type MenuItem = {
+        id: number
+        name: string
+        icon: string
+        url: string
+    }
+
+    const shopName = ref('我的店铺')
+    const isOpen = ref(true)
+
+    const menuList = ref([
+        { id: 1, name: '商品管理', icon: '📦', url: '/pages/shop/products' },
+        { id: 2, name: '订单管理', icon: '📋', url: '/pages/shop/orders' },
+        { id: 3, name: '营销活动', icon: '🎉', url: '/pages/shop/marketing' },
+        { id: 4, name: '营业数据', icon: '📊', url: '/pages/shop/stats' }
+    ] as MenuItem[])
+
+    const toggleStatus = () => {
+        isOpen.value = !isOpen.value
+        uni.showToast({ title: isOpen.value ? '已开始营业' : '已打烊', icon: 'none' })
+    }
+
+    const goPage = (url: string) => {
+        uni.navigateTo({ url: url })
+    }
+
+    onLoad(() => {
+        guardMerchant()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .shop-header {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+    }
+
+    .shop-info {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .shop-name {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .status-switch {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 4px 12px;
+    }
+
+    .status-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 12px;
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .grid-item {
+        width: 25%;
+        align-items: center;
+        padding: 16px 0;
+    }
+
+    .grid-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .grid-name {
+        font-size: 13px;
+        color: #333;
+    }
+</style>

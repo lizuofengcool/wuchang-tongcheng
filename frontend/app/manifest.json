@@ -1,0 +1,144 @@
+{
+    "name" : "近享同城",
+    "appid" : "",
+    "description" : "五常同城本地生活服务平台 - 一站式同城信息发布/商家服务/配送/社区互动",
+    "versionName" : "1.0.0",
+    "versionCode" : "10000",
+    "uni-app-x" : {
+        "vapor" : true,
+        "styleIsolationVersion" : "2"
+    },
+    "vueVersion" : "3",
+    "mp-weixin" : {
+        "darkmode" : true,
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false,
+            "es6" : true,
+            "postcss" : true,
+            "minified" : true
+        },
+        "usingComponents" : true,
+        "resizable" : true,
+        "frameset" : true,
+        "libVersion" : "3.7.1",
+        "requiredPrivateInfos" : [ "getLocation", "onLocationChange", "chooseLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "你的位置信息将用于附近的同城信息和商家推荐"
+            }
+        },
+        "unipush" : {
+            "enable" : true
+        }
+    },
+    "app" : {
+        "distribute" : {
+            "modules" : {
+                "uni-ad" : {
+                    "gdt" : {}
+                }
+            }
+        }
+    },
+    "app-harmony" : {
+        "distribute" : {
+            "bundleName" : "com.wuchang.tongcheng",
+            "modules" : {
+                "uni-payment" : {
+                    "alipay" : {},
+                    "wxpay" : {}
+                },
+                "uni-location" : {
+                    "system" : {}
+                },
+                "uni-push" : {},
+                "uni-map" : {
+                    "tencent" : {}
+                },
+                "uni-verify" : {},
+                "uni-facialVerify" : {},
+                "uni-oauth" : {
+                    "huawei" : {},
+                    "weixin" : {}
+                },
+                "uni-share" : {
+                    "weixin" : {}
+                }
+            },
+            "icons" : {
+                "foreground" : "package/D-1024.png",
+                "background" : "package/background-white.png"
+            },
+            "splashScreens" : {
+                "startWindowIcon" : "package/icon256.png"
+            },
+            "deviceTypes" : [ "phone", "tablet" ],
+            "deviceArchs" : [ "arm64-v8a" ]
+        }
+    },
+    "web" : {
+        "darkmode" : false,
+        "router" : {
+            "base" : "/app/",
+            "mode" : "history"
+        },
+        "sdkConfigs" : {
+            "maps" : {
+                "tencent" : {
+                    "key" : ""
+                }
+            }
+        },
+        "unipush" : {
+            "enable" : true
+        }
+    },
+    "app-android" : {
+        "distribute" : {
+            "modules" : {
+                "uni-payment" : {
+                    "alipay" : {},
+                    "wxpay" : {}
+                },
+                "uni-location" : {
+                    "system" : {},
+                    "tencent" : {}
+                },
+                "uni-push" : {},
+                "uni-map" : {
+                    "tencent" : {}
+                }
+            },
+            "icons" : {
+                "xxhdpi" : "package/icon144.png",
+                "xxxhdpi" : "package/icon192.png"
+            },
+            "splashScreens" : {
+                "default" : {}
+            }
+        }
+    },
+    "app-ios" : {
+        "distribute" : {
+            "modules" : {
+                "uni-payment" : {
+                    "alipay" : {},
+                    "wxpay" : {}
+                },
+                "uni-location" : {
+                    "system" : {},
+                    "tencent" : {}
+                },
+                "uni-push" : {},
+                "uni-map" : {
+                    "tencent" : {}
+                }
+            },
+            "icons" : {
+                "appstore" : "package/icon1024.png"
+            },
+            "splashScreens" : {}
+        }
+    }
+}

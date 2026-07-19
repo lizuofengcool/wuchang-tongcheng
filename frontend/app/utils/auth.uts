@@ -1,0 +1,92 @@
+// 角色路由守卫 - 多角色权限校验
+// 依据需求文档 1.9 角色权限矩阵 + 1.10 数据隔离规则
+
+import { state, UserRole, checkLogin, hasPermission, switchRole } from '@/store/index.uts'
+
+// 检查是否为指定角色之一
+export const checkRole = (allowedRoles: UserRole[]): boolean => {
+    return allowedRoles.includes(state.role)
+}
+
+// 要求登录，未登录跳转登录页
+export const requireLogin = (): boolean => {
+    if (!checkLogin()) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        setTimeout(() => {
+            uni.navigateTo({ url: '/pages/login/login' })
+        }, 1000)
+        return false
+    }
+    return true
+}
+
+// 要求指定权限，无权限提示
+export const requirePermission = (permission: string): boolean => {
+    if (!requireLogin()) return false
+    if (!hasPermission(permission)) {
+        uni.showToast({ title: '无权限访问', icon: 'none' })
+        return false
+    }
+    return true
+}
+
+// 商家端守卫（进入 pages/shop/* 前调用）
+export const guardMerchant = (): boolean => {
+    if (!requireLogin()) return false
+    if (!checkRole(['merchant', 'clerk', 'operator', 'super_admin'])) {
+        uni.showToast({ title: '仅商家可访问', icon: 'none' })
+        return false
+    }
+    return true
+}
+
+// 骑手端守卫（进入 pages/rider/* 前调用）
+export const guardRider = (): boolean => {
+    if (!requireLogin()) return false
+    if (!checkRole(['rider', 'operator', 'super_admin'])) {
+        uni.showToast({ title: '仅骑手可访问', icon: 'none' })
+        return false
+    }
+    return true
+}
+
+// 代理商守卫（进入代理端页面时调用）
+export const guardAgent = (): boolean => {
+    if (!requireLogin()) return false
+    if (!checkRole(['agent', 'operator', 'super_admin'])) {
+        uni.showToast({ title: '仅代理商可访问', icon: 'none' })
+        return false
+    }
+    return true
+}
+
+// 切换为商家角色（如果用户是商家身份）
+export const switchToMerchant = (): boolean => {
+    if (state.userInfo == null) return false
+    if (state.userInfo!.shopId == 0) {
+        uni.showToast({ title: '您还未入驻商家', icon: 'none' })
+        return false
+    }
+    switchRole('merchant')
+    uni.reLaunch({ url: '/pages/shop/index' })
+    return true
+}
+
+// 切换为骑手角色（如果用户是骑手身份）
+export const switchToRider = (): boolean => {
+    if (state.userInfo == null) return false
+    if (state.userInfo!.riderId == 0) {
+        uni.showToast({ title: '您还不是骑手，请先申请', icon: 'none' })
+        return false
+    }
+    switchRole('rider')
+    uni.reLaunch({ url: '/pages/rider/index' })
+    return true
+}
+
+// 切换回用户角色
+export const switchToUser = (): boolean => {
+    switchRole('user')
+    uni.reLaunch({ url: '/pages/index/index' })
+    return true
+}

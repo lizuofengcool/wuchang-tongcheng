@@ -1,0 +1,80 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <text class="header-text">选择发布类型</text>
+        </view>
+        <view class="grid">
+            <view class="grid-item" v-for="item in publishTypes" :key="item.id" @click="onTap(item.name)">
+                <text class="grid-icon">{{ item.icon }}</text>
+                <text class="grid-name">{{ item.name }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type PublishType = {
+        id: number
+        name: string
+        icon: string
+    }
+
+    const publishTypes = ref([
+        { id: 1, name: '二手', icon: '📦' },
+        { id: 2, name: '招聘', icon: '💼' },
+        { id: 3, name: '房屋', icon: '🏠' },
+        { id: 4, name: '拼车', icon: '🚗' },
+        { id: 5, name: '相亲', icon: '❤️' },
+        { id: 6, name: '车辆', icon: '🚙' },
+        { id: 7, name: '零工', icon: '⚒️' },
+        { id: 8, name: '活动', icon: '🎉' }
+    ] as PublishType[])
+
+    const onTap = (name: string) => {
+        uni.showToast({ title: `${name}发布功能开发中`, icon: 'none' })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+        align-items: center;
+    }
+
+    .header-text {
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px 0;
+    }
+
+    .grid-item {
+        width: 25%;
+        align-items: center;
+        padding: 16px 0;
+    }
+
+    .grid-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .grid-name {
+        font-size: 13px;
+        color: #333;
+    }
+</style>

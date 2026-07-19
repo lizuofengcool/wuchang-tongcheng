@@ -1,0 +1,28 @@
+<template>
+    <view class="page">
+        <view class="content">
+            <text class="empty-text">暂无配送订单</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

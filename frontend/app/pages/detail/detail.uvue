@@ -1,0 +1,43 @@
+<template>
+    <view class="page">
+        <view class="content">
+            <text class="placeholder">详情页开发中</text>
+            <text class="id-text">ID: {{ detailId }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const detailId = ref('')
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            detailId.value = id as string
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .placeholder {
+        font-size: 16px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+
+    .id-text {
+        font-size: 13px;
+        color: #BBB;
+    }
+</style>

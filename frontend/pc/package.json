@@ -4,15 +4,17 @@
   "private": true,
   "description": "五常同城 PC门户站 (Next.js App Router + TypeScript + Tailwind)",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "next": "^16.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

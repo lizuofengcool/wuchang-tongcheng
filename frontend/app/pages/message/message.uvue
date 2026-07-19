@@ -1,0 +1,73 @@
+<template>
+    <view class="page">
+        <!-- 顶部 tabs -->
+        <view class="tabs">
+            <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
+                <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+            </view>
+        </view>
+        <!-- 列表占位 -->
+        <view class="content">
+            <text class="empty-text">暂无消息</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tab = {
+        id: number
+        name: string
+    }
+
+    const tabs = ref([
+        { id: 1, name: '系统' },
+        { id: 2, name: '聊天' },
+        { id: 3, name: '互动' }
+    ] as Tab[])
+
+    const activeTab = ref(1)
+
+    const switchTab = (id: number) => {
+        activeTab.value = id
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tabs {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 0 12px;
+    }
+
+    .tab-item {
+        flex: 1;
+        padding: 14px 0;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

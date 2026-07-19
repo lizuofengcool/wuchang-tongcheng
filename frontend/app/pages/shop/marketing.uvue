@@ -1,0 +1,61 @@
+<template>
+    <view class="page">
+        <view class="grid">
+            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="onTap(item.name)">
+                <text class="grid-icon">{{ item.icon }}</text>
+                <text class="grid-name">{{ item.name }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type MenuItem = {
+        id: number
+        name: string
+        icon: string
+    }
+
+    const menuList = ref([
+        { id: 1, name: '优惠券', icon: '🎫' },
+        { id: 2, name: '拼团', icon: '👥' },
+        { id: 3, name: '砍价', icon: '✂️' },
+        { id: 4, name: '抽奖', icon: '🎁' }
+    ] as MenuItem[])
+
+    const onTap = (name: string) => {
+        uni.showToast({ title: `${name}功能开发中`, icon: 'none' })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 12px;
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .grid-item {
+        width: 50%;
+        align-items: center;
+        padding: 24px 0;
+    }
+
+    .grid-icon {
+        font-size: 36px;
+        margin-bottom: 8px;
+    }
+
+    .grid-name {
+        font-size: 14px;
+        color: #333;
+    }
+</style>

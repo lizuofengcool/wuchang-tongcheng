@@ -1,0 +1,94 @@
+<template>
+    <view class="page">
+        <!-- 顶部搜索框 -->
+        <view class="search-bar">
+            <view class="search-box">
+                <text class="search-icon">🔍</text>
+                <input class="search-input" placeholder="搜索二手物品..." v-model="keyword" :focus="autoFocus" confirm-type="search" @confirm="doSearch" />
+            </view>
+            <text class="cancel-btn" @click="goBack">取消</text>
+        </view>
+
+        <view class="content">
+            <text class="placeholder">搜索结果开发中</text>
+            <text class="hint">P2 阶段完善：搜索结果列表、筛选、排序、历史搜索</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const keyword = ref('')
+    const autoFocus = ref(true)
+
+    const doSearch = () => {
+        if (keyword.value.length == 0) {
+            uni.showToast({ title: '请输入关键词', icon: 'none' })
+            return
+        }
+        uni.showToast({ title: '搜索功能开发中', icon: 'none' })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 16px;
+    }
+
+    .search-box {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        background-color: #F5F5F5;
+        border-radius: 20px;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .search-input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .cancel-btn {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 12px;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+    }
+
+    .placeholder {
+        font-size: 16px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: #BBB;
+        text-align: center;
+        line-height: 1.6;
+    }
+</style>

@@ -2,7 +2,7 @@
 // 所有请求走 /api/v1/<module>（开发环境由 next.config.mjs rewrites 代理到后端）
 // 公共门户站：无 JWT，仅浏览用户调用的接口（list/get/search/like-status）
 
-import type { ApiResponse, PageResult, News, Category, Region, LikeResponse } from './types'
+import type { ApiResponse, PageResult, News, Category, Region, LikeResponse, Ershou, Job, Fang } from './types'
 
 const BASE = '/api/v1'
 
@@ -10,7 +10,7 @@ const BASE = '/api/v1'
 function buildUrl(path: string): string {
   // 在服务端渲染时需要绝对 URL
   if (typeof window === 'undefined') {
-    const backend = process.env.BACKEND_URL || 'http://localhost:8080'
+    const backend = process.env.BACKEND_URL || 'http://localhost:8088'
     return `${backend}${BASE}${path}`
   }
   // 客户端走 rewrites 代理
@@ -106,4 +106,58 @@ export async function listCategories(): Promise<Category[]> {
 
 export async function listRegions(): Promise<Region[]> {
   return get<Region[]>(`/region`, 600)
+}
+
+// ====== Ershou 二手交易 ======
+
+export async function listErshous(params: {
+  regionId?: number
+  page?: number
+  pageSize?: number
+  categoryId?: number
+  keyword?: string
+}): Promise<PageResult<Ershou>> {
+  const q = new URLSearchParams()
+  if (params.regionId) q.set('region_id', String(params.regionId))
+  q.set('page', String(params.page || 1))
+  q.set('page_size', String(params.pageSize || 12))
+  if (params.categoryId) q.set('category_id', String(params.categoryId))
+  if (params.keyword) q.set('keyword', params.keyword)
+  return get<PageResult<Ershou>>(`/ershou?${q.toString()}`)
+}
+
+export async function getErshou(id: number): Promise<Ershou> {
+  return get<Ershou>(`/ershou/${id}`, 0)
+}
+
+// ====== Job 招聘求职（后端模块待开发，调用失败时返回空列表） ======
+
+export async function listJobs(params: {
+  regionId?: number
+  page?: number
+  pageSize?: number
+  keyword?: string
+}): Promise<PageResult<Job>> {
+  const q = new URLSearchParams()
+  if (params.regionId) q.set('region_id', String(params.regionId))
+  q.set('page', String(params.page || 1))
+  q.set('page_size', String(params.pageSize || 12))
+  if (params.keyword) q.set('keyword', params.keyword)
+  return get<PageResult<Job>>(`/job?${q.toString()}`)
+}
+
+// ====== Fang 房屋租售（后端模块待开发，调用失败时返回空列表） ======
+
+export async function listFangs(params: {
+  regionId?: number
+  page?: number
+  pageSize?: number
+  keyword?: string
+}): Promise<PageResult<Fang>> {
+  const q = new URLSearchParams()
+  if (params.regionId) q.set('region_id', String(params.regionId))
+  q.set('page', String(params.page || 1))
+  q.set('page_size', String(params.pageSize || 12))
+  if (params.keyword) q.set('keyword', params.keyword)
+  return get<PageResult<Fang>>(`/fang?${q.toString()}`)
 }

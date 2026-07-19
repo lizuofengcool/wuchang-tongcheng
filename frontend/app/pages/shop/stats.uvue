@@ -1,0 +1,74 @@
+<template>
+    <view class="page">
+        <!-- 顶部数据卡片 -->
+        <view class="cards">
+            <view class="card">
+                <text class="card-label">今日订单</text>
+                <text class="card-value">{{ todayOrders }}</text>
+            </view>
+            <view class="card">
+                <text class="card-label">今日收入</text>
+                <text class="card-value">¥{{ todayIncome }}</text>
+            </view>
+            <view class="card">
+                <text class="card-label">本月收入</text>
+                <text class="card-value">¥{{ monthIncome }}</text>
+            </view>
+        </view>
+        <!-- 占位图表区 -->
+        <view class="chart-area">
+            <text class="chart-placeholder">图表区域开发中</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const todayOrders = ref(0)
+    const todayIncome = ref(0)
+    const monthIncome = ref(0)
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .cards {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+    }
+
+    .card {
+        flex: 1;
+        align-items: center;
+        padding: 16px 0;
+    }
+
+    .card-label {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+
+    .card-value {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .chart-area {
+        flex: 1;
+        margin: 12px;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .chart-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

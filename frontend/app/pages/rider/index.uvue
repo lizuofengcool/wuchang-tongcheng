@@ -1,0 +1,113 @@
+<template>
+    <view class="page">
+        <!-- 骑手信息 -->
+        <view class="rider-header">
+            <view class="rider-info">
+                <text class="rider-name">{{ riderName }}</text>
+                <view class="status-switch" @click="toggleOnline">
+                    <text class="status-text">{{ isOnline ? '在线接单' : '已下线' }}</text>
+                </view>
+            </view>
+        </view>
+        <!-- 功能入口 -->
+        <view class="grid">
+            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
+                <text class="grid-icon">{{ item.icon }}</text>
+                <text class="grid-name">{{ item.name }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+
+    type MenuItem = {
+        id: number
+        name: string
+        icon: string
+        url: string
+    }
+
+    const riderName = ref('骑手小哥')
+    const isOnline = ref(true)
+
+    const menuList = ref([
+        { id: 1, name: '配送中', icon: '🛵', url: '/pages/rider/delivering' },
+        { id: 2, name: '历史订单', icon: '📋', url: '/pages/rider/history' },
+        { id: 3, name: '我的收益', icon: '💰', url: '/pages/rider/earnings' }
+    ] as MenuItem[])
+
+    const toggleOnline = () => {
+        isOnline.value = !isOnline.value
+        uni.showToast({ title: isOnline.value ? '已上线接单' : '已下线', icon: 'none' })
+    }
+
+    const goPage = (url: string) => {
+        uni.navigateTo({ url: url })
+    }
+
+    onLoad(() => {
+        guardRider()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .rider-header {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+    }
+
+    .rider-info {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rider-name {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .status-switch {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 4px 12px;
+    }
+
+    .status-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 12px;
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .grid-item {
+        width: 33.33%;
+        align-items: center;
+        padding: 20px 0;
+    }
+
+    .grid-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .grid-name {
+        font-size: 13px;
+        color: #333;
+    }
+</style>

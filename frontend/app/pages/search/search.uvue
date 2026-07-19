@@ -1,0 +1,143 @@
+<template>
+    <view class="page">
+        <!-- 顶部搜索框 + 取消 -->
+        <view class="search-bar">
+            <view class="search-box">
+                <text class="search-icon">🔍</text>
+                <input class="search-input" placeholder="搜索二手/招聘/房屋..." v-model="keyword" :focus="autoFocus" confirm-type="search" @confirm="doSearch" />
+            </view>
+            <text class="cancel-btn" @click="goBack">取消</text>
+        </view>
+
+        <scroll-view class="content" scroll-y>
+            <!-- 历史搜索 -->
+            <view class="section">
+                <text class="section-title">历史搜索</text>
+                <view class="tags">
+                    <view class="tag" v-for="(item, index) in historyList" :key="index" @click="tapTag(item)">
+                        <text class="tag-text">{{ item }}</text>
+                    </view>
+                    <view class="tag-empty" v-if="historyList.length == 0">
+                        <text class="tag-empty-text">暂无历史记录</text>
+                    </view>
+                </view>
+            </view>
+            <!-- 热门搜索 -->
+            <view class="section">
+                <text class="section-title">热门搜索</text>
+                <view class="tags">
+                    <view class="tag" v-for="(item, index) in hotList" :key="index" @click="tapTag(item)">
+                        <text class="tag-text">{{ item }}</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const keyword = ref('')
+    const autoFocus = ref(true)
+    const historyList = ref([] as string[])
+    const hotList = ref(['iPhone 15', '二手房', '招聘', '出租车', '相亲', '二手车'] as string[])
+
+    const doSearch = () => {
+        if (keyword.value.length == 0) {
+            uni.showToast({ title: '请输入关键词', icon: 'none' })
+            return
+        }
+        uni.showToast({ title: '搜索功能开发中', icon: 'none' })
+    }
+
+    const tapTag = (text: string) => {
+        keyword.value = text
+        doSearch()
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 16px;
+    }
+
+    .search-box {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        background-color: #F5F5F5;
+        border-radius: 20px;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .search-input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .cancel-btn {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 12px;
+    }
+
+    .content {
+        flex: 1;
+        padding: 16px;
+    }
+
+    .section {
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .tags {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        background-color: #FFFFFF;
+        border-radius: 16px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+
+    .tag-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tag-empty {
+        padding: 8px 0;
+    }
+
+    .tag-empty-text {
+        font-size: 13px;
+        color: #BBB;
+    }
+</style>

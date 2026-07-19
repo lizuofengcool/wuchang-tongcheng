@@ -1,0 +1,91 @@
+<template>
+    <view class="page">
+        <!-- 顶部分类 tabs -->
+        <scroll-view class="tabs" scroll-x>
+            <view class="tab-item" v-for="item in categories" :key="item.id" @click="switchTab(item.id)">
+                <text :class="item.id == activeId ? 'tab-text tab-active' : 'tab-text'">{{ item.name }}</text>
+            </view>
+        </scroll-view>
+        <!-- 中间占位区 -->
+        <view class="content">
+            <text class="placeholder">分类列表开发中</text>
+            <text class="sub-text">当前分类ID: {{ activeId }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Category = {
+        id: number
+        name: string
+    }
+
+    const categories = ref([
+        { id: 1, name: '二手' },
+        { id: 2, name: '招聘' },
+        { id: 3, name: '房屋' },
+        { id: 4, name: '拼车' },
+        { id: 5, name: '相亲' },
+        { id: 6, name: '车辆' },
+        { id: 7, name: '零工' },
+        { id: 8, name: '114' }
+    ] as Category[])
+
+    const activeId = ref(1)
+
+    const switchTab = (id: number) => {
+        activeId.value = id
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            activeId.value = parseInt(id as string)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tabs {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 0 8px;
+    }
+
+    .tab-item {
+        padding: 12px 16px;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .placeholder {
+        font-size: 16px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+
+    .sub-text {
+        font-size: 13px;
+        color: #BBB;
+    }
+</style>

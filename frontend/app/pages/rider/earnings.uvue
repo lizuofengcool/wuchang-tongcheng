@@ -1,0 +1,89 @@
+<template>
+    <view class="page">
+        <!-- 顶部收益卡片 -->
+        <view class="cards">
+            <view class="card">
+                <text class="card-label">今日收益</text>
+                <text class="card-value">¥{{ todayEarnings }}</text>
+            </view>
+            <view class="card">
+                <text class="card-label">本月收益</text>
+                <text class="card-value">¥{{ monthEarnings }}</text>
+            </view>
+            <view class="card">
+                <text class="card-label">累计收益</text>
+                <text class="card-value">¥{{ totalEarnings }}</text>
+            </view>
+        </view>
+        <!-- 收益明细列表占位 -->
+        <view class="list-area">
+            <text class="list-title">收益明细</text>
+            <view class="empty">
+                <text class="empty-text">暂无收益记录</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const todayEarnings = ref(0)
+    const monthEarnings = ref(0)
+    const totalEarnings = ref(0)
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .cards {
+        flex-direction: row;
+        background-color: #FF6B35;
+        padding: 20px 12px;
+    }
+
+    .card {
+        flex: 1;
+        align-items: center;
+    }
+
+    .card-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 8px;
+    }
+
+    .card-value {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .list-area {
+        flex: 1;
+        margin: 12px;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .list-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .empty {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

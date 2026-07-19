@@ -6,20 +6,21 @@ import { fileURLToPath, URL } from 'node:url'
 // envDir 默认为项目根目录，会自动加载 .env / .env.[mode]
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendURL = env.VITE_BACKEND_URL || 'http://localhost:8080'
+  const backendURL = env.VITE_BACKEND_URL || 'http://localhost:8088'
   const basePath = env.VITE_BASE_PATH || '/'
+  const port = parseInt(env.VITE_PORT || '5177', 10)
 
-  return {
-    base: basePath,
-    plugins: [vue()],
-    resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
-      }
-    },
-    server: {
-      port: 5173,
-      host: '0.0.0.0',
+    return {
+      base: basePath,
+      plugins: [vue()],
+      resolve: {
+        alias: {
+          '@': fileURLToPath(new URL('./src', import.meta.url))
+        }
+      },
+      server: {
+        port: port,
+        host: '0.0.0.0',
       proxy: {
         // 开发环境代理后端 API
         '/api': {

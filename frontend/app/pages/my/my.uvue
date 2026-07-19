@@ -1,0 +1,539 @@
+<template>
+    <scroll-view class="page" scroll-y="true">
+        <!-- 状态栏占位 -->
+        <view :style="{ height: statusBarHeight + 'px' }"></view>
+
+        <!-- 用户信息区 -->
+        <view class="header">
+            <view class="user-info" @click="onUserClick">
+                <image v-if="userInfo != null && userInfo!.avatarUrl != ''" class="avatar" :src="userInfo!.avatarUrl" mode="aspectFill"></image>
+                <view v-else class="avatar-default">
+                    <text class="avatar-default-text">{{ avatarText }}</text>
+                </view>
+                <view class="user-meta">
+                    <view class="nickname-row">
+                        <text class="nickname">{{ userInfo != null ? userInfo!.nickName : '未登录' }}</text>
+                        <view v-if="isVipRole" class="vip-tag">
+                            <text class="vip-tag-text">VIP</text>
+                        </view>
+                        <view v-else-if="isMerchantRole" class="role-tag">
+                            <text class="role-tag-text">商家</text>
+                        </view>
+                        <view v-else-if="isRiderRole" class="role-tag">
+                            <text class="role-tag-text">骑手</text>
+                        </view>
+                    </view>
+                    <text class="phone">{{ userInfo != null ? formatPhone(userInfo!.phone) : '点击登录享更多服务' }}</text>
+                </view>
+                <view class="arrow">
+                    <text class="arrow-text">›</text>
+                </view>
+            </view>
+
+            <!-- 数据统计 -->
+            <view class="stats-bar">
+                <view class="stat-item" @click="goMyPublish">
+                    <text class="stat-num">{{ stats.publish }}</text>
+                    <text class="stat-label">发布</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item" @click="goMyFavorite">
+                    <text class="stat-num">{{ stats.favorite }}</text>
+                    <text class="stat-label">收藏</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item" @click="goMyHistory">
+                    <text class="stat-num">{{ stats.history }}</text>
+                    <text class="stat-label">浏览</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item" @click="goMyFollow">
+                    <text class="stat-num">{{ stats.follow }}</text>
+                    <text class="stat-label">关注</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- VIP 入口 -->
+        <view v-if="!isVipRole" class="vip-banner" @click="goVip">
+            <view class="vip-banner-left">
+                <text class="vip-banner-title">开通 VIP 会员</text>
+                <text class="vip-banner-sub">享发布特权 / 优先展示 / 专属客服</text>
+            </view>
+            <view class="vip-banner-btn">
+                <text class="vip-banner-btn-text">立即开通</text>
+            </view>
+        </view>
+
+        <!-- 角色切换区（依据 1.1.3 一套App多角色切换机制） -->
+        <view v-if="userInfo != null" class="section">
+            <text class="section-title">角色切换</text>
+            <view class="menu-card">
+                <view v-if="userInfo!.shopId > 0" class="menu-item" @click="onSwitchMerchant">
+                    <text class="menu-icon">🏬</text>
+                    <text class="menu-text">进入商家工作台</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view v-if="userInfo!.riderId > 0" class="menu-item" @click="onSwitchRider">
+                    <text class="menu-icon">🛵</text>
+                    <text class="menu-text">进入骑手工作台</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view v-if="userInfo!.shopId == 0" class="menu-item" @click="goMerchantApply">
+                    <text class="menu-icon">🏪</text>
+                    <text class="menu-text">商家入驻申请</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view v-if="userInfo!.riderId == 0" class="menu-item" @click="goRiderApply">
+                    <text class="menu-icon">🛴</text>
+                    <text class="menu-text">成为骑手</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view v-if="isMerchantRole || isRiderRole" class="menu-item" @click="onSwitchUser">
+                    <text class="menu-icon">👤</text>
+                    <text class="menu-text">切回普通用户</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 我的服务 -->
+        <view class="section">
+            <text class="section-title">我的服务</text>
+            <view class="menu-card">
+                <view class="menu-item" @click="goMyPublish">
+                    <text class="menu-icon">📝</text>
+                    <text class="menu-text">我的发布</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goMyFavorite">
+                    <text class="menu-icon">⭐</text>
+                    <text class="menu-text">我的收藏</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goMyHistory">
+                    <text class="menu-icon">🕐</text>
+                    <text class="menu-text">浏览历史</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goMyOrder">
+                    <text class="menu-icon">📦</text>
+                    <text class="menu-text">我的订单</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goMyWallet">
+                    <text class="menu-icon">💰</text>
+                    <text class="menu-text">我的钱包</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 工具与设置 -->
+        <view class="section">
+            <text class="section-title">工具与设置</text>
+            <view class="menu-card">
+                <view class="menu-item" @click="goHelp">
+                    <text class="menu-icon">❓</text>
+                    <text class="menu-text">帮助中心</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goFeedback">
+                    <text class="menu-icon">💬</text>
+                    <text class="menu-text">意见反馈</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goAbout">
+                    <text class="menu-icon">ℹ️</text>
+                    <text class="menu-text">关于我们</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+                <view class="menu-item" @click="goSetting">
+                    <text class="menu-icon">⚙️</text>
+                    <text class="menu-text">设置</text>
+                    <text class="menu-arrow">›</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 退出登录 -->
+        <view v-if="isLogin" class="logout-area">
+            <view class="logout-btn" @click="onLogout">
+                <text class="logout-btn-text">退出登录</text>
+            </view>
+        </view>
+
+        <!-- 底部安全区占位 -->
+        <view :style="{ height: safeAreaBottom + 'px' }"></view>
+    </scroll-view>
+</template>
+
+<script setup lang="uts">
+    import { state, logout, UserInfo } from '@/store/index.uts'
+    import { switchToMerchant, switchToRider, switchToUser, requireLogin } from '@/utils/auth.uts'
+
+    const statusBarHeight = computed(() : number => state.statusBarHeight)
+    const safeAreaBottom = computed(() : number => state.safeAreaBottom)
+    // 模板使用 userInfo（computed 自动解包）
+    const userInfo = computed(() : UserInfo | null => state.userInfo)
+    const isVipRole = computed(() : boolean => state.role === 'vip')
+    const isMerchantRole = computed(() : boolean => state.role === 'merchant' || state.role === 'clerk')
+    const isRiderRole = computed(() : boolean => state.role === 'rider')
+    const isLogin = computed(() : boolean => state.isLogin)
+
+    // 头像占位字
+    const avatarText = computed(() : string => {
+        if (state.userInfo != null && state.userInfo!.nickName.length > 0) {
+            return state.userInfo!.nickName.substring(0, 1)
+        }
+        return '游'
+    })
+
+    // 用户统计（mock，阶段1.1 替换为后端 API）
+    const stats = reactive({
+        publish: 0,
+        favorite: 0,
+        history: 0,
+        follow: 0
+    } as UTSJSONObject)
+
+    onShow(() => {
+        if (state.isLogin) {
+            // TODO 阶段1.1：调用 /api/v1/user/stats 获取真实数据
+            // mock 数据
+            stats.publish = 12
+            stats.favorite = 8
+            stats.history = 36
+            stats.follow = 5
+        } else {
+            stats.publish = 0
+            stats.favorite = 0
+            stats.history = 0
+            stats.follow = 0
+        }
+    })
+
+    // 手机号脱敏
+    const formatPhone = (phone : string) : string => {
+        if (phone.length != 11) return phone
+        return phone.substring(0, 3) + '****' + phone.substring(7)
+    }
+
+    // 点击用户区
+    const onUserClick = () => {
+        if (!state.isLogin) {
+            uni.navigateTo({ url: '/pages/login/login' })
+        } else {
+            goProfile()
+        }
+    }
+
+    // 角色切换
+    const onSwitchMerchant = () => {
+        switchToMerchant()
+    }
+    const onSwitchRider = () => {
+        switchToRider()
+    }
+    const onSwitchUser = () => {
+        switchToUser()
+    }
+
+    // 跳转 - 我的服务
+    const goMyPublish = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '我的发布（开发中）', icon: 'none' })
+    }
+    const goMyFavorite = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '我的收藏（开发中）', icon: 'none' })
+    }
+    const goMyHistory = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '浏览历史（开发中）', icon: 'none' })
+    }
+    const goMyFollow = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '我的关注（开发中）', icon: 'none' })
+    }
+    const goMyOrder = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '我的订单（开发中）', icon: 'none' })
+    }
+    const goMyWallet = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '我的钱包（开发中）', icon: 'none' })
+    }
+
+    // VIP
+    const goVip = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: 'VIP 会员（开发中）', icon: 'none' })
+    }
+
+    // 入驻申请
+    const goMerchantApply = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '商家入驻（开发中）', icon: 'none' })
+    }
+    const goRiderApply = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '骑手申请（开发中）', icon: 'none' })
+    }
+
+    // 工具
+    const goProfile = () => {
+        uni.showToast({ title: '个人资料（开发中）', icon: 'none' })
+    }
+    const goHelp = () => {
+        uni.showToast({ title: '帮助中心（开发中）', icon: 'none' })
+    }
+    const goFeedback = () => {
+        if (!requireLogin()) return
+        uni.showToast({ title: '意见反馈（开发中）', icon: 'none' })
+    }
+    const goAbout = () => {
+        uni.showToast({ title: '近享同城 v1.0.0', icon: 'none' })
+    }
+    const goSetting = () => {
+        uni.showToast({ title: '设置（开发中）', icon: 'none' })
+    }
+
+    // 退出登录
+    const onLogout = () => {
+        uni.showModal({
+            title: '提示',
+            content: '确定要退出登录吗？',
+            success: (res : ModalSuccess) => {
+                if (res.confirm) {
+                    logout()
+                }
+            }
+        })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background: linear-gradient(180deg, #FF6B35 0%, #FF8A5C 100%);
+        padding: 0 16px 16px;
+    }
+
+    .user-info {
+        flex-direction: row;
+        align-items: center;
+        padding: 20px 0;
+    }
+
+    .avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        border: 2px solid #FFFFFF;
+    }
+
+    .avatar-default {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background-color: #FFFFFF;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .avatar-default-text {
+        font-size: 24px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .user-meta {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .nickname-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .nickname {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .vip-tag {
+        margin-left: 8px;
+        padding: 1px 6px;
+        background-color: #FFD700;
+        border-radius: 8px;
+    }
+
+    .vip-tag-text {
+        font-size: 10px;
+        color: #6B4500;
+        font-weight: 700;
+    }
+
+    .role-tag {
+        margin-left: 8px;
+        padding: 1px 6px;
+        background-color: rgba(255, 255, 255, 0.25);
+        border-radius: 8px;
+    }
+
+    .role-tag-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .phone {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 6px;
+    }
+
+    .arrow {
+        padding-left: 8px;
+    }
+
+    .arrow-text {
+        font-size: 22px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .stats-bar {
+        flex-direction: row;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.18);
+        border-radius: 12px;
+        padding: 12px 0;
+        margin-top: 4px;
+    }
+
+    .stat-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-num {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 24px;
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .vip-banner {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin: 12px 12px 0;
+        padding: 14px 16px;
+        background: linear-gradient(90deg, #2C2C2C 0%, #4A3B1F 100%);
+        border-radius: 12px;
+    }
+
+    .vip-banner-left {
+        flex: 1;
+    }
+
+    .vip-banner-title {
+        font-size: 15px;
+        color: #FFD700;
+        font-weight: 600;
+    }
+
+    .vip-banner-sub {
+        font-size: 11px;
+        color: #C0B080;
+        margin-top: 4px;
+    }
+
+    .vip-banner-btn {
+        padding: 6px 14px;
+        background-color: #FFD700;
+        border-radius: 14px;
+    }
+
+    .vip-banner-btn-text {
+        font-size: 12px;
+        color: #4A3B1F;
+        font-weight: 600;
+    }
+
+    .section {
+        margin: 12px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 8px;
+        padding-left: 4px;
+    }
+
+    .menu-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .menu-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid #F2F2F2;
+    }
+
+    .menu-icon {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+    }
+
+    .menu-text {
+        flex: 1;
+        font-size: 15px;
+        color: #333;
+        margin-left: 12px;
+    }
+
+    .menu-arrow {
+        font-size: 18px;
+        color: #CCC;
+    }
+
+    .logout-area {
+        padding: 24px 12px 12px;
+    }
+
+    .logout-btn {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 14px 0;
+        align-items: center;
+    }
+
+    .logout-btn-text {
+        font-size: 15px;
+        color: #EE0A24;
+    }
+</style>

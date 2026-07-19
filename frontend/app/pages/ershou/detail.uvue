@@ -1,0 +1,61 @@
+<template>
+    <view class="page">
+        <view class="content">
+            <text class="title">二手详情</text>
+            <text class="placeholder">页面开发中</text>
+            <text class="id-text">ID: {{ ershouId }}</text>
+            <text class="hint">P2 阶段完善：商品信息、图片轮播、留言、收藏、联系卖家</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const ershouId = ref('')
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            ershouId.value = id as string
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+    }
+
+    .title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 12px;
+    }
+
+    .placeholder {
+        font-size: 16px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+
+    .id-text {
+        font-size: 13px;
+        color: #BBB;
+        margin-bottom: 16px;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: #BBB;
+        text-align: center;
+        line-height: 1.6;
+    }
+</style>

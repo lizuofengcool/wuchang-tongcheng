@@ -4,6 +4,15 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+// 主导航：覆盖五常同城核心频道
+const NAV_ITEMS = [
+  { href: '/', label: '首页' },
+  { href: '/ershou', label: '二手' },
+  { href: '/job', label: '招聘' },
+  { href: '/fang', label: '房产' },
+  { href: '/news', label: '头条' },
+]
+
 export default function Header() {
   const router = useRouter()
   const [keyword, setKeyword] = useState('')
@@ -24,9 +33,15 @@ export default function Header() {
         </Link>
 
         <nav className="flex-1 flex items-center gap-6 text-sm">
-          <Link href="/" className="hover:text-brand-600">首页</Link>
-          <Link href="/news" className="hover:text-brand-600">同城头条</Link>
-          <Link href="/news/search" className="hover:text-brand-600">搜索</Link>
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="hover:text-brand-600 whitespace-nowrap"
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <form onSubmit={onSearch} className="flex items-center gap-2">

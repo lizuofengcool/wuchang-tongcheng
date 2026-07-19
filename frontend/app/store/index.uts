@@ -1,0 +1,187 @@
+// 业务状态管理 - 多角色用户状态
+// 依据需求文档 1.9 角色权限矩阵（10 角色）
+
+export type UserRole = 'guest' | 'user' | 'vip' | 'merchant' | 'clerk' | 'rider' | 'agent' | 'auditor' | 'operator' | 'super_admin'
+
+export type UserInfo = {
+    userId: number
+    phone: string
+    nickName: string
+    avatarUrl: string
+    role: UserRole
+    regionId: number
+    shopId: number  // 商家ID（仅 merchant/clerk 有值）
+    riderId: number // 骑手ID（仅 rider 有值）
+    vipExpireAt: string | null  // VIP过期时间（仅 vip 有值）
+}
+
+export type AppState = {
+    token: string
+    userInfo: UserInfo | null
+    role: UserRole
+    isLogin: boolean
+    regionId: number  // 当前选择地区
+    statusBarHeight: number
+    safeAreaTop: number
+    safeAreaBottom: number
+    isDarkMode: boolean
+    networkType: string  // wifi/4g/5g/none
+    systemInfo: UTSJSONObject | null
+}
+
+const TOKEN_KEY = 'wctc_token'
+const USER_INFO_KEY = 'wctc_user_info'
+
+// 从本地存储恢复登录状态
+const loadToken = (): string => {
+    const t = uni.getStorageSync(TOKEN_KEY)
+    if (typeof t === 'string') return t as string
+    return ''
+}
+
+const loadUserInfo = (): UserInfo | null => {
+    const data = uni.getStorageSync(USER_INFO_KEY)
+    if (data instanceof UTSJSONObject) {
+        const obj = data as UTSJSONObject
+        const role = (obj['role'] as string) as UserRole
+        if (role != null) {
+            return {
+                userId: (obj['userId'] as number) ?? 0,
+                phone: (obj['phone'] as string) ?? '',
+                nickName: (obj['nickName'] as string) ?? '',
+                avatarUrl: (obj['avatarUrl'] as string) ?? '',
+                role: role,
+                regionId: (obj['regionId'] as number) ?? 0,
+                shopId: (obj['shopId'] as number) ?? 0,
+                riderId: (obj['riderId'] as number) ?? 0,
+                vipExpireAt: (obj['vipExpireAt'] as string) ?? null
+            } as UserInfo
+        }
+    }
+    return null
+}
+
+export const state = reactive({
+    token: loadToken(),
+    userInfo: loadUserInfo(),
+    role: (loadUserInfo()?.role) ?? 'guest',
+    isLogin: loadToken().length > 0,
+    regionId: loadUserInfo()?.regionId ?? 230284,  // 默认五常市
+    statusBarHeight: 0,
+    safeAreaTop: 0,
+    safeAreaBottom: 0,
+    isDarkMode: false,
+    networkType: 'unknown',
+    systemInfo: null
+} as AppState)
+
+// 设置登录信息
+export const setLogin = (token: string, userInfo: UserInfo) => {
+    state.token = token
+    state.userInfo = userInfo
+    state.role = userInfo.role
+    state.isLogin = true
+    state.regionId = userInfo.regionId
+    uni.setStorageSync(TOKEN_KEY, token)
+    uni.setStorageSync(USER_INFO_KEY, userInfo)
+}
+
+// 退出登录
+export const logout = () => {
+    state.token = ''
+    state.userInfo = null
+    state.role = 'guest'
+    state.isLogin = false
+    uni.removeStorageSync(TOKEN_KEY)
+    uni.removeStorageSync(USER_INFO_KEY)
+    uni.reLaunch({
+        url: '/pages/login/login'
+    })
+}
+
+// 切换角色（用于一套App多角色切换）
+export const switchRole = (role: UserRole) => {
+    state.role = role
+    if (state.userInfo != null) {
+        state.userInfo!.role = role
+        uni.setStorageSync(USER_INFO_KEY, state.userInfo)
+    }
+}
+
+// 更新用户信息
+export const updateUserInfo = (userInfo: UserInfo) => {
+    state.userInfo = userInfo
+    state.role = userInfo.role
+    uni.setStorageSync(USER_INFO_KEY, userInfo)
+}
+
+// 设置当前地区
+export const setRegionId = (regionId: number) => {
+    state.regionId = regionId
+    if (state.userInfo != null) {
+        state.userInfo!.regionId = regionId
+        uni.setStorageSync(USER_INFO_KEY, state.userInfo)
+    }
+}
+
+// 设置状态栏高度
+export const setStatusBarHeight = (height: number) => {
+    state.statusBarHeight = height
+}
+
+// 设置安全区域
+export const setSafeArea = (top: number, bottom: number) => {
+    state.safeAreaTop = top
+    state.safeAreaBottom = bottom
+}
+
+// 设置网络类型
+export const setNetworkType = (type: string) => {
+    state.networkType = type
+}
+
+// 检查权限（依据需求文档 1.9.3 权限码命名规范）
+export const hasPermission = (permission: string): boolean => {
+    if (state.role === 'super_admin') return true
+    if (state.role === 'operator') return true
+    // 简化版权限校验，详细权限码由后端返回
+    const permissionMap: Map<string, UserRole[]> = new Map([
+        ['ershou:read', ['guest', 'user', 'vip', 'merchant', 'clerk', 'rider', 'agent', 'auditor', 'operator', 'super_admin']],
+        ['ershou:publish', ['user', 'vip', 'merchant', 'operator', 'super_admin']],
+        ['shop:manage', ['merchant', 'operator', 'super_admin']],
+        ['shop:audit', ['agent', 'operator', 'super_admin']],
+        ['order:verify', ['merchant', 'clerk', 'operator', 'super_admin']],
+        ['rider:deliver', ['rider', 'operator', 'super_admin']],
+        ['agent:station', ['agent', 'operator', 'super_admin']],
+        ['content:audit', ['auditor', 'operator', 'super_admin']],
+        ['system:config', ['super_admin']]
+    ])
+    const allowed = permissionMap.get(permission)
+    if (allowed == null) return false
+    return allowed.includes(state.role)
+}
+
+// 检查是否登录
+export const checkLogin = (): boolean => {
+    return state.isLogin && state.token.length > 0
+}
+
+// 检查是否商家
+export const isMerchant = (): boolean => {
+    return state.role === 'merchant' || state.role === 'clerk'
+}
+
+// 检查是否骑手
+export const isRider = (): boolean => {
+    return state.role === 'rider'
+}
+
+// 检查是否VIP
+export const isVip = (): boolean => {
+    return state.role === 'vip'
+}
+
+// 检查是否管理员
+export const isAdmin = (): boolean => {
+    return state.role === 'operator' || state.role === 'super_admin' || state.role === 'auditor'
+}

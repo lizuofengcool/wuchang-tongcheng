@@ -1,0 +1,277 @@
+<template>
+    <view class="page">
+        <!-- 顶部搜索栏 -->
+        <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
+            <view class="location" @click="chooseLocation">
+                <text class="location-text">{{ regionName }}</text>
+                <text class="arrow-down">▾</text>
+            </view>
+            <view class="search-box" @click="goSearch">
+                <text class="search-icon">🔍</text>
+                <text class="search-placeholder">搜索二手/招聘/房屋...</text>
+            </view>
+        </view>
+
+        <!-- 分类导航 -->
+        <scroll-view class="category-nav" scroll-x>
+            <view class="category-item" v-for="item in categories" :key="item.id" @click="goCategory(item.id)">
+                <text class="category-icon">{{ item.icon }}</text>
+                <text class="category-name">{{ item.name }}</text>
+            </view>
+        </scroll-view>
+
+        <!-- 信息流 -->
+        <scroll-view class="feed-list" scroll-y @scrolltolower="loadMore">
+            <view class="feed-item card" v-for="item in feedList" :key="item.id" @click="goDetail(item.id)">
+                <view class="feed-header">
+                    <text class="feed-tag">{{ item.categoryName }}</text>
+                    <text class="feed-time">{{ item.timeText }}</text>
+                </view>
+                <text class="feed-title">{{ item.title }}</text>
+                <text class="feed-desc">{{ item.description }}</text>
+                <view class="feed-footer">
+                    <text class="feed-price" v-if="item.price > 0">¥{{ item.price }}</text>
+                    <text class="feed-location">📍 {{ item.location }}</text>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text>加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && feedList.length > 0">
+                <text>没有更多了</text>
+            </view>
+            <view class="empty" v-if="feedList.length == 0 && !loading">
+                <text class="empty-text">暂无信息，下拉刷新试试</text>
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { get } from '@/utils/request.uts'
+
+    const statusBarHeight = state.statusBarHeight
+    const regionName = ref('五常市')
+    const categories = ref([
+        { id: 1, name: '二手', icon: '📦' },
+        { id: 2, name: '招聘', icon: '💼' },
+        { id: 3, name: '房屋', icon: '🏠' },
+        { id: 4, name: '拼车', icon: '🚗' },
+        { id: 5, name: '相亲', icon: '❤️' },
+        { id: 6, name: '车辆', icon: '🚙' },
+        { id: 7, name: '零工', icon: '⚒️' },
+        { id: 8, name: '114', icon: '📞' }
+    ] as Array<{ id: number, name: string, icon: string }>)
+
+    type FeedItem = {
+        id: number
+        title: string
+        description: string
+        price: number
+        categoryName: string
+        location: string
+        timeText: string
+    }
+
+    const feedList = ref([] as FeedItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+
+    const loadData = () => {
+        if (loading.value || !hasMore.value) return
+        loading.value = true
+        // TODO: 接入后端 API /api/v1/ershou/list 等
+        // 当前为占位数据，阶段1.1 开发时替换
+        setTimeout(() => {
+            const mockData: FeedItem[] = [
+                { id: 1, title: '九成新iPhone 15 Pro 256G', description: '使用半年，无划痕，原装配件齐全', price: 5800, categoryName: '二手', location: '五常镇', timeText: '2小时前' },
+                { id: 2, title: '招聘超市收银员', description: '月薪3500-4500，包吃，月休4天', price: 0, categoryName: '招聘', location: '拉林镇', timeText: '5小时前' },
+                { id: 3, title: '两室一厅出租 精装修', description: '五常镇政府附近，3楼，85平，月租1200', price: 1200, categoryName: '房屋', location: '五常镇', timeText: '1天前' }
+            ] as FeedItem[]
+            feedList.value = mockData
+            loading.value = false
+            hasMore.value = false
+        }, 500)
+    }
+
+    const loadMore = () => {
+        page.value++
+        loadData()
+    }
+
+    const chooseLocation = () => {
+        uni.showToast({ title: '地区选择功能开发中', icon: 'none' })
+    }
+
+    const goSearch = () => {
+        uni.navigateTo({ url: '/pages/search/search' })
+    }
+
+    const goCategory = (categoryId: number) => {
+        uni.navigateTo({ url: '/pages/category/category?id=' + categoryId })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/detail/detail?id=' + id })
+    }
+
+    onPullDownRefresh(() => {
+        page.value = 1
+        feedList.value = [] as FeedItem[]
+        hasMore.value = true
+        loadData()
+        setTimeout(() => {
+            uni.stopPullDownRefresh()
+        }, 1000)
+    })
+
+    onLoad(() => {
+        loadData()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 8px 16px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .location {
+        flex-direction: row;
+        align-items: center;
+        margin-right: 12px;
+    }
+
+    .location-text {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .arrow-down {
+        font-size: 12px;
+        color: #666;
+        margin-left: 4px;
+    }
+
+    .search-box {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        background-color: #F5F5F5;
+        border-radius: 20px;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .search-placeholder {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .category-nav {
+        background-color: #FFFFFF;
+        padding: 12px 8px;
+        flex-direction: row;
+    }
+
+    .category-item {
+        align-items: center;
+        padding: 4px 12px;
+    }
+
+    .category-icon {
+        font-size: 24px;
+    }
+
+    .category-name {
+        font-size: 12px;
+        color: #333;
+        margin-top: 4px;
+    }
+
+    .feed-list {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .feed-item {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .feed-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .feed-tag {
+        font-size: 12px;
+        color: #FF6B35;
+        background-color: #FFF5F0;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .feed-time {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .feed-title {
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+
+    .feed-desc {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .feed-footer {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .feed-price {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .feed-location {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .load-more, .no-more, .empty {
+        padding: 20px;
+        align-items: center;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

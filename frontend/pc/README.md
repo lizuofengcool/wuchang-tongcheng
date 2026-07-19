@@ -50,7 +50,7 @@ cp .env.example .env.local
 
 # 3. 启动开发服务器
 npm run dev
-# 访问 http://localhost:3000
+# 访问 http://localhost:3010
 
 # 4. 生产构建
 npm run build && npm start
@@ -70,7 +70,7 @@ PC门户调用以下后端接口（需后端启动）：
 
 ## 默认配置
 
-- 端口：3000
+- 端口：3010（由 .env 中 WCTC_PC_PORT 管理）
 - 默认地区：武汉市（id=2，见后端 seed 数据）
 - ISR 缓存：列表页 60s，详情页 0s（实时浏览量），搜索页 30s，分类页 60s
 
@@ -86,5 +86,5 @@ PC门户默认未登录浏览。点赞需登录，当前实现：
 
 ```bash
 docker build -t wuchang-pc .
-docker run -p 3000:3000 -e BACKEND_URL=http://backend:8080 wuchang-pc
+docker run -p 3010:3010 -e BACKEND_URL=http://backend:8080 wuchang-pc
 ```

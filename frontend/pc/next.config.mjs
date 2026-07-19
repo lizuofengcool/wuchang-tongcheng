@@ -4,7 +4,7 @@ const nextConfig = {
   basePath: '/pc',
   // 后端 API 代理：避免开发环境 CORS，生产环境用 nginx 反代
   async rewrites() {
-    const backend = process.env.BACKEND_URL || 'http://localhost:8080'
+    const backend = process.env.BACKEND_URL || 'http://localhost:8088'
     return [
       {
         source: '/api/:path*',

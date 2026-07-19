@@ -1,0 +1,74 @@
+<template>
+    <view class="page">
+        <!-- 顶部 tabs -->
+        <scroll-view class="tabs" scroll-x>
+            <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
+                <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+            </view>
+        </scroll-view>
+        <!-- 订单列表占位 -->
+        <view class="content">
+            <text class="empty-text">暂无订单</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tab = {
+        id: number
+        name: string
+    }
+
+    const tabs = ref([
+        { id: 1, name: '待处理' },
+        { id: 2, name: '已付款' },
+        { id: 3, name: '已发货' },
+        { id: 4, name: '已完成' },
+        { id: 5, name: '已取消' }
+    ] as Tab[])
+
+    const activeTab = ref(1)
+
+    const switchTab = (id: number) => {
+        activeTab.value = id
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tabs {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 0 8px;
+    }
+
+    .tab-item {
+        padding: 14px 16px;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>

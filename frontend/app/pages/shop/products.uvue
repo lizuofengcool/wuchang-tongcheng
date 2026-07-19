@@ -1,0 +1,53 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <view class="add-btn" @click="addProduct">
+                <text class="add-btn-text">+ 添加商品</text>
+            </view>
+        </view>
+        <view class="content">
+            <text class="empty-text">暂无商品</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const addProduct = () => {
+        uni.showToast({ title: '添加商品功能开发中', icon: 'none' })
+    }
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+    }
+
+    .add-btn {
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 10px 0;
+        align-items: center;
+    }
+
+    .add-btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .content {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+    }
+</style>
