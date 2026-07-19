@@ -1,0 +1,580 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="image-banner" v-if="detail.cover_image.length > 0">
+                <image class="banner-img" :src="detail.cover_image" mode="aspectFill" lazy-load="true" />
+                <view class="cert-badge" v-if="detail.is_certified">
+                    <text class="cert-text">✓ 平台认证</text>
+                </view>
+            </view>
+            <car-detail-header :car="headerData" />
+            <view class="section" v-if="detail.description.length > 0">
+                <text class="section-title">车辆描述</text>
+                <text class="section-content">{{ detail.description }}</text>
+            </view>
+            <view class="section" v-if="inspectionData.score > 0">
+                <view class="section-header">
+                    <text class="section-title">检测报告</text>
+                    <text class="more-btn" @click="goInspection">查看详情 ›</text>
+                </view>
+                <car-inspection-report :report="inspectionData" />
+            </view>
+            <view class="section" v-if="evaluationData.score > 0">
+                <view class="section-header">
+                    <text class="section-title">车辆评估</text>
+                    <text class="more-btn" @click="goEvaluation">查看详情 ›</text>
+                </view>
+                <car-evaluation-chart :evaluation="evaluationData" />
+            </view>
+            <view class="section" v-if="detail.address.length > 0">
+                <text class="section-title">车辆位置</text>
+                <text class="section-content">{{ detail.address }}</text>
+            </view>
+            <view class="section" v-if="detail.dealer_id > 0">
+                <text class="section-title">车商信息</text>
+                <view class="dealer-row">
+                    <view class="dealer-logo-placeholder" v-if="detail.dealer_logo.length == 0">
+                        <text class="logo-text">{{ detail.dealer_name.charAt(0) }}</text>
+                    </view>
+                    <image v-else class="dealer-logo" :src="detail.dealer_logo" mode="aspectFill" />
+                    <view class="dealer-info">
+                        <view class="dealer-name-row">
+                            <text class="dealer-name">{{ detail.dealer_name }}</text>
+                            <view class="cert-tag" v-if="detail.dealer_is_verified">
+                                <text class="cert-tag-text">✓ 认证车商</text>
+                            </view>
+                        </view>
+                        <text class="dealer-meta" v-if="detail.dealer_phone.length > 0">{{ detail.dealer_phone }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="section" v-if="similarList.length > 0">
+                <text class="section-title">相似车源</text>
+                <car-card v-for="item in similarList" :key="item.id" :car="transformSimilar(item)" @click="goSimilar" />
+            </view>
+            <view class="section">
+                <car-financing-calculator :default-price="defaultFinPrice" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="toggleFav">
+                <text class="bottom-icon">{{ detail.is_faved ? '★' : '☆' }}</text>
+                <text class="bottom-icon-text">{{ detail.is_faved ? '已收藏' : '收藏' }}</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="onShare">
+                <text class="bottom-icon">📤</text>
+                <text class="bottom-icon-text">分享</text>
+            </view>
+            <view class="bottom-btn primary-btn" @click="onBookTestDrive">
+                <text class="primary-btn-text">预约试驾</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getCarDetail, favCar, favCarStatus, incrCarContact, incrCarShare, createTestDrive, getCarInspection, getCarEvaluation } from '@/api/business/car.uts'
+
+    type Detail = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        price: number
+        brand_name: string
+        model_name: string
+        year_text: string
+        mileage_text: string
+        transmission: string
+        emission_standard: string
+        color: string
+        fuel_type: string
+        description: string
+        address: string
+        view_count: number
+        fav_count: number
+        test_drive_count: number
+        is_urgent: boolean
+        is_featured: boolean
+        is_certified: boolean
+        is_faved: boolean
+        dealer_id: number
+        dealer_name: string
+        dealer_logo: string
+        dealer_phone: string
+        dealer_is_verified: boolean
+    }
+    type HeaderData = {
+        id: number
+        title: string
+        listing_type: string
+        price: number
+        brand_name: string
+        model_name: string
+        year_text: string
+        mileage_text: string
+        transmission: string
+        emission_standard: string
+        color: string
+        fuel_type: string
+        view_count: number
+        fav_count: number
+        test_drive_count: number
+        is_urgent: boolean
+        is_featured: boolean
+        is_certified: boolean
+    }
+    type SimilarItem = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        mileage_text: string
+        year_text: string
+        city: string
+        price: number
+        brand_name: string
+        is_certified: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type CarCardData = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        mileage_text: string
+        year_text: string
+        city: string
+        price: number
+        brand_name: string
+        is_certified: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type InspectionItem = {
+        name: string
+        result: string
+        level: string
+    }
+    type InspectionCategory = {
+        name: string
+        status: string
+        items: InspectionItem[]
+    }
+    type InspectionData = {
+        score: number
+        summary: string
+        categories: InspectionCategory[]
+        inspector: string
+        inspect_time: string
+    }
+    type Dimension = {
+        name: string
+        score: number
+        percent: number
+        level: string
+    }
+    type EvaluationData = {
+        score: number
+        conclusion: string
+        advisor: string
+        eval_time: string
+        dimensions: Dimension[]
+    }
+
+    const carId = ref(0)
+    const detail = ref({
+        id: 0, title: '', cover_image: '', listing_type: 'sale', price: 0,
+        brand_name: '', model_name: '', year_text: '', mileage_text: '',
+        transmission: '', emission_standard: '', color: '', fuel_type: '',
+        description: '', address: '',
+        view_count: 0, fav_count: 0, test_drive_count: 0,
+        is_urgent: false, is_featured: false, is_certified: false, is_faved: false,
+        dealer_id: 0, dealer_name: '', dealer_logo: '', dealer_phone: '', dealer_is_verified: false
+    } as Detail)
+    const similarList = ref([] as SimilarItem[])
+    const inspectionData = ref({
+        score: 0, summary: '', categories: [] as InspectionCategory[],
+        inspector: '', inspect_time: ''
+    } as InspectionData)
+    const evaluationData = ref({
+        score: 0, conclusion: '', advisor: '', eval_time: '', dimensions: [] as Dimension[]
+    } as EvaluationData)
+
+    const headerData = computed(() : HeaderData => {
+        return {
+            id: detail.value.id,
+            title: detail.value.title,
+            listing_type: detail.value.listing_type,
+            price: detail.value.price,
+            brand_name: detail.value.brand_name,
+            model_name: detail.value.model_name,
+            year_text: detail.value.year_text,
+            mileage_text: detail.value.mileage_text,
+            transmission: detail.value.transmission,
+            emission_standard: detail.value.emission_standard,
+            color: detail.value.color,
+            fuel_type: detail.value.fuel_type,
+            view_count: detail.value.view_count,
+            fav_count: detail.value.fav_count,
+            test_drive_count: detail.value.test_drive_count,
+            is_urgent: detail.value.is_urgent,
+            is_featured: detail.value.is_featured,
+            is_certified: detail.value.is_certified
+        } as HeaderData
+    })
+
+    const defaultFinPrice = computed(() : number => {
+        return detail.value.price > 0 ? detail.value.price : 10
+    })
+
+    const transformSimilar = (item: SimilarItem) : CarCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            listing_type: item.listing_type,
+            mileage_text: item.mileage_text,
+            year_text: item.year_text,
+            city: item.city,
+            price: item.price,
+            brand_name: item.brand_name,
+            is_certified: item.is_certified,
+            is_urgent: item.is_urgent,
+            is_featured: item.is_featured
+        } as CarCardData
+    }
+
+    const loadDetail = () => {
+        getCarDetail(carId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = mapDetail(d)
+                loadInspection()
+                loadEvaluation()
+            }
+        })
+        favCarStatus(carId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value.is_faved = ((d['is_faved'] as boolean) ?? false)
+            }
+        })
+    }
+
+    const mapDetail = (d: UTSJSONObject) : Detail => {
+        const dl = (d['dealer'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+        return {
+            id: (d['id'] as number) ?? 0,
+            title: (d['title'] as string) ?? '',
+            cover_image: (d['cover_image'] as string) ?? '',
+            listing_type: (d['listing_type'] as string) ?? 'sale',
+            price: (d['price'] as number) ?? 0,
+            brand_name: (d['brand_name'] as string) ?? '',
+            model_name: (d['model_name'] as string) ?? '',
+            year_text: (d['year_text'] as string) ?? '',
+            mileage_text: (d['mileage_text'] as string) ?? '',
+            transmission: (d['transmission'] as string) ?? '',
+            emission_standard: (d['emission_standard'] as string) ?? '',
+            color: (d['color'] as string) ?? '',
+            fuel_type: (d['fuel_type'] as string) ?? '',
+            description: (d['description'] as string) ?? '',
+            address: (d['address'] as string) ?? '',
+            view_count: (d['view_count'] as number) ?? 0,
+            fav_count: (d['fav_count'] as number) ?? 0,
+            test_drive_count: (d['test_drive_count'] as number) ?? 0,
+            is_urgent: (d['is_urgent'] as boolean) ?? false,
+            is_featured: (d['is_featured'] as boolean) ?? false,
+            is_certified: (d['is_certified'] as boolean) ?? false,
+            is_faved: detail.value.is_faved,
+            dealer_id: (dl['id'] as number) ?? 0,
+            dealer_name: (dl['name'] as string) ?? '',
+            dealer_logo: (dl['logo'] as string) ?? '',
+            dealer_phone: (dl['phone'] as string) ?? '',
+            dealer_is_verified: (dl['is_verified'] as boolean) ?? false
+        } as Detail
+    }
+
+    const loadInspection = () => {
+        getCarInspection(carId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                inspectionData.value = {
+                    score: (d['score'] as number) ?? 0,
+                    summary: (d['summary'] as string) ?? '',
+                    categories: (d['categories'] as InspectionCategory[]) ?? ([] as InspectionCategory[]),
+                    inspector: (d['inspector'] as string) ?? '',
+                    inspect_time: (d['inspect_time'] as string) ?? ''
+                } as InspectionData
+            }
+        })
+    }
+
+    const loadEvaluation = () => {
+        getCarEvaluation(carId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                evaluationData.value = {
+                    score: (d['score'] as number) ?? 0,
+                    conclusion: (d['conclusion'] as string) ?? '',
+                    advisor: (d['advisor'] as string) ?? '',
+                    eval_time: (d['eval_time'] as string) ?? '',
+                    dimensions: (d['dimensions'] as Dimension[]) ?? ([] as Dimension[])
+                } as EvaluationData
+            }
+        })
+    }
+
+    const toggleFav = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (detail.value.is_faved) {
+            detail.value.is_faved = false
+            uni.showToast({ title: '已取消收藏', icon: 'none' })
+        } else {
+            favCar(carId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = true
+                    uni.showToast({ title: '收藏成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const onShare = () => {
+        incrCarShare(carId.value)
+        uni.showToast({ title: '分享链接已复制', icon: 'none' })
+    }
+
+    const onBookTestDrive = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showActionSheet({
+            itemList: ['今天上午', '今天下午', '明天上午', '明天下午'],
+            success: (r) => {
+                const times = ['今天上午', '今天下午', '明天上午', '明天下午']
+                const t = times[r.tapIndex]
+                uni.showModal({
+                    title: '预约试驾',
+                    content: '确认 ' + t + ' 试驾？',
+                    success: (m) => {
+                        if (m.confirm) {
+                            const data: UTSJSONObject = {
+                                car_id: carId.value,
+                                preferred_time: t
+                            } as UTSJSONObject
+                            createTestDrive(data).then((res: ApiResult) => {
+                                if (res.code == 200) {
+                                    uni.showToast({ title: '预约成功', icon: 'success' })
+                                } else {
+                                    uni.showToast({ title: res.message || '预约失败', icon: 'none' })
+                                }
+                            })
+                        }
+                    }
+                })
+            }
+        })
+    }
+
+    const goInspection = () => {
+        uni.navigateTo({ url: '/pages/business/car/inspection/index?car_id=' + carId.value })
+    }
+
+    const goEvaluation = () => {
+        uni.navigateTo({ url: '/pages/business/car/evaluation/index?car_id=' + carId.value })
+    }
+
+    const goSimilar = (id: number) => {
+        uni.redirectTo({ url: '/pages/business/car/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            carId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .image-banner {
+        width: 100%;
+        height: 240px;
+        background-color: #F5F5F5;
+        position: relative;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .cert-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background-color: rgba(7, 193, 96, 0.9);
+        border-radius: 16px;
+        padding: 4px 10px;
+    }
+
+    .cert-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .more-btn {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .dealer-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .dealer-logo, .dealer-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 10px;
+    }
+
+    .dealer-logo-placeholder {
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .dealer-info {
+        flex: 1;
+    }
+
+    .dealer-name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .dealer-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .cert-tag {
+        background-color: #F0FFF8;
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-left: 6px;
+    }
+
+    .cert-tag-text {
+        font-size: 10px;
+        color: #07C160;
+    }
+
+    .dealer-meta {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .primary-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 22px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-left: 12px;
+    }
+
+    .primary-btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

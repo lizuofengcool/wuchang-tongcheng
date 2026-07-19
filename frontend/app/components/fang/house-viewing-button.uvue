@@ -1,0 +1,90 @@
+<template>
+    <view class="viewing-actions">
+        <view class="action-btn primary" @click="onBook">
+            <text class="action-icon">📅</text>
+            <text class="action-text">预约看房</text>
+        </view>
+        <view class="action-btn outline" @click="onCall">
+            <text class="action-icon">📞</text>
+            <text class="action-text">电话咨询</text>
+        </view>
+        <view class="action-btn outline" v-if="hasVR" @click="onVR">
+            <text class="action-icon">🏠</text>
+            <text class="action-text">VR看房</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        houseId?: number
+        hasVR?: boolean
+    }>(), {
+        houseId: 0,
+        hasVR: false
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'book', id: number): void
+        (e: 'call', id: number): void
+        (e: 'vr', id: number): void
+    }>()
+
+    const onBook = () => {
+        emit('book', props.houseId)
+    }
+
+    const onCall = () => {
+        emit('call', props.houseId)
+    }
+
+    const onVR = () => {
+        emit('vr', props.houseId)
+    }
+</script>
+
+<style>
+    .viewing-actions {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 10px 12px;
+    }
+
+    .action-btn {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        border-radius: 20px;
+        margin: 0 4px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .action-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .action-text {
+        font-size: 13px;
+    }
+
+    .action-btn.primary .action-text {
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .action-btn.outline .action-text {
+        color: #FF6B35;
+    }
+</style>

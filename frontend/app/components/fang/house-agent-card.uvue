@@ -1,0 +1,199 @@
+<template>
+    <view class="agent-card" @click="onClick">
+        <image class="avatar" :src="agent.avatar" mode="aspectFill" lazy-load="true" v-if="agent.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ agent.name.length > 0 ? agent.name.charAt(0) : 'A' }}</text>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ agent.name }}</text>
+                <view class="verified-tag" v-if="agent.is_verified">
+                    <text class="verified-text">✓ 认证</text>
+                </view>
+            </view>
+            <view class="meta-row" v-if="metaText.length > 0">
+                <text class="meta">{{ metaText }}</text>
+            </view>
+            <view class="stats-row">
+                <text class="stat" v-if="agent.on_sale_count > 0">在售 {{ agent.on_sale_count }}</text>
+                <text class="stat" v-if="agent.deal_count > 0">成交 {{ agent.deal_count }}</text>
+                <text class="stat" v-if="agent.rating > 0">评分 {{ formatRating(agent.rating) }}</text>
+            </view>
+        </view>
+        <view class="action-col">
+            <view class="action-btn call" @click.stop="onCall">
+                <text class="action-icon">📞</text>
+                <text class="action-text">电话</text>
+            </view>
+            <view class="action-btn chat" @click.stop="onChat">
+                <text class="action-icon">💬</text>
+                <text class="action-text">聊天</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Agent = {
+        id: number
+        name: string
+        avatar: string
+        phone: string
+        company: string
+        is_verified: boolean
+        on_sale_count: number
+        deal_count: number
+        rating: number
+        service_years: number
+    }
+
+    const props = withDefaults(defineProps<{
+        agent: Agent
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'call', id: number): void
+        (e: 'chat', id: number): void
+    }>()
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.agent.company.length > 0) parts.push(props.agent.company)
+        if (props.agent.service_years > 0) parts.push('从业 ' + props.agent.service_years + '年')
+        return parts.join(' · ')
+    })
+
+    const formatRating = (r: number) : string => {
+        return r.toFixed(1)
+    }
+
+    const onClick = () => {
+        emit('click', props.agent.id)
+    }
+
+    const onCall = () => {
+        emit('call', props.agent.id)
+    }
+
+    const onChat = () => {
+        emit('chat', props.agent.id)
+    }
+</script>
+
+<style>
+    .agent-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .verified-tag {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 1px 5px;
+        margin-left: 6px;
+    }
+
+    .verified-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .stat {
+        font-size: 11px;
+        color: #666;
+        margin-right: 10px;
+    }
+
+    .action-col {
+        flex-direction: column;
+    }
+
+    .action-btn {
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 16px;
+        margin-top: 4px;
+    }
+
+    .action-btn.call {
+        background-color: #FF6B35;
+    }
+
+    .action-btn.chat {
+        background-color: #FFF5F0;
+    }
+
+    .action-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .action-text {
+        font-size: 12px;
+    }
+
+    .action-btn.call .action-text {
+        color: #FFFFFF;
+    }
+
+    .action-btn.chat .action-text {
+        color: #FF6B35;
+    }
+</style>

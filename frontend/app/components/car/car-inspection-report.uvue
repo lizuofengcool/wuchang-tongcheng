@@ -1,0 +1,284 @@
+<template>
+    <view class="report">
+        <view class="header-row">
+            <text class="title">检测报告</text>
+            <view class="score-badge" :class="scoreLevel">
+                <text class="score-text">{{ report.score }}分</text>
+            </view>
+        </view>
+        <view class="summary-row" v-if="report.summary.length > 0">
+            <text class="summary">{{ report.summary }}</text>
+        </view>
+        <view class="category-list">
+            <view class="category" v-for="(cat, idx) in report.categories" :key="idx">
+                <view class="category-header">
+                    <text class="category-name">{{ cat.name }}</text>
+                    <view class="status-tag" :class="cat.status">
+                        <text class="status-text">{{ getStatusText(cat.status) }}</text>
+                    </view>
+                </view>
+                <view class="item-list">
+                    <view class="item" v-for="(item, iIdx) in cat.items" :key="iIdx">
+                        <view class="item-dot" :class="item.level"></view>
+                        <text class="item-name">{{ item.name }}</text>
+                        <text class="item-result" :class="item.level">{{ item.result }}</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+        <view class="footer-row" v-if="report.inspector.length > 0 || report.inspect_time.length > 0">
+            <text class="footer-text" v-if="report.inspector.length > 0">检测师：{{ report.inspector }}</text>
+            <text class="footer-text" v-if="report.inspect_time.length > 0">{{ report.inspect_time }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type InspectItem = {
+        name: string
+        result: string
+        level: string
+    }
+    type Category = {
+        name: string
+        status: string
+        items: InspectItem[]
+    }
+    type Report = {
+        score: number
+        summary: string
+        categories: Category[]
+        inspector: string
+        inspect_time: string
+    }
+
+    const props = withDefaults(defineProps<{
+        report: Report
+    }>(), {} as any)
+
+    const scoreLevel = computed(() : string => {
+        const s = props.report.score
+        if (s >= 90) return 'excellent'
+        if (s >= 75) return 'good'
+        if (s >= 60) return 'normal'
+        return 'bad'
+    })
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'pass') return '正常'
+        if (status == 'warn') return '注意'
+        if (status == 'fail') return '异常'
+        if (status == 'unknown') return '未检'
+        return status
+    }
+</script>
+
+<style>
+    .report {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .score-badge {
+        border-radius: 12px;
+        padding: 3px 10px;
+    }
+
+    .score-badge.excellent {
+        background-color: #F0FFF8;
+    }
+
+    .score-badge.good {
+        background-color: #F0F8FF;
+    }
+
+    .score-badge.normal {
+        background-color: #FFF8E5;
+    }
+
+    .score-badge.bad {
+        background-color: #FFE5E5;
+    }
+
+    .score-text {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .score-badge.excellent .score-text {
+        color: #07C160;
+    }
+
+    .score-badge.good .score-text {
+        color: #1989FA;
+    }
+
+    .score-badge.normal .score-text {
+        color: #FF976A;
+    }
+
+    .score-badge.bad .score-text {
+        color: #EE0A24;
+    }
+
+    .summary-row {
+        margin-top: 8px;
+    }
+
+    .summary {
+        font-size: 12px;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .category-list {
+        margin-top: 10px;
+    }
+
+    .category {
+        margin-top: 10px;
+        padding: 8px;
+        background-color: #FAFAFA;
+        border-radius: 8px;
+    }
+
+    .category-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .category-name {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .status-tag {
+        border-radius: 4px;
+        padding: 1px 6px;
+    }
+
+    .status-tag.pass {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.warn {
+        background-color: #FFF8E5;
+    }
+
+    .status-tag.fail {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.unknown {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pass .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.warn .status-text {
+        color: #FF976A;
+    }
+
+    .status-tag.fail .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.unknown .status-text {
+        color: #999;
+    }
+
+    .item-list {
+        margin-top: 6px;
+    }
+
+    .item {
+        flex-direction: row;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .item-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        margin-right: 6px;
+    }
+
+    .item-dot.pass {
+        background-color: #07C160;
+    }
+
+    .item-dot.warn {
+        background-color: #FF976A;
+    }
+
+    .item-dot.fail {
+        background-color: #EE0A24;
+    }
+
+    .item-dot.unknown {
+        background-color: #CCC;
+    }
+
+    .item-name {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .item-result {
+        font-size: 11px;
+    }
+
+    .item-result.pass {
+        color: #07C160;
+    }
+
+    .item-result.warn {
+        color: #FF976A;
+    }
+
+    .item-result.fail {
+        color: #EE0A24;
+    }
+
+    .item-result.unknown {
+        color: #999;
+    }
+
+    .footer-row {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .footer-text {
+        font-size: 11px;
+        color: #999;
+        margin-right: 16px;
+    }
+</style>

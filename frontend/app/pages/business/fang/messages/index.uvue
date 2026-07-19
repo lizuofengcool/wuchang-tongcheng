@@ -1,0 +1,277 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <text class="tab-text" :class="{ active: currentTab == 'all' }" @click="switchTab('all')">全部</text>
+            <text class="tab-text" :class="{ active: currentTab == 'unread' }" @click="switchTab('unread')">未读</text>
+            <text class="tab-text" :class="{ active: currentTab == 'agent' }" @click="switchTab('agent')">经纪人</text>
+        </view>
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap" v-if="list.length > 0">
+                <view class="session-card" v-for="item in list" :key="item.id" @click="goChat(item)">
+                    <image class="avatar" :src="item.avatar" mode="aspectFill" lazy-load="true" v-if="item.avatar.length > 0" />
+                    <view class="avatar-placeholder" v-else>
+                        <text class="avatar-text">{{ item.name.length > 0 ? item.name.charAt(0) : 'A' }}</text>
+                    </view>
+                    <view class="info">
+                        <view class="header-row">
+                            <text class="name">{{ item.name }}</text>
+                            <text class="time">{{ item.last_time }}</text>
+                        </view>
+                        <view class="preview-row">
+                            <text class="preview" v-if="item.last_message.length > 0">{{ item.last_message }}</text>
+                            <text class="preview" v-else>{{ item.house_title }}</text>
+                            <view class="unread-badge" v-if="item.unread_count > 0">
+                                <text class="unread-text">{{ item.unread_count }}</text>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <house-empty v-if="list.length == 0 && !loading" icon="💬" text="暂无消息" btn-text="去逛逛" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyViewings } from '@/api/business/house.uts'
+
+    type SessionItem = {
+        id: number
+        agent_id: number
+        house_id: number
+        name: string
+        avatar: string
+        house_title: string
+        last_message: string
+        last_time: string
+        unread_count: number
+        status: string
+    }
+    type Tab = { key: string, name: string }
+
+    const currentTab = ref('all')
+    const list = ref([] as SessionItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        if (currentTab.value == 'unread') params['unread'] = true
+        if (currentTab.value == 'agent') params['with_agent'] = true
+
+        // 复用 listMyViewings 作为会话列表：每个看房预约即一个会话
+        listMyViewings(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const rawList = (d['list'] as UTSJSONObject[]) ?? ([] as UTSJSONObject[])
+                const sessions = rawList.map((v: UTSJSONObject) : SessionItem => {
+                    return {
+                        id: (v['id'] as number) ?? 0,
+                        agent_id: (v['agent_id'] as number) ?? 0,
+                        house_id: (v['house_id'] as number) ?? 0,
+                        name: (v['agent_name'] as string) ?? '经纪人',
+                        avatar: (v['agent_avatar'] as string) ?? '',
+                        house_title: (v['house_title'] as string) ?? '',
+                        last_message: (v['last_message'] as string) ?? '',
+                        last_time: (v['viewing_time'] as string) ?? '',
+                        unread_count: (v['unread_count'] as number) ?? 0,
+                        status: (v['status'] as string) ?? ''
+                    } as SessionItem
+                })
+                if (reset) {
+                    list.value = sessions
+                } else {
+                    list.value = list.value.concat(sessions)
+                }
+                hasMore.value = sessions.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (k: string) => {
+        if (currentTab.value == k) return
+        currentTab.value = k
+        loadList(true)
+    }
+
+    const goChat = (item: SessionItem) => {
+        uni.navigateTo({ url: '/pages/business/fang/messages/chat?agent_id=' + item.agent_id + '&house_id=' + item.house_id + '&session_id=' + item.id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/fang/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 10px 12px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .tab-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+        padding: 4px 0;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .session-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 8px;
+        flex-direction: row;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 10px;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .avatar-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .preview-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .preview {
+        font-size: 12px;
+        color: #999;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .unread-badge {
+        background-color: #EE0A24;
+        border-radius: 9px;
+        padding: 1px 6px;
+        margin-left: 6px;
+    }
+
+    .unread-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

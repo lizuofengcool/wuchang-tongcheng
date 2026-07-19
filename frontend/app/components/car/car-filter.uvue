@@ -1,0 +1,79 @@
+<template>
+    <view class="filter-bar">
+        <view class="filter-item" v-for="(item, idx) in items" :key="idx" @click="onTapItem(idx)">
+            <text class="filter-text" :class="{ active: activeKey == item.key }">{{ currentLabel(item) }}</text>
+            <text class="filter-arrow" :class="{ up: activeKey == item.key && panelVisible }">▼</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type FilterItem = {
+        key: string
+        label: string
+        options: string[]
+    }
+
+    const props = withDefaults(defineProps<{
+        items: FilterItem[]
+        activeKey?: string
+        panelVisible?: boolean
+        selected?: UTSJSONObject
+    }>(), {
+        activeKey: '',
+        panelVisible: false,
+        selected: {} as UTSJSONObject
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'tap', key: string): void
+    }>()
+
+    const currentLabel = (item: FilterItem) : string => {
+        const v = (props.selected[item.key] as string) ?? ''
+        if (v.length == 0) return item.label
+        return v
+    }
+
+    const onTapItem = (idx: number) => {
+        emit('tap', props.items[idx].key)
+    }
+</script>
+
+<style>
+    .filter-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 8px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .filter-item {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filter-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .filter-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .filter-arrow {
+        font-size: 10px;
+        color: #CCC;
+        margin-left: 2px;
+    }
+
+    .filter-arrow.up {
+        transform: rotate(180deg);
+    }
+</style>

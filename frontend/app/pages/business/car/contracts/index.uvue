@@ -1,0 +1,380 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <text class="tab-text" v-for="(tab, idx) in tabs" :key="idx" :class="{ active: currentTab == tab.key }" @click="switchTab(tab.key)">{{ tab.name }}</text>
+        </view>
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap" v-if="list.length > 0">
+                <view class="contract-card" v-for="item in list" :key="item.id" @click="goDetail(item.id)">
+                    <view class="header-row">
+                        <text class="contract-no">合同号：{{ item.contract_no }}</text>
+                        <view class="status-tag" :class="item.status">
+                            <text class="status-text">{{ statusText(item.status) }}</text>
+                        </view>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">车源</text>
+                        <text class="info-value">{{ item.car_title }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">类型</text>
+                        <text class="info-value">{{ typeText(item.contract_type) }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">金额</text>
+                        <text class="info-value price">¥{{ item.amount }}{{ item.contract_type == 'rent' ? '/日' : '万' }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">期限</text>
+                        <text class="info-value">{{ item.start_date }} 至 {{ item.end_date }}</text>
+                    </view>
+                    <view class="info-row" v-if="item.counterparty.length > 0">
+                        <text class="info-label">{{ item.role == 'buyer' ? '卖方' : (item.role == 'tenant' ? '出租方' : '对方') }}</text>
+                        <text class="info-value">{{ item.counterparty }}</text>
+                    </view>
+                    <view class="action-row" v-if="item.status == 'pending'">
+                        <view class="action-btn primary" @click.stop="onSign(item.id)">
+                            <text class="btn-text-white">签署合同</text>
+                        </view>
+                        <view class="action-btn outline" @click.stop="onTerminate(item.id)">
+                            <text class="btn-text">拒绝</text>
+                        </view>
+                    </view>
+                    <view class="action-row" v-else-if="item.status == 'active'">
+                        <view class="action-btn outline" @click.stop="onTerminate(item.id)">
+                            <text class="btn-text">终止合同</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <car-empty v-if="list.length == 0 && !loading" icon="📄" text="暂无合同记录" btn-text="去选车" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listContracts, signContract, terminateContract } from '@/api/business/car.uts'
+
+    type ContractItem = {
+        id: number
+        contract_no: string
+        car_id: number
+        car_title: string
+        contract_type: string
+        amount: number
+        start_date: string
+        end_date: string
+        status: string
+        role: string
+        counterparty: string
+    }
+    type Tab = { key: string, name: string }
+
+    const tabs = [
+        { key: 'all', name: '全部' },
+        { key: 'pending', name: '待签署' },
+        { key: 'active', name: '履行中' },
+        { key: 'completed', name: '已完成' },
+        { key: 'terminated', name: '已终止' }
+    ] as Tab[]
+
+    const currentTab = ref('all')
+    const list = ref([] as ContractItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const statusText = (s: string) : string => {
+        if (s == 'pending') return '待签署'
+        if (s == 'active') return '履行中'
+        if (s == 'completed') return '已完成'
+        if (s == 'terminated') return '已终止'
+        if (s == 'expired') return '已过期'
+        return s
+    }
+
+    const typeText = (t: string) : string => {
+        if (t == 'sale') return '买卖合同'
+        if (t == 'rent') return '租赁合同'
+        if (t == 'agency') return '中介合同'
+        return t
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        if (currentTab.value != 'all') params['status'] = currentTab.value
+
+        listContracts(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ContractItem[]) ?? ([] as ContractItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (k: string) => {
+        if (currentTab.value == k) return
+        currentTab.value = k
+        loadList(true)
+    }
+
+    const onSign = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认签署该合同？',
+            success: (r) => {
+                if (r.confirm) {
+                    signContract(id).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '签署成功', icon: 'success' })
+                            loadList(true)
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onTerminate = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认终止该合同？终止后无法恢复',
+            success: (r) => {
+                if (r.confirm) {
+                    terminateContract(id).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '已终止', icon: 'success' })
+                            loadList(true)
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/car/detail/index?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateBack()
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 10px 8px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .tab-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+        padding: 4px 0;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 8px 12px;
+    }
+
+    .contract-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .contract-no {
+        font-size: 13px;
+        color: #999;
+        flex: 1;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .status-tag.pending {
+        background-color: #FFF5F0;
+    }
+
+    .status-tag.active {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.completed {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.terminated {
+        background-color: #FFE5E5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pending .status-text {
+        color: #FF6B35;
+    }
+
+    .status-tag.active .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .status-tag.terminated .status-text {
+        color: #EE0A24;
+    }
+
+    .info-row {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: #999;
+        width: 60px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .info-value.price {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        justify-content: flex-end;
+    }
+
+    .action-btn {
+        padding: 6px 16px;
+        border-radius: 16px;
+        margin-left: 8px;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #DDDDDD;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .btn-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .btn-text-white {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

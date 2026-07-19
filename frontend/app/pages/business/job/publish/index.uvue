@@ -1,0 +1,298 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">职位信息</text>
+                <view class="form-row">
+                    <text class="label">职位名称<text class="required">*</text></text>
+                    <input class="input" v-model="form.title" placeholder="例如：高级前端工程师" />
+                </view>
+                <view class="form-row">
+                    <text class="label">薪资范围<text class="required">*</text></text>
+                    <input class="input" v-model="form.salary_range" placeholder="例如：15-25K" />
+                </view>
+                <view class="form-row">
+                    <text class="label">城市<text class="required">*</text></text>
+                    <input class="input" v-model="form.city" placeholder="例如：北京" />
+                </view>
+                <view class="form-row">
+                    <text class="label">经验要求</text>
+                    <input class="input" v-model="form.experience" placeholder="例如：3-5年" />
+                </view>
+                <view class="form-row">
+                    <text class="label">学历要求</text>
+                    <input class="input" v-model="form.education" placeholder="例如：本科" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">职位详情</text>
+                <view class="form-row column">
+                    <text class="label">职位描述<text class="required">*</text></text>
+                    <textarea class="textarea" v-model="form.description" placeholder="请输入职位描述" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">任职要求</text>
+                    <textarea class="textarea" v-model="form.requirements" placeholder="请输入任职要求" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">福利待遇</text>
+                    <textarea class="textarea" v-model="form.welfare" placeholder="例如：五险一金、带薪年假" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">工作地址</text>
+                <view class="form-row">
+                    <text class="label">详细地址</text>
+                    <input class="input" v-model="form.address" placeholder="请输入详细地址" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">公司信息</text>
+                <view class="form-row">
+                    <text class="label">公司名称<text class="required">*</text></text>
+                    <input class="input" v-model="form.company_name" placeholder="请输入公司名称" />
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save-draft" @click="onSave('draft')">
+                <text class="btn-text">存草稿</text>
+            </view>
+            <view class="btn-publish" @click="onSave('on_sale')">
+                <text class="btn-text-white">发布</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createJob, updateJob, getJobDetail } from '@/api/business/job.uts'
+
+    type Form = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        description: string
+        requirements: string
+        welfare: string
+        address: string
+        company_name: string
+    }
+
+    const form = ref({
+        id: 0,
+        title: '',
+        salary_range: '',
+        city: '',
+        experience: '',
+        education: '',
+        description: '',
+        requirements: '',
+        welfare: '',
+        address: '',
+        company_name: ''
+    } as Form)
+
+    const editId = ref(0)
+
+    const onSave = (status: string) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.title.length == 0) {
+            uni.showToast({ title: '请输入职位名称', icon: 'none' })
+            return
+        }
+        if (form.value.salary_range.length == 0) {
+            uni.showToast({ title: '请输入薪资范围', icon: 'none' })
+            return
+        }
+        if (form.value.city.length == 0) {
+            uni.showToast({ title: '请输入城市', icon: 'none' })
+            return
+        }
+        if (form.value.company_name.length == 0) {
+            uni.showToast({ title: '请输入公司名称', icon: 'none' })
+            return
+        }
+        if (form.value.description.length == 0) {
+            uni.showToast({ title: '请输入职位描述', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            title: form.value.title,
+            salary_range: form.value.salary_range,
+            city: form.value.city,
+            experience: form.value.experience,
+            education: form.value.education,
+            description: form.value.description,
+            requirements: form.value.requirements,
+            welfare: form.value.welfare,
+            address: form.value.address,
+            company_name: form.value.company_name,
+            status: status
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '提交中...' })
+        const reqFn = form.value.id > 0 ? updateJob(form.value.id, data) : createJob(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({
+                    title: status == 'draft' ? '已保存草稿' : '发布成功',
+                    icon: 'success'
+                })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getJobDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    title: (d['title'] as string) ?? '',
+                    salary_range: (d['salary_range'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    experience: (d['experience'] as string) ?? '',
+                    education: (d['education'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    requirements: (d['requirements'] as string) ?? '',
+                    welfare: (d['welfare'] as string) ?? '',
+                    address: (d['address'] as string) ?? '',
+                    company_name: (d['company_name'] as string) ?? ''
+                } as Form
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            editId.value = parseInt(id as string)
+            form.value.id = editId.value
+            loadEdit(editId.value)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 100px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save-draft {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        border-width: 1px;
+        border-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .btn-publish {
+        flex: 2;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

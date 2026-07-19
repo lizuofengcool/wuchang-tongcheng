@@ -1,0 +1,316 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="app-card" v-for="item in appList" :key="item.id" @click="goDetail(item.id)">
+                <view class="header-row">
+                    <text class="position">{{ item.job_title }}</text>
+                    <view class="status-tag" :class="item.status">
+                        <text class="status-text">{{ getStatusText(item.status) }}</text>
+                    </view>
+                </view>
+                <view class="company-row">
+                    <text class="company">{{ item.company_name }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-text">薪资：{{ item.salary_range }}</text>
+                    <text class="info-text">投递时间：{{ item.created_at }}</text>
+                </view>
+                <job-application-status :steps="statusSteps" :current-index="getCurrentIndex(item.status)" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && appList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <job-empty v-if="appList.length == 0 && !loading" icon="📋" text="暂无投递记录" btn-text="去找工作" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyApplications } from '@/api/business/job.uts'
+
+    type Tab = { key: string, name: string }
+    type Application = {
+        id: number
+        job_id: number
+        job_title: string
+        company_name: string
+        salary_range: string
+        status: string
+        created_at: string
+    }
+
+    const tabs = ref([
+        { key: 'all', name: '全部' },
+        { key: 'submitted', name: '已投递' },
+        { key: 'viewed', name: '已查看' },
+        { key: 'interview', name: '面试中' },
+        { key: 'offer', name: 'Offer' },
+        { key: 'rejected', name: '不合适' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const appList = ref([] as Application[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const statusSteps = [
+        { name: '投递', time: '' },
+        { name: '查看', time: '' },
+        { name: '面试', time: '' },
+        { name: 'Offer', time: '' }
+    ] as { name: string, time: string }[]
+
+    const getCurrentIndex = (status: string) : number => {
+        if (status == 'submitted') return 0
+        if (status == 'viewed') return 1
+        if (status == 'interview') return 2
+        if (status == 'offer') return 3
+        if (status == 'rejected') return 1
+        return 0
+    }
+
+    const getStatusText = (status: string) : string => {
+        const map: UTSJSONObject = {
+            submitted: '已投递',
+            viewed: '已查看',
+            interview: '面试中',
+            offer: 'Offer',
+            rejected: '不合适',
+            cancelled: '已取消'
+        } as UTSJSONObject
+        return (map[status] as string) ?? status
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const status = tabs.value[currentTab.value].key
+        if (status != 'all') {
+            params['status'] = status
+        }
+
+        listMyApplications(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as Application[]) ?? ([] as Application[])
+                if (reset) {
+                    appList.value = newList
+                } else {
+                    appList.value = appList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadList(true)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/applications/detail?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/job/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom-width: 1px;
+        border-bottom-color: #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .app-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .position {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .status-tag.submitted {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.viewed {
+        background-color: #E5F8FF;
+    }
+
+    .status-tag.interview {
+        background-color: #FFF5F0;
+    }
+
+    .status-tag.offer {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.submitted .status-text {
+        color: #999;
+    }
+
+    .status-tag.viewed .status-text {
+        color: #1989FA;
+    }
+
+    .status-tag.interview .status-text {
+        color: #FF6B35;
+    }
+
+    .status-tag.offer .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.rejected .status-text {
+        color: #EE0A24;
+    }
+
+    .company-row {
+        margin-top: 4px;
+    }
+
+    .company {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .info-text {
+        font-size: 12px;
+        color: #999;
+        margin-right: 16px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

@@ -1,0 +1,531 @@
+// 同城房屋租售模块 API 封装
+// 对应后端 backend/internal/modules/house/plugin.go 路由清单（80+ API）
+// 路由前缀：/house（由 request.uts 中 BASE_URL 拼接为 /api/v1/house）
+// 按场景分组：房源/收藏/发布单/小区/经纪人/合同/看房/VR/房贷/评价/举报/担保/成交/推荐/分类/设施/统计
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 房源 =====
+// 房源列表（公开）
+export const listHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house', params)
+}
+
+// 房源详情（公开）
+export const getHouseDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/' + id)
+}
+
+// 搜索房源（公开）
+export const searchHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/search', params)
+}
+
+// 高级搜索（公开）
+export const advancedSearchHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/advanced-search', params)
+}
+
+// 附近房源（公开）
+export const listNearbyHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/nearby', params)
+}
+
+// 相似房源（公开）
+export const listSimilarHouses = (id: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/' + id + '/similar', params)
+}
+
+// 发布房源（需登录）
+export const createHouse = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house', data)
+}
+
+// 更新房源（需登录）
+export const updateHouse = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/' + id, data)
+}
+
+// 删除房源（需登录）
+export const deleteHouse = (id: number) : Promise<ApiResult> => {
+    return del('/house/' + id)
+}
+
+// 我的发布（需登录）
+export const listMyHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/mine', params)
+}
+
+// ===== 房源收藏 =====
+// 收藏（需登录）
+export const favHouse = (id: number) : Promise<ApiResult> => {
+    return post('/house/' + id + '/fav', null)
+}
+
+// 收藏状态（公开）
+export const favHouseStatus = (id: number) : Promise<ApiResult> => {
+    return get('/house/' + id + '/fav')
+}
+
+// 我的收藏列表（需登录）
+export const listFavoriteHouses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/favorites', params)
+}
+
+// 更新推广（需登录）
+export const updateHousePromotion = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/' + id + '/promotion', data)
+}
+
+// 增加联系次数（公开）
+export const incrContactCount = (id: number) : Promise<ApiResult> => {
+    return post('/house/' + id + '/contact', null)
+}
+
+// 增加分享次数（公开）
+export const incrShareCount = (id: number) : Promise<ApiResult> => {
+    return post('/house/' + id + '/share', null)
+}
+
+// 房源评价列表（公开）
+export const listHouseReviews = (id: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/' + id + '/reviews', params)
+}
+
+// 房源评价统计（公开）
+export const getHouseReviewStats = (id: number) : Promise<ApiResult> => {
+    return get('/house/' + id + '/reviews/stats')
+}
+
+// 房源关联举报（公开）
+export const listHouseReports = (id: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/' + id + '/reports', params)
+}
+
+// 房源关联担保（公开）
+export const listHouseEscrows = (id: number) : Promise<ApiResult> => {
+    return get('/house/' + id + '/escrows')
+}
+
+// 房源关联成交（公开）
+export const listHouseDeals = (id: number) : Promise<ApiResult> => {
+    return get('/house/' + id + '/deals')
+}
+
+// ===== 发布单（listing） =====
+export const listListings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/listings', params)
+}
+
+export const getListingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/listings/' + id)
+}
+
+export const createListing = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/listings', data)
+}
+
+export const updateListing = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/listings/' + id, data)
+}
+
+export const deleteListing = (id: number) : Promise<ApiResult> => {
+    return del('/house/listings/' + id)
+}
+
+export const listMyListings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/listings/mine', params)
+}
+
+export const refreshListing = (id: number) : Promise<ApiResult> => {
+    return post('/house/listings/' + id + '/refresh', null)
+}
+
+// ===== 小区 =====
+export const listCommunities = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/communities', params)
+}
+
+export const listNearbyCommunities = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/communities/nearby', params)
+}
+
+export const getCommunityDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/communities/' + id)
+}
+
+export const createCommunity = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/communities', data)
+}
+
+export const updateCommunity = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/communities/' + id, data)
+}
+
+export const followCommunity = (id: number) : Promise<ApiResult> => {
+    return post('/house/communities/' + id + '/follow', null)
+}
+
+export const communityFollowStatus = (id: number) : Promise<ApiResult> => {
+    return get('/house/communities/' + id + '/follow')
+}
+
+// ===== 经纪人 =====
+export const listAgents = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/agents', params)
+}
+
+export const getAgentDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/agents/' + id)
+}
+
+export const getMyAgent = () : Promise<ApiResult> => {
+    return get('/house/agents/mine')
+}
+
+export const createAgent = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/agents', data)
+}
+
+export const updateAgent = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/agents/' + id, data)
+}
+
+export const followAgent = (id: number) : Promise<ApiResult> => {
+    return post('/house/agents/' + id + '/follow', null)
+}
+
+export const agentFollowStatus = (id: number) : Promise<ApiResult> => {
+    return get('/house/agents/' + id + '/follow')
+}
+
+// ===== 合同 =====
+export const listContracts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/contracts', params)
+}
+
+export const listMyContracts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/contracts/mine', params)
+}
+
+export const getContractDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/contracts/' + id)
+}
+
+export const createContract = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/contracts', data)
+}
+
+export const updateContract = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/contracts/' + id, data)
+}
+
+export const signContract = (id: number) : Promise<ApiResult> => {
+    return post('/house/contracts/' + id + '/sign', null)
+}
+
+export const terminateContract = (id: number) : Promise<ApiResult> => {
+    return post('/house/contracts/' + id + '/terminate', null)
+}
+
+// ===== 看房预约 =====
+export const listViewings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/viewings', params)
+}
+
+export const listMyViewings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/viewings/mine', params)
+}
+
+export const getViewingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/viewings/' + id)
+}
+
+export const createViewing = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/viewings', data)
+}
+
+export const updateViewing = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/viewings/' + id, data)
+}
+
+export const confirmViewing = (id: number) : Promise<ApiResult> => {
+    return post('/house/viewings/' + id + '/confirm', null)
+}
+
+export const cancelViewing = (id: number) : Promise<ApiResult> => {
+    return post('/house/viewings/' + id + '/cancel', null)
+}
+
+export const rescheduleViewing = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/viewings/' + id + '/reschedule', data)
+}
+
+export const completeViewing = (id: number) : Promise<ApiResult> => {
+    return post('/house/viewings/' + id + '/complete', null)
+}
+
+// ===== 评价 =====
+export const listReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/reviews', params)
+}
+
+export const getReviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/reviews/' + id)
+}
+
+export const createReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/reviews', data)
+}
+
+export const listMyReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/reviews/mine', params)
+}
+
+export const replyReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/reviews/' + id + '/reply', data)
+}
+
+export const appendReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/reviews/' + id + '/append', data)
+}
+
+export const likeReview = (id: number) : Promise<ApiResult> => {
+    return post('/house/reviews/' + id + '/like', null)
+}
+
+// ===== 举报 =====
+export const createReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/reports', data)
+}
+
+export const listReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/reports', params)
+}
+
+export const listMyReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/reports/mine', params)
+}
+
+export const getReportDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/reports/' + id)
+}
+
+export const getReportByNo = (no: string) : Promise<ApiResult> => {
+    return get('/house/reports/no/' + no)
+}
+
+export const appealReport = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/reports/' + id + '/appeal', data)
+}
+
+// ===== 担保交易 =====
+export const listEscrows = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/escrows', params)
+}
+
+export const getEscrowDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/escrows/' + id)
+}
+
+export const createEscrow = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/escrows', data)
+}
+
+export const listMyPayerEscrows = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/escrows/mine-payer', params)
+}
+
+export const listMyPayeeEscrows = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/escrows/mine-payee', params)
+}
+
+export const markEscrowPaid = (id: number) : Promise<ApiResult> => {
+    return post('/house/escrows/' + id + '/pay', null)
+}
+
+export const releaseEscrow = (id: number) : Promise<ApiResult> => {
+    return post('/house/escrows/' + id + '/release', null)
+}
+
+export const refundEscrow = (id: number) : Promise<ApiResult> => {
+    return post('/house/escrows/' + id + '/refund', null)
+}
+
+export const disputeEscrow = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/escrows/' + id + '/dispute', data)
+}
+
+export const cancelEscrow = (id: number) : Promise<ApiResult> => {
+    return post('/house/escrows/' + id + '/cancel', null)
+}
+
+// ===== 成交记录 =====
+export const listDeals = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/deals', params)
+}
+
+export const getDealDetail = (id: number) : Promise<ApiResult> => {
+    return get('/house/deals/' + id)
+}
+
+export const createDeal = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/deals', data)
+}
+
+export const confirmDeal = (id: number) : Promise<ApiResult> => {
+    return post('/house/deals/' + id + '/confirm', null)
+}
+
+export const cancelDeal = (id: number) : Promise<ApiResult> => {
+    return post('/house/deals/' + id + '/cancel', null)
+}
+
+// ===== 推荐 =====
+export const listMyRecommendations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/recommendations/mine', params)
+}
+
+export const getRecommendation = (id: number) : Promise<ApiResult> => {
+    return get('/house/recommendations/' + id)
+}
+
+export const markRecClicked = (id: number) : Promise<ApiResult> => {
+    return post('/house/recommendations/' + id + '/click', null)
+}
+
+export const markRecContacted = (id: number) : Promise<ApiResult> => {
+    return post('/house/recommendations/' + id + '/contact', null)
+}
+
+export const markRecViewed = (id: number) : Promise<ApiResult> => {
+    return post('/house/recommendations/' + id + '/view', null)
+}
+
+export const markRecDismissed = (id: number) : Promise<ApiResult> => {
+    return post('/house/recommendations/' + id + '/dismiss', null)
+}
+
+// ===== VR 看房 =====
+export const listVRTours = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/vr-tours', params)
+}
+
+export const getVRTour = (id: number) : Promise<ApiResult> => {
+    return get('/house/vr-tours/' + id)
+}
+
+export const shareVRTour = (id: number) : Promise<ApiResult> => {
+    return post('/house/vr-tours/' + id + '/share', null)
+}
+
+export const createVRTour = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/vr-tours', data)
+}
+
+export const updateVRTour = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/house/vr-tours/' + id, data)
+}
+
+export const deleteVRTour = (id: number) : Promise<ApiResult> => {
+    return del('/house/vr-tours/' + id)
+}
+
+export const publishVRTour = (id: number) : Promise<ApiResult> => {
+    return post('/house/vr-tours/' + id + '/publish', null)
+}
+
+export const offlineVRTour = (id: number) : Promise<ApiResult> => {
+    return post('/house/vr-tours/' + id + '/offline', null)
+}
+
+// ===== 房贷方案 =====
+export const listMortgages = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/mortgages', params)
+}
+
+export const getMortgage = (id: number) : Promise<ApiResult> => {
+    return get('/house/mortgages/' + id)
+}
+
+export const calculateMortgage = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/house/mortgages/calculate', data)
+}
+
+// ===== 房源分类 =====
+export const listCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/categories', params)
+}
+
+export const listAllCategories = () : Promise<ApiResult> => {
+    return get('/house/categories/all')
+}
+
+export const listCategoriesByParent = (parentId: number) : Promise<ApiResult> => {
+    return get('/house/categories/parent/' + parentId)
+}
+
+export const getCategory = (id: number) : Promise<ApiResult> => {
+    return get('/house/categories/' + id)
+}
+
+// ===== 配套设施 =====
+export const listFacilities = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/facilities', params)
+}
+
+export const listAllFacilities = () : Promise<ApiResult> => {
+    return get('/house/facilities/all')
+}
+
+export const listHotFacilities = () : Promise<ApiResult> => {
+    return get('/house/facilities/hot')
+}
+
+export const getFacility = (id: number) : Promise<ApiResult> => {
+    return get('/house/facilities/' + id)
+}
+
+// ===== 审核规则（启用列表，C 端发布时使用） =====
+export const listEnabledAuditRules = () : Promise<ApiResult> => {
+    return get('/house/audit-rules/enabled')
+}
+
+// ===== 统计 =====
+// 价格趋势（公开）
+export const getPriceTrend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/house/statistics/price-trend', params)
+}
+
+// 平台总览（登录可见）
+export const getOverview = () : Promise<ApiResult> => {
+    return get('/house/statistics/overview')
+}
+
+// ===== 搜索历史（本地存储） =====
+export const getSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('house_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+export const clearSearchHistory = () => {
+    uni.removeStorageSync('house_search_history')
+}
+
+export const addSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('house_search_history', list)
+}

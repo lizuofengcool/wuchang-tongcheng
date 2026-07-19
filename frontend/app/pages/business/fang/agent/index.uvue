@@ -1,0 +1,485 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="header-card">
+                <image class="avatar" :src="agent.avatar" mode="aspectFill" lazy-load="true" v-if="agent.avatar.length > 0" />
+                <view class="avatar-placeholder" v-else>
+                    <text class="avatar-text">{{ agent.name.length > 0 ? agent.name.charAt(0) : 'A' }}</text>
+                </view>
+                <view class="info">
+                    <view class="name-row">
+                        <text class="name">{{ agent.name }}</text>
+                        <view class="verified-tag" v-if="agent.is_verified">
+                            <text class="verified-text">✓ 认证经纪人</text>
+                        </view>
+                    </view>
+                    <view class="meta-row" v-if="metaText.length > 0">
+                        <text class="meta">{{ metaText }}</text>
+                    </view>
+                    <view class="action-row">
+                        <view class="action-btn call" @click="onCall">
+                            <text class="action-icon">📞</text>
+                            <text class="action-text">电话</text>
+                        </view>
+                        <view class="action-btn chat" @click="onChat">
+                            <text class="action-icon">💬</text>
+                            <text class="action-text">聊天</text>
+                        </view>
+                        <view class="action-btn follow" :class="{ followed: isFollowed }" @click="toggleFollow">
+                            <text class="action-icon">{{ isFollowed ? '★' : '☆' }}</text>
+                            <text class="action-text">{{ isFollowed ? '已关注' : '关注' }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section">
+                <text class="section-title">服务数据</text>
+                <view class="stats-row">
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ agent.on_sale_count }}</text>
+                        <text class="stat-label">在售房源</text>
+                    </view>
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ agent.deal_count }}</text>
+                        <text class="stat-label">历史成交</text>
+                    </view>
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ formatRating(agent.rating) }}</text>
+                        <text class="stat-label">综合评分</text>
+                    </view>
+                    <view class="stat-cell" v-if="agent.service_years > 0">
+                        <text class="stat-value">{{ agent.service_years }}年</text>
+                        <text class="stat-label">从业年限</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="agent.company.length > 0">
+                <text class="section-title">所在公司</text>
+                <view class="info-row">
+                    <text class="info-label">公司</text>
+                    <text class="info-value">{{ agent.company }}</text>
+                </view>
+                <view class="info-row" v-if="agent.phone.length > 0">
+                    <text class="info-label">电话</text>
+                    <text class="info-value">{{ agent.phone }}</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">在售房源 ({{ list.length }})</text>
+                </view>
+                <view v-if="list.length > 0">
+                    <house-card v-for="item in list" :key="item.id" :house="transformHouse(item)" @click="goDetail" />
+                </view>
+                <house-empty v-else icon="🏠" text="该经纪人暂无在售房源" :padding-top="40" :padding-bottom="40" />
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">历史成交 ({{ dealList.length }})</text>
+                </view>
+                <view v-if="dealList.length > 0">
+                    <view class="deal-item" v-for="item in dealList" :key="item.id">
+                        <text class="deal-title">{{ item.title }}</text>
+                        <text class="deal-price">¥{{ item.price }}万</text>
+                        <text class="deal-time">{{ item.deal_time }}</text>
+                    </view>
+                </view>
+                <house-empty v-else icon="📋" text="暂无成交记录" :padding-top="40" :padding-bottom="40" />
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getAgentDetail, listHouses, followAgent, agentFollowStatus } from '@/api/business/house.uts'
+
+    type Agent = {
+        id: number
+        name: string
+        avatar: string
+        phone: string
+        company: string
+        is_verified: boolean
+        on_sale_count: number
+        deal_count: number
+        rating: number
+        service_years: number
+    }
+    type HouseItem = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type HouseCardData = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type DealItem = {
+        id: number
+        title: string
+        price: number
+        deal_time: string
+    }
+
+    const agentId = ref(0)
+    const agent = ref({
+        id: 0, name: '', avatar: '', phone: '', company: '',
+        is_verified: false, on_sale_count: 0, deal_count: 0, rating: 0, service_years: 0
+    } as Agent)
+    const isFollowed = ref(false)
+    const list = ref([] as HouseItem[])
+    const dealList = ref([] as DealItem[])
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (agent.value.company.length > 0) parts.push(agent.value.company)
+        if (agent.value.service_years > 0) parts.push('从业 ' + agent.value.service_years + '年')
+        return parts.join(' · ')
+    })
+
+    const formatRating = (r: number) : string => {
+        return r.toFixed(1)
+    }
+
+    const transformHouse = (item: HouseItem) : HouseCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            listing_type: item.listing_type,
+            layout: item.layout,
+            area_text: item.area_text,
+            floor_text: item.floor_text,
+            orientation: item.orientation,
+            price: item.price,
+            community_name: item.community_name,
+            has_vr: item.has_vr,
+            is_urgent: item.is_urgent,
+            is_featured: item.is_featured
+        } as HouseCardData
+    }
+
+    const loadDetail = () => {
+        getAgentDetail(agentId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                agent.value = mapAgent(d)
+                loadList()
+            }
+        })
+        agentFollowStatus(agentId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isFollowed.value = ((d['is_followed'] as boolean) ?? false)
+            }
+        })
+    }
+
+    const mapAgent = (d: UTSJSONObject) : Agent => {
+        return {
+            id: (d['id'] as number) ?? 0,
+            name: (d['name'] as string) ?? '',
+            avatar: (d['avatar'] as string) ?? '',
+            phone: (d['phone'] as string) ?? '',
+            company: (d['company'] as string) ?? '',
+            is_verified: (d['is_verified'] as boolean) ?? false,
+            on_sale_count: (d['on_sale_count'] as number) ?? 0,
+            deal_count: (d['deal_count'] as number) ?? 0,
+            rating: (d['rating'] as number) ?? 0,
+            service_years: (d['service_years'] as number) ?? 0
+        } as Agent
+    }
+
+    const loadList = () => {
+        const params: UTSJSONObject = {
+            agent_id: agentId.value,
+            page: 1,
+            page_size: 20
+        } as UTSJSONObject
+        listHouses(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                list.value = (d['list'] as HouseItem[]) ?? ([] as HouseItem[])
+            }
+        })
+    }
+
+    const toggleFollow = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        followAgent(agentId.value).then((res: ApiResult) => {
+            if (res.code == 200) {
+                isFollowed.value = !isFollowed.value
+                uni.showToast({ title: isFollowed.value ? '已关注' : '已取消', icon: 'none' })
+            }
+        })
+    }
+
+    const onCall = () => {
+        if (agent.value.phone.length > 0) {
+            uni.makePhoneCall({ phoneNumber: agent.value.phone })
+        } else {
+            uni.showToast({ title: '暂无联系电话', icon: 'none' })
+        }
+    }
+
+    const onChat = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/fang/messages/chat?agent_id=' + agentId.value })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            agentId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .header-card {
+        background-color: #FFFFFF;
+        padding: 16px;
+        flex-direction: row;
+        margin-bottom: 8px;
+    }
+
+    .avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 32px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 32px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .verified-tag {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin-left: 8px;
+    }
+
+    .verified-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 10px;
+    }
+
+    .action-btn {
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 16px;
+        margin-right: 8px;
+        background-color: #FFF5F0;
+    }
+
+    .action-btn.call {
+        background-color: #FF6B35;
+    }
+
+    .action-btn.chat {
+        background-color: #07C160;
+    }
+
+    .action-btn.follow.followed {
+        background-color: #F5F5F5;
+    }
+
+    .action-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .action-text {
+        font-size: 12px;
+    }
+
+    .action-btn.call .action-text, .action-btn.chat .action-text {
+        color: #FFFFFF;
+    }
+
+    .action-btn.follow .action-text {
+        color: #FF6B35;
+    }
+
+    .action-btn.follow.followed .action-text {
+        color: #999;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .stats-row {
+        flex-direction: row;
+    }
+
+    .stat-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .deal-item {
+        background-color: #FAFAFA;
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+    }
+
+    .deal-title {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .deal-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .deal-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 2px;
+    }
+</style>

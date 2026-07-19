@@ -1,0 +1,470 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="header-card">
+                <view class="name-row">
+                    <text class="name">{{ community.name }}</text>
+                    <view class="follow-btn" :class="{ followed: isFollowed }" @click="toggleFollow">
+                        <text class="follow-text">{{ isFollowed ? '已关注' : '+ 关注' }}</text>
+                    </view>
+                </view>
+                <view class="meta-row" v-if="metaText.length > 0">
+                    <text class="meta">{{ metaText }}</text>
+                </view>
+                <view class="stats-row">
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ community.on_sale_count }}</text>
+                        <text class="stat-label">在售</text>
+                    </view>
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ community.on_rent_count }}</text>
+                        <text class="stat-label">在租</text>
+                    </view>
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ community.avg_price }}</text>
+                        <text class="stat-label">均价(元/㎡)</text>
+                    </view>
+                    <view class="stat-cell" v-if="community.build_year > 0">
+                        <text class="stat-value">{{ community.build_year }}</text>
+                        <text class="stat-label">建成年份</text>
+                    </view>
+                </view>
+                <view class="address-row" v-if="community.address.length > 0">
+                    <text class="address-icon">📍</text>
+                    <text class="address-text">{{ community.address }}</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <text class="section-title">小区概况</text>
+                <view class="info-row">
+                    <text class="info-label">绿化率</text>
+                    <text class="info-value">{{ community.green_rate }}%</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">停车位</text>
+                    <text class="info-value">{{ community.parking_count }}</text>
+                </view>
+                <view class="info-row" v-if="community.build_year > 0">
+                    <text class="info-label">建筑类型</text>
+                    <text class="info-value">{{ buildTypeText }}</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">在售房源</text>
+                    <text class="more-btn" v-if="saleList.length > 0" @click="goSaleList">查看更多 ›</text>
+                </view>
+                <view v-if="saleList.length > 0">
+                    <house-card v-for="item in saleList" :key="item.id" :house="transformHouse(item)" @click="goDetail" />
+                </view>
+                <house-empty v-else icon="🏠" text="暂无在售房源" :padding-top="40" :padding-bottom="40" />
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">在租房源</text>
+                    <text class="more-btn" v-if="rentList.length > 0" @click="goRentList">查看更多 ›</text>
+                </view>
+                <view v-if="rentList.length > 0">
+                    <house-card v-for="item in rentList" :key="item.id" :house="transformHouse(item)" @click="goDetail" />
+                </view>
+                <house-empty v-else icon="🏠" text="暂无在租房源" :padding-top="40" :padding-bottom="40" />
+            </view>
+
+            <view class="section">
+                <text class="section-title">附近小区</text>
+                <view v-if="nearbyList.length > 0">
+                    <house-community-info v-for="item in nearbyList" :key="item.id" :community="transformCommunity(item)" @click="goCommunity" />
+                </view>
+                <house-empty v-else icon="📍" text="暂无附近小区" :padding-top="40" :padding-bottom="40" />
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getCommunityDetail, listHouses, listNearbyCommunities, followCommunity, communityFollowStatus } from '@/api/business/house.uts'
+
+    type Community = {
+        id: number
+        name: string
+        address: string
+        district: string
+        bizcircle: string
+        build_year: number
+        on_sale_count: number
+        on_rent_count: number
+        avg_price: number
+        green_rate: number
+        parking_count: number
+    }
+    type HouseItem = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type HouseCardData = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type CommunityCardData = {
+        id: number
+        name: string
+        address: string
+        district: string
+        bizcircle: string
+        build_year: number
+        on_sale_count: number
+        on_rent_count: number
+        avg_price: number
+        green_rate: number
+        parking_count: number
+    }
+
+    const communityId = ref(0)
+    const community = ref({
+        id: 0, name: '', address: '', district: '', bizcircle: '',
+        build_year: 0, on_sale_count: 0, on_rent_count: 0, avg_price: 0,
+        green_rate: 0, parking_count: 0
+    } as Community)
+    const isFollowed = ref(false)
+    const saleList = ref([] as HouseItem[])
+    const rentList = ref([] as HouseItem[])
+    const nearbyList = ref([] as Community[])
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (community.value.district.length > 0) parts.push(community.value.district)
+        if (community.value.bizcircle.length > 0) parts.push(community.value.bizcircle)
+        return parts.join(' · ')
+    })
+
+    const buildTypeText = computed(() : string => {
+        const y = community.value.build_year
+        if (y == 0) return '未知'
+        if (y >= 2010) return '次新房'
+        if (y >= 2000) return '商品房'
+        return '老小区'
+    })
+
+    const transformHouse = (item: HouseItem) : HouseCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            listing_type: item.listing_type,
+            layout: item.layout,
+            area_text: item.area_text,
+            floor_text: item.floor_text,
+            orientation: item.orientation,
+            price: item.price,
+            community_name: item.community_name,
+            has_vr: item.has_vr,
+            is_urgent: item.is_urgent,
+            is_featured: item.is_featured
+        } as HouseCardData
+    }
+
+    const transformCommunity = (item: Community) : CommunityCardData => {
+        return {
+            id: item.id,
+            name: item.name,
+            address: item.address,
+            district: item.district,
+            bizcircle: item.bizcircle,
+            build_year: item.build_year,
+            on_sale_count: item.on_sale_count,
+            on_rent_count: item.on_rent_count,
+            avg_price: item.avg_price,
+            green_rate: item.green_rate,
+            parking_count: item.parking_count
+        } as CommunityCardData
+    }
+
+    const loadDetail = () => {
+        getCommunityDetail(communityId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                community.value = mapCommunity(d)
+            }
+        })
+        communityFollowStatus(communityId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isFollowed.value = ((d['is_followed'] as boolean) ?? false)
+            }
+        })
+        loadSaleList()
+        loadRentList()
+        loadNearby()
+    }
+
+    const mapCommunity = (d: UTSJSONObject) : Community => {
+        return {
+            id: (d['id'] as number) ?? 0,
+            name: (d['name'] as string) ?? '',
+            address: (d['address'] as string) ?? '',
+            district: (d['district'] as string) ?? '',
+            bizcircle: (d['bizcircle'] as string) ?? '',
+            build_year: (d['build_year'] as number) ?? 0,
+            on_sale_count: (d['on_sale_count'] as number) ?? 0,
+            on_rent_count: (d['on_rent_count'] as number) ?? 0,
+            avg_price: (d['avg_price'] as number) ?? 0,
+            green_rate: (d['green_rate'] as number) ?? 0,
+            parking_count: (d['parking_count'] as number) ?? 0
+        } as Community
+    }
+
+    const loadSaleList = () => {
+        const params: UTSJSONObject = {
+            community_id: communityId.value,
+            listing_type: 'sale',
+            page: 1,
+            page_size: 5
+        } as UTSJSONObject
+        listHouses(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                saleList.value = (d['list'] as HouseItem[]) ?? ([] as HouseItem[])
+            }
+        })
+    }
+
+    const loadRentList = () => {
+        const params: UTSJSONObject = {
+            community_id: communityId.value,
+            listing_type: 'rent',
+            page: 1,
+            page_size: 5
+        } as UTSJSONObject
+        listHouses(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                rentList.value = (d['list'] as HouseItem[]) ?? ([] as HouseItem[])
+            }
+        })
+    }
+
+    const loadNearby = () => {
+        const params: UTSJSONObject = {
+            community_id: communityId.value,
+            page: 1,
+            page_size: 10
+        } as UTSJSONObject
+        listNearbyCommunities(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                nearbyList.value = (d['list'] as Community[]) ?? ([] as Community[])
+            }
+        })
+    }
+
+    const toggleFollow = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        followCommunity(communityId.value).then((res: ApiResult) => {
+            if (res.code == 200) {
+                isFollowed.value = !isFollowed.value
+                uni.showToast({ title: isFollowed.value ? '已关注' : '已取消', icon: 'none' })
+            }
+        })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/detail/index?id=' + id })
+    }
+
+    const goSaleList = () => {
+        uni.navigateTo({ url: '/pages/business/fang/list/index?community_id=' + communityId.value + '&listing_type=sale' })
+    }
+
+    const goRentList = () => {
+        uni.navigateTo({ url: '/pages/business/fang/list/index?community_id=' + communityId.value + '&listing_type=rent' })
+    }
+
+    const goCommunity = (id: number) => {
+        uni.redirectTo({ url: '/pages/business/fang/community/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            communityId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .header-card {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .name {
+        font-size: 20px;
+        color: #333;
+        font-weight: 700;
+        flex: 1;
+    }
+
+    .follow-btn {
+        background-color: #FF6B35;
+        border-radius: 16px;
+        padding: 6px 14px;
+    }
+
+    .follow-btn.followed {
+        background-color: #F5F5F5;
+    }
+
+    .follow-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .follow-btn.followed .follow-text {
+        color: #999;
+    }
+
+    .meta-row {
+        margin-top: 6px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 14px;
+        padding: 12px 0;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .stat-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .address-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .address-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .address-text {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .more-btn {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+</style>

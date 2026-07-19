@@ -1,0 +1,282 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <text class="title">品牌车型库</text>
+            <text class="subtitle">共 {{ totalBrands }} 个品牌</text>
+        </view>
+        <scroll-view class="brand-list" scroll-y :scroll-into-view="scrollToId">
+            <view class="brand-section" v-for="(group, idx) in brands" :key="idx" :id="group.initial">
+                <view class="brand-letter">
+                    <text class="letter-text">{{ group.initial }}</text>
+                </view>
+                <view class="brand-grid">
+                    <view class="brand-cell" v-for="(b, bIdx) in group.list" :key="bIdx" @click="onBrand(b)">
+                        <image class="brand-logo" :src="b.logo" mode="aspectFit" lazy-load="true" v-if="b.logo.length > 0" />
+                        <view class="brand-logo-placeholder" v-else>
+                            <text class="brand-logo-text">{{ b.name.charAt(0) }}</text>
+                        </view>
+                        <text class="brand-name">{{ b.name }}</text>
+                        <text class="brand-count" v-if="b.car_count > 0">{{ b.car_count }}辆</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="index-bar">
+            <text class="index-text" v-for="(letter, idx) in indexLetters" :key="idx" @click="onIndexTap(letter)">{{ letter }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listAllBrands, listModelsByBrand, listCars } from '@/api/business/car.uts'
+
+    type BrandItem = {
+        id: number
+        name: string
+        logo: string
+        car_count: number
+    }
+    type BrandGroup = {
+        initial: string
+        list: BrandItem[]
+    }
+
+    const brands = ref([] as BrandGroup[])
+    const scrollToId = ref('')
+
+    const totalBrands = computed(() : number => {
+        let total = 0
+        for (let i = 0; i < brands.value.length; i++) {
+            total += brands.value[i].list.length
+        }
+        return total
+    })
+
+    const indexLetters = computed(() : string[] => {
+        const arr = [] as string[]
+        for (let i = 0; i < brands.value.length; i++) {
+            arr.push(brands.value[i].initial)
+        }
+        return arr
+    })
+
+    const onIndexTap = (letter: string) => {
+        scrollToId.value = ''
+        setTimeout(() => {
+            scrollToId.value = letter
+        }, 50)
+    }
+
+    const onBrand = (b: BrandItem) => {
+        uni.showActionSheet({
+            itemList: ['查看 ' + b.name + ' 车源', '查看 ' + b.name + ' 车型'],
+            success: (r) => {
+                if (r.tapIndex == 0) {
+                    uni.navigateTo({ url: '/pages/business/car/list/index?brand_id=' + b.id })
+                } else {
+                    loadModels(b)
+                }
+            }
+        })
+    }
+
+    const loadModels = (b: BrandItem) => {
+        uni.showLoading({ title: '加载中...' })
+        const params: UTSJSONObject = { page: 1, page_size: 100 } as UTSJSONObject
+        listModelsByBrand(b.id, params).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const models = (d['list'] as UTSJSONObject[]) ?? ([] as UTSJSONObject[])
+                if (models.length == 0) {
+                    uni.showToast({ title: '暂无车型数据', icon: 'none' })
+                    return
+                }
+                const items = models.map((m: UTSJSONObject) : string => {
+                    return (m['name'] as string) ?? ''
+                }).filter((s: string) : boolean => s.length > 0)
+                uni.showActionSheet({
+                    itemList: items.slice(0, 6),
+                    success: (r2) => {
+                        const model = items[r2.tapIndex]
+                        uni.navigateTo({ url: '/pages/business/car/list/index?brand_id=' + b.id + '&model=' + encodeURIComponent(model) })
+                    }
+                })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadBrands = () => {
+        listAllBrands().then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const arr = (res.data as BrandGroup[]) ?? ([] as BrandGroup[])
+                if (arr.length > 0) {
+                    brands.value = arr
+                } else {
+                    // fallback 默认品牌
+                    loadDefaultBrands()
+                }
+            } else {
+                loadDefaultBrands()
+            }
+        }).catch(() => {
+            loadDefaultBrands()
+        })
+    }
+
+    const loadDefaultBrands = () => {
+        const defaults = [
+            { initial: '热', list: [
+                { id: 1, name: '大众', logo: '', car_count: 5280 },
+                { id: 2, name: '丰田', logo: '', car_count: 4650 },
+                { id: 3, name: '本田', logo: '', car_count: 3820 },
+                { id: 4, name: '日产', logo: '', car_count: 2980 },
+                { id: 5, name: '宝马', logo: '', car_count: 2540 },
+                { id: 6, name: '奔驰', logo: '', car_count: 2410 },
+                { id: 7, name: '奥迪', logo: '', car_count: 2180 },
+                { id: 8, name: '现代', logo: '', car_count: 1850 }
+            ] as BrandItem[] },
+            { initial: 'B', list: [
+                { id: 101, name: '本田', logo: '', car_count: 3820 },
+                { id: 102, name: '宝马', logo: '', car_count: 2540 },
+                { id: 103, name: '奔驰', logo: '', car_count: 2410 },
+                { id: 104, name: '别克', logo: '', car_count: 1620 },
+                { id: 105, name: '比亚迪', logo: '', car_count: 1480 }
+            ] as BrandItem[] },
+            { initial: 'D', list: [
+                { id: 201, name: '大众', logo: '', car_count: 5280 },
+                { id: 202, name: '东南', logo: '', car_count: 320 }
+            ] as BrandItem[] },
+            { initial: 'F', list: [
+                { id: 301, name: '丰田', logo: '', car_count: 4650 },
+                { id: 302, name: '福特', logo: '', car_count: 1980 }
+            ] as BrandItem[] },
+            { initial: 'H', list: [
+                { id: 401, name: '哈佛', logo: '', car_count: 1560 },
+                { id: 402, name: '海马', logo: '', car_count: 280 }
+                ] as BrandItem[] },
+            { initial: 'R', list: [
+                { id: 501, name: '日产', logo: '', car_count: 2980 }
+            ] as BrandItem[] },
+            { initial: 'X', list: [
+                { id: 601, name: '现代', logo: '', car_count: 1850 },
+                { id: 602, name: '小鹏', logo: '', car_count: 180 }
+            ] as BrandItem[] }
+        ] as BrandGroup[]
+        brands.value = defaults
+    }
+
+    onLoad(() => {
+        loadBrands()
+    })
+
+    onPullDownRefresh(() => {
+        loadBrands()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .brand-list {
+        flex: 1;
+    }
+
+    .brand-section {
+        margin-top: 8px;
+    }
+
+    .brand-letter {
+        padding: 6px 12px;
+        background-color: #F5F5F5;
+    }
+
+    .letter-text {
+        font-size: 12px;
+        color: #999;
+        font-weight: 600;
+    }
+
+    .brand-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px;
+        background-color: #FFFFFF;
+    }
+
+    .brand-cell {
+        width: 25%;
+        align-items: center;
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    .brand-logo, .brand-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+    }
+
+    .brand-logo-placeholder {
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .brand-logo-text {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .brand-name {
+        font-size: 12px;
+        color: #333;
+        margin-top: 6px;
+    }
+
+    .brand-count {
+        font-size: 10px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .index-bar {
+        position: absolute;
+        right: 4px;
+        top: 100px;
+        bottom: 20px;
+        width: 20px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .index-text {
+        font-size: 10px;
+        color: #FF6B35;
+        margin: 2px 0;
+    }
+</style>

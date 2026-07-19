@@ -1,0 +1,537 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <text class="title">{{ isEdit ? '编辑房源' : '发布房源' }}</text>
+            <text class="subtitle">请如实填写房源信息</text>
+        </view>
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">基本信息</text>
+                <view class="form-row">
+                    <text class="form-label">标题</text>
+                    <input class="form-input" v-model="form.title" placeholder="请输入房源标题" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">类型</text>
+                    <view class="radio-row">
+                        <view class="radio-item" :class="{ active: form.listing_type == 'sale' }" @click="form.listing_type = 'sale'">
+                            <text class="radio-text">出售</text>
+                        </view>
+                        <view class="radio-item" :class="{ active: form.listing_type == 'rent' }" @click="form.listing_type = 'rent'">
+                            <text class="radio-text">出租</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">价格</text>
+                    <view class="input-suffix-wrap">
+                        <input class="form-input" type="number" v-model="form.price_text" placeholder="请输入价格" />
+                        <text class="suffix">{{ form.listing_type == 'rent' ? '元/月' : '万元' }}</text>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">户型</text>
+                    <input class="form-input" v-model="form.layout" placeholder="如：3室2厅1卫" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">面积</text>
+                    <view class="input-suffix-wrap">
+                        <input class="form-input" type="number" v-model="form.area_text" placeholder="请输入面积" />
+                        <text class="suffix">㎡</text>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">朝向</text>
+                    <input class="form-input" v-model="form.orientation" placeholder="如：南北" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">楼层</text>
+                    <input class="form-input" v-model="form.floor_text" placeholder="如：中层/共30层" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">装修</text>
+                    <view class="radio-row">
+                        <view class="radio-item" v-for="(d, idx) in decorations" :key="idx" :class="{ active: form.decoration == d }" @click="form.decoration = d">
+                            <text class="radio-text">{{ d }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">房源详情</text>
+                <view class="form-row column">
+                    <text class="form-label">房源描述</text>
+                    <textarea class="form-textarea" v-model="form.description" placeholder="请输入房源详细描述（位置、配套、亮点等）" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">小区名称</text>
+                    <input class="form-input" v-model="form.community_name" placeholder="请输入小区名称" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">地址</text>
+                    <input class="form-input" v-model="form.address" placeholder="请输入详细地址" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">配套设施</text>
+                    <view class="tag-wrap">
+                        <view class="tag" v-for="(f, idx) in facilities" :key="idx" :class="{ active: form.selectedFacilities.includes(f) }" @click="toggleFacility(f)">
+                            <text class="tag-text">{{ f }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">房源图片</text>
+                <view class="image-row">
+                    <view class="image-item" v-for="(img, idx) in form.images" :key="idx">
+                        <image class="image-preview" :src="img" mode="aspectFill" />
+                        <view class="image-del" @click="removeImage(idx)">
+                            <text class="del-text">×</text>
+                        </view>
+                    </view>
+                    <view class="image-add" @click="addImage">
+                        <text class="add-icon">+</text>
+                        <text class="add-text">添加图片</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn outline" @click="onSaveDraft">
+                <text class="btn-text">存草稿</text>
+            </view>
+            <view class="bottom-btn primary" @click="onPublish">
+                <text class="btn-text-white">{{ isEdit ? '保存' : '发布房源' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createHouse, updateHouse, getHouseDetail } from '@/api/business/house.uts'
+
+    type Form = {
+        id: number
+        title: string
+        listing_type: string
+        price_text: string
+        layout: string
+        area_text: string
+        orientation: string
+        floor_text: string
+        decoration: string
+        description: string
+        community_name: string
+        address: string
+        selectedFacilities: string[]
+        images: string[]
+    }
+
+    const isEdit = ref(false)
+    const form = ref({
+        id: 0,
+        title: '',
+        listing_type: 'sale',
+        price_text: '',
+        layout: '',
+        area_text: '',
+        orientation: '',
+        floor_text: '',
+        decoration: '精装',
+        description: '',
+        community_name: '',
+        address: '',
+        selectedFacilities: [] as string[],
+        images: [] as string[]
+    } as Form)
+
+    const decorations = ['毛坯', '简装', '精装', '豪装'] as string[]
+    const facilities = ['空调', '热水器', '洗衣机', '冰箱', '电视', '宽带', '天然气', '车位', '电梯', '储物间'] as string[]
+
+    const toggleFacility = (f: string) => {
+        const idx = form.value.selectedFacilities.indexOf(f)
+        if (idx >= 0) {
+            form.value.selectedFacilities.splice(idx, 1)
+        } else {
+            form.value.selectedFacilities.push(f)
+        }
+    }
+
+    const addImage = () => {
+        uni.chooseImage({
+            count: 9,
+            success: (res) => {
+                const paths = res.tempFilePaths
+                for (let i = 0; i < paths.length; i++) {
+                    form.value.images.push(paths[i])
+                }
+            }
+        })
+    }
+
+    const removeImage = (idx: number) => {
+        form.value.images.splice(idx, 1)
+    }
+
+    const validate = () : string => {
+        if (form.value.title.length == 0) return '请输入标题'
+        if (form.value.price_text.length == 0) return '请输入价格'
+        if (form.value.layout.length == 0) return '请输入户型'
+        if (form.value.area_text.length == 0) return '请输入面积'
+        if (form.value.community_name.length == 0) return '请输入小区名称'
+        if (form.value.address.length == 0) return '请输入地址'
+        return ''
+    }
+
+    const buildData = () : UTSJSONObject => {
+        const data: UTSJSONObject = {
+            title: form.value.title,
+            listing_type: form.value.listing_type,
+            price: parseFloat(form.value.price_text) || 0,
+            layout: form.value.layout,
+            area_text: form.value.area_text,
+            orientation: form.value.orientation,
+            floor_text: form.value.floor_text,
+            decoration: form.value.decoration,
+            description: form.value.description,
+            community_name: form.value.community_name,
+            address: form.value.address,
+            facilities: form.value.selectedFacilities.join(','),
+            images: form.value.images
+        } as UTSJSONObject
+        if (isEdit.value) data['id'] = form.value.id
+        return data
+    }
+
+    const onSaveDraft = () => {
+        uni.setStorageSync('house_draft', form.value)
+        uni.showToast({ title: '已保存草稿', icon: 'success' })
+    }
+
+    const loadDraft = () => {
+        const d = uni.getStorageSync('house_draft')
+        if (d != null && d != '' && d != undefined) {
+            uni.showModal({
+                title: '提示',
+                content: '检测到未完成的草稿，是否继续编辑？',
+                success: (r) => {
+                    if (r.confirm) {
+                        form.value = (d as Form) ?? form.value
+                    } else {
+                        uni.removeStorageSync('house_draft')
+                    }
+                }
+            })
+        }
+    }
+
+    const onPublish = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const err = validate()
+        if (err.length > 0) {
+            uni.showToast({ title: err, icon: 'none' })
+            return
+        }
+        uni.showLoading({ title: '提交中...' })
+        const data = buildData()
+        const reqFn = isEdit.value ? updateHouse(form.value.id, data) : createHouse(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.removeStorageSync('house_draft')
+                uni.showToast({ title: isEdit.value ? '保存成功' : '发布成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getHouseDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value.id = (d['id'] as number) ?? 0
+                form.value.title = (d['title'] as string) ?? ''
+                form.value.listing_type = (d['listing_type'] as string) ?? 'sale'
+                form.value.price_text = (((d['price'] as number) ?? 0)).toString()
+                form.value.layout = (d['layout'] as string) ?? ''
+                form.value.area_text = (d['area_text'] as string) ?? ''
+                form.value.orientation = (d['orientation'] as string) ?? ''
+                form.value.floor_text = (d['floor_text'] as string) ?? ''
+                form.value.decoration = (d['decoration'] as string) ?? '精装'
+                form.value.description = (d['description'] as string) ?? ''
+                form.value.community_name = (d['community_name'] as string) ?? ''
+                form.value.address = (d['address'] as string) ?? ''
+                const facStr = (d['facilities'] as string) ?? ''
+                if (facStr.length > 0) {
+                    form.value.selectedFacilities = facStr.split(',')
+                }
+                const imgs = (d['images'] as string[]) ?? ([] as string[])
+                form.value.images = imgs
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            isEdit.value = true
+            loadEdit(parseInt(id as string))
+        } else {
+            loadDraft()
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .form-row.column .form-label {
+        width: auto;
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .form-textarea {
+        font-size: 13px;
+        color: #333;
+        padding: 8px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        height: 100px;
+    }
+
+    .input-suffix-wrap {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .suffix {
+        font-size: 12px;
+        color: #999;
+        margin-left: 6px;
+    }
+
+    .radio-row {
+        flex: 1;
+        flex-direction: row;
+    }
+
+    .radio-item {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-right: 8px;
+    }
+
+    .radio-item.active {
+        background-color: #FF6B35;
+    }
+
+    .radio-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .radio-item.active .radio-text {
+        color: #FFFFFF;
+    }
+
+    .tag-wrap {
+        flex: 1;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 4px 10px;
+        margin-right: 6px;
+        margin-top: 6px;
+    }
+
+    .tag.active {
+        background-color: #FF6B35;
+    }
+
+    .tag-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .tag.active .tag-text {
+        color: #FFFFFF;
+    }
+
+    .image-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .image-item {
+        width: 100px;
+        height: 100px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+
+    .image-preview {
+        width: 100%;
+        height: 100%;
+        border-radius: 6px;
+    }
+
+    .image-del {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background-color: #EE0A24;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .del-text {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .image-add {
+        width: 100px;
+        height: 100px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .add-icon {
+        font-size: 28px;
+        color: #CCC;
+    }
+
+    .add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        align-items: center;
+        justify-content: center;
+        margin: 0 6px;
+    }
+
+    .bottom-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .bottom-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .btn-text {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

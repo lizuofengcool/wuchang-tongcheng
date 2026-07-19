@@ -1,0 +1,255 @@
+<template>
+    <view class="calc">
+        <view class="header-row">
+            <text class="title">分期计算器</text>
+            <view class="type-switch">
+                <text class="type-text" :class="{ active: planType == 'normal' }" @click="switchType('normal')">标准</text>
+                <text class="type-text" :class="{ active: planType == 'zero' }" @click="switchType('zero')">0首付</text>
+            </view>
+        </view>
+        <view class="input-row">
+            <text class="label">车辆价格</text>
+            <view class="input-wrap">
+                <text class="input-prefix">¥</text>
+                <input class="input" type="number" :value="price" @input="onPrice" placeholder="请输入价格" />
+                <text class="input-suffix">万</text>
+            </view>
+        </view>
+        <view class="input-row">
+            <text class="label">首付比例</text>
+            <view class="ratio-options">
+                <text class="ratio-text" v-for="r in ratioOptions" :key="r" :class="{ active: downRatio == r }" @click="onRatio(r)">{{ r * 100 }}%</text>
+            </view>
+        </view>
+        <view class="input-row">
+            <text class="label">分期数</text>
+            <view class="term-options">
+                <text class="term-text" v-for="t in termOptions" :key="t" :class="{ active: term == t }" @click="onTerm(t)">{{ t }}期</text>
+            </view>
+        </view>
+        <view class="input-row">
+            <text class="label">年利率</text>
+            <view class="input-wrap">
+                <input class="input" type="number" :value="rate" @input="onRate" placeholder="年利率" />
+                <text class="input-suffix">%</text>
+            </view>
+        </view>
+        <view class="result-card">
+            <view class="result-cell">
+                <text class="result-label">首付</text>
+                <text class="result-value">¥{{ downPayment }}万</text>
+            </view>
+            <view class="result-divider"></view>
+            <view class="result-cell">
+                <text class="result-label">月供</text>
+                <text class="result-value">¥{{ monthlyPayment }}</text>
+            </view>
+            <view class="result-divider"></view>
+            <view class="result-cell">
+                <text class="result-label">利息总额</text>
+                <text class="result-value">¥{{ totalInterest }}万</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        defaultPrice?: number
+    }>(), {
+        defaultPrice: 10
+    } as any)
+
+    const planType = ref('normal')
+    const price = ref(props.defaultPrice)
+    const downRatio = ref(0.3)
+    const term = ref(36)
+    const rate = ref(4.75)
+    const ratioOptions = [0.2, 0.3, 0.4, 0.5] as number[]
+    const termOptions = [12, 24, 36, 48, 60] as number[]
+
+    const downPayment = computed(() : string => {
+        const d = price.value * downRatio.value
+        return d.toFixed(2)
+    })
+
+    const monthlyPayment = computed(() : string => {
+        const principal = price.value * 10000 * (1 - downRatio.value)
+        const months = term.value
+        const monthRate = rate.value / 100 / 12
+        if (principal <= 0 || months <= 0) return '0'
+        if (monthRate <= 0) {
+            return (principal / months).toFixed(2)
+        }
+        const pow = Math.pow(1 + monthRate, months)
+        const m = principal * monthRate * pow / (pow - 1)
+        return m.toFixed(2)
+    })
+
+    const totalInterest = computed(() : string => {
+        const principal = price.value * 10000 * (1 - downRatio.value)
+        const months = term.value
+        const monthRate = rate.value / 100 / 12
+        if (principal <= 0 || months <= 0 || monthRate <= 0) return '0.00'
+        const pow = Math.pow(1 + monthRate, months)
+        const m = principal * monthRate * pow / (pow - 1)
+        return ((m * months - principal) / 10000).toFixed(2)
+    })
+
+    const switchType = (t: string) => {
+        if (planType.value == t) return
+        planType.value = t
+        if (t == 'zero') {
+            downRatio.value = 0
+            rate.value = 5.5
+        } else {
+            downRatio.value = 0.3
+            rate.value = 4.75
+        }
+    }
+
+    const onPrice = (e: InputEvent) => {
+        const v = (e.detail as UTSJSONObject).value as string
+        price.value = parseFloat(v) || 0
+    }
+
+    const onRatio = (r: number) => {
+        downRatio.value = r
+    }
+
+    const onTerm = (t: number) => {
+        term.value = t
+    }
+
+    const onRate = (e: InputEvent) => {
+        const v = (e.detail as UTSJSONObject).value as string
+        rate.value = parseFloat(v) || 0
+    }
+</script>
+
+<style>
+    .calc {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .type-switch {
+        flex-direction: row;
+    }
+
+    .type-text {
+        font-size: 12px;
+        color: #999;
+        padding: 4px 10px;
+        border-radius: 14px;
+        background-color: #F5F5F5;
+        margin-left: 6px;
+    }
+
+    .type-text.active {
+        color: #FFFFFF;
+        background-color: #FF6B35;
+    }
+
+    .input-row {
+        margin-top: 12px;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .input-wrap {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .input-prefix {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-right: 4px;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        padding: 6px 0;
+    }
+
+    .input-suffix {
+        font-size: 12px;
+        color: #999;
+        margin-left: 4px;
+    }
+
+    .ratio-options, .term-options {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+
+    .ratio-text, .term-text {
+        font-size: 12px;
+        color: #666;
+        padding: 4px 10px;
+        border-radius: 14px;
+        background-color: #F5F5F5;
+        margin-right: 6px;
+        margin-top: 4px;
+    }
+
+    .ratio-text.active, .term-text.active {
+        color: #FFFFFF;
+        background-color: #FF6B35;
+    }
+
+    .result-card {
+        flex-direction: row;
+        background-color: #FFF5F0;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .result-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .result-divider {
+        width: 1px;
+        background-color: #FFE0CC;
+        margin: 0 4px;
+    }
+
+    .result-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .result-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+</style>

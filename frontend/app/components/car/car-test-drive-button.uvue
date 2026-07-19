@@ -1,0 +1,88 @@
+<template>
+    <view class="test-actions">
+        <view class="action-btn primary" @click="onBook">
+            <text class="action-icon">📅</text>
+            <text class="action-text">预约试驾</text>
+        </view>
+        <view class="action-btn outline" @click="onInquiry">
+            <text class="action-icon">💬</text>
+            <text class="action-text">询底价</text>
+        </view>
+        <view class="action-btn outline" @click="onCall">
+            <text class="action-icon">📞</text>
+            <text class="action-text">电话</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        carId?: number
+    }>(), {
+        carId: 0
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'book', id: number): void
+        (e: 'inquiry', id: number): void
+        (e: 'call', id: number): void
+    }>()
+
+    const onBook = () => {
+        emit('book', props.carId)
+    }
+
+    const onInquiry = () => {
+        emit('inquiry', props.carId)
+    }
+
+    const onCall = () => {
+        emit('call', props.carId)
+    }
+</script>
+
+<style>
+    .test-actions {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 10px 12px;
+    }
+
+    .action-btn {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        border-radius: 20px;
+        margin: 0 4px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .action-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .action-text {
+        font-size: 13px;
+    }
+
+    .action-btn.primary .action-text {
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .action-btn.outline .action-text {
+        color: #FF6B35;
+    }
+</style>

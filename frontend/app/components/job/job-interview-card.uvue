@@ -1,0 +1,211 @@
+<template>
+    <view class="interview-card" @click="onClick">
+        <view class="header-row">
+            <text class="title">{{ interview.position }}</text>
+            <view class="status-tag" :class="interview.status">
+                <text class="status-text">{{ statusText }}</text>
+            </view>
+        </view>
+        <view class="company-row">
+            <text class="company">{{ interview.company }}</text>
+        </view>
+        <view class="info-row">
+            <text class="info-icon">🕒</text>
+            <text class="info-text">{{ interview.time }}</text>
+        </view>
+        <view class="info-row">
+            <text class="info-icon">📍</text>
+            <text class="info-text">{{ interview.location }}</text>
+        </view>
+        <view class="info-row" v-if="interview.interviewer.length > 0">
+            <text class="info-icon">👤</text>
+            <text class="info-text">{{ interview.interviewer }}</text>
+        </view>
+        <view class="info-row" v-if="interview.type.length > 0">
+            <text class="info-icon">💼</text>
+            <text class="info-text">{{ interview.type }}</text>
+        </view>
+        <view class="action-row" v-if="showActions && interview.status == 'pending'">
+            <view class="action-btn outline" @click.stop="onReject">
+                <text class="btn-text">拒绝</text>
+            </view>
+            <view class="action-btn primary" @click.stop="onAccept">
+                <text class="btn-text-white">接受</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Interview = {
+        id: number
+        position: string
+        company: string
+        time: string
+        location: string
+        interviewer: string
+        type: string
+        status: string
+    }
+
+    const props = withDefaults(defineProps<{
+        interview: Interview
+        showActions?: boolean
+    }>(), {
+        showActions: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'accept', id: number): void
+        (e: 'reject', id: number): void
+    }>()
+
+    const statusText = computed(() : string => {
+        const s = props.interview.status
+        if (s == 'pending') return '待回复'
+        if (s == 'accepted') return '已接受'
+        if (s == 'rejected') return '已拒绝'
+        if (s == 'completed') return '已完成'
+        if (s == 'cancelled') return '已取消'
+        return s
+    })
+
+    const onClick = () => {
+        emit('click', props.interview.id)
+    }
+
+    const onAccept = () => {
+        emit('accept', props.interview.id)
+    }
+
+    const onReject = () => {
+        emit('reject', props.interview.id)
+    }
+</script>
+
+<style>
+    .interview-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .status-tag.pending {
+        background-color: #FFF5F0;
+    }
+
+    .status-tag.accepted {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.completed {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pending .status-text {
+        color: #FF6B35;
+    }
+
+    .status-tag.accepted .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.rejected .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .company-row {
+        margin-top: 4px;
+    }
+
+    .company {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .info-icon {
+        font-size: 13px;
+        margin-right: 6px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #666;
+        flex: 1;
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        justify-content: flex-end;
+    }
+
+    .action-btn {
+        padding: 6px 16px;
+        border-radius: 16px;
+        margin-left: 8px;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #DDDDDD;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .btn-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .btn-text-white {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

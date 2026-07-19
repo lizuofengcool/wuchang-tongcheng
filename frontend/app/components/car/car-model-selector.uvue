@@ -1,0 +1,258 @@
+<template>
+    <view class="selector">
+        <view class="header-row">
+            <text class="title">选择车型</text>
+            <text class="clear" v-if="hasSelected" @click="onClear">清空</text>
+        </view>
+        <scroll-view class="brand-list" scroll-y :scroll-into-view="scrollToId">
+            <view class="brand-section" v-for="(brand, idx) in brands" :key="idx" :id="brand.initial">
+                <view class="brand-letter">
+                    <text class="letter-text">{{ brand.initial }}</text>
+                </view>
+                <view class="brand-grid">
+                    <view class="brand-cell" v-for="(b, bIdx) in brand.list" :key="bIdx" @click="onBrand(b)">
+                        <image class="brand-logo" :src="b.logo" mode="aspectFit" lazy-load="true" v-if="b.logo.length > 0" />
+                        <view class="brand-logo-placeholder" v-else>
+                            <text class="brand-logo-text">{{ b.name.charAt(0) }}</text>
+                        </view>
+                        <text class="brand-name" :class="{ active: selectedBrandId == b.id }">{{ b.name }}</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="model-panel" v-if="showModels">
+            <view class="model-mask" @click="closeModelPanel"></view>
+            <view class="model-content">
+                <view class="model-header">
+                    <text class="model-title">{{ selectedBrandName }}</text>
+                    <text class="model-close" @click="closeModelPanel">✕</text>
+                </view>
+                <scroll-view class="model-scroll" scroll-y>
+                    <view class="model-item" v-for="(m, idx) in models" :key="idx" @click="onModel(m)">
+                        <text class="model-name" :class="{ active: selectedModelId == m.id }">{{ m.name }}</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type BrandItem = {
+        id: number
+        name: string
+        logo: string
+    }
+    type BrandGroup = {
+        initial: string
+        list: BrandItem[]
+    }
+    type ModelItem = {
+        id: number
+        name: string
+    }
+
+    const props = withDefaults(defineProps<{
+        brands?: BrandGroup[]
+        models?: ModelItem[]
+    }>(), {
+        brands: [] as BrandGroup[],
+        models: [] as ModelItem[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'select', brand: BrandItem, model: ModelItem): void
+        (e: 'clear'): void
+    }>()
+
+    const showModels = ref(false)
+    const selectedBrandId = ref(0)
+    const selectedBrandName = ref('')
+    const selectedModelId = ref(0)
+    const scrollToId = ref('')
+
+    const hasSelected = computed(() : boolean => {
+        return selectedBrandId.value > 0 || selectedModelId.value > 0
+    })
+
+    const onBrand = (b: BrandItem) => {
+        selectedBrandId.value = b.id
+        selectedBrandName.value = b.name
+        showModels.value = true
+    }
+
+    const onModel = (m: ModelItem) => {
+        selectedModelId.value = m.id
+        showModels.value = false
+        const brand = { id: selectedBrandId.value, name: selectedBrandName.value, logo: '' } as BrandItem
+        emit('select', brand, m)
+    }
+
+    const onClear = () => {
+        selectedBrandId.value = 0
+        selectedBrandName.value = ''
+        selectedModelId.value = 0
+        emit('clear')
+    }
+
+    const closeModelPanel = () => {
+        showModels.value = false
+    }
+</script>
+
+<style>
+    .selector {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .clear {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .brand-list {
+        height: 400px;
+    }
+
+    .brand-section {
+        margin-top: 8px;
+    }
+
+    .brand-letter {
+        padding: 4px 8px;
+        background-color: #F5F5F5;
+    }
+
+    .letter-text {
+        font-size: 12px;
+        color: #999;
+        font-weight: 600;
+    }
+
+    .brand-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px;
+    }
+
+    .brand-cell {
+        width: 25%;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .brand-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+    }
+
+    .brand-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .brand-logo-text {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .brand-name {
+        font-size: 11px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .brand-name.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .model-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    .model-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .model-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .model-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .model-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .model-close {
+        font-size: 16px;
+        color: #999;
+    }
+
+    .model-scroll {
+        max-height: 360px;
+    }
+
+    .model-item {
+        padding: 12px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .model-name {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .model-name.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+</style>

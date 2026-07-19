@@ -1,0 +1,215 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="resume-card" v-for="item in resumeList" :key="item.id" @click="goEdit(item.id)">
+                <view class="header-row">
+                    <text class="name">{{ item.name }}</text>
+                    <view class="status-tag" :class="item.status">
+                        <text class="status-text">{{ getStatusText(item.status) }}</text>
+                    </view>
+                </view>
+                <view class="info-row" v-if="item.expect_position.length > 0">
+                    <text class="info-label">期望：</text>
+                    <text class="info-value">{{ item.expect_position }}</text>
+                </view>
+                <view class="info-row" v-if="item.expect_salary.length > 0">
+                    <text class="info-label">期望薪资：</text>
+                    <text class="info-value">{{ item.expect_salary }}</text>
+                </view>
+                <view class="info-row" v-if="item.city.length > 0">
+                    <text class="info-label">城市：</text>
+                    <text class="info-value">{{ item.city }}</text>
+                </view>
+                <view class="stats-row">
+                    <text class="stat" v-if="item.view_count > 0">浏览 {{ item.view_count }}</text>
+                    <text class="stat" v-if="item.delivered_count > 0">投递 {{ item.delivered_count }}</text>
+                    <text class="stat" v-if="item.interview_count > 0">面试 {{ item.interview_count }}</text>
+                </view>
+            </view>
+            <job-empty v-if="resumeList.length == 0 && !loading" icon="📄" text="还没有简历" btn-text="去创建" @click="goCreate" />
+        </scroll-view>
+        <view class="fab-btn" @click="goCreate">
+            <text class="fab-icon">+</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyResumes } from '@/api/business/job.uts'
+
+    type Resume = {
+        id: number
+        name: string
+        expect_position: string
+        expect_salary: string
+        city: string
+        status: string
+        view_count: number
+        delivered_count: number
+        interview_count: number
+    }
+
+    const resumeList = ref([] as Resume[])
+    const loading = ref(false)
+
+    const loadList = () => {
+        loading.value = true
+        const params: UTSJSONObject = { page: 1, page_size: 50 } as UTSJSONObject
+        listMyResumes(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                resumeList.value = (d['list'] as Resume[]) ?? ([] as Resume[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'public') return '公开'
+        if (status == 'private') return '保密'
+        if (status == 'hidden') return '隐藏'
+        return status
+    }
+
+    const goEdit = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/resume/edit?id=' + id })
+    }
+
+    const goCreate = () => {
+        uni.navigateTo({ url: '/pages/business/job/resume/edit' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .resume-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .name {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+    }
+
+    .status-tag.public {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.private {
+        background-color: #FFF8E5;
+    }
+
+    .status-tag.hidden {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.public .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.private .status-text {
+        color: #FF976A;
+    }
+
+    .status-tag.hidden .status-text {
+        color: #999;
+    }
+
+    .info-row {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .info-value {
+        font-size: 12px;
+        color: #333;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .stat {
+        font-size: 11px;
+        color: #999;
+        margin-right: 12px;
+    }
+
+    .fab-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .fab-icon {
+        font-size: 28px;
+        color: #FFFFFF;
+    }
+</style>

@@ -1,0 +1,616 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="image-banner" v-if="detail.cover_image.length > 0">
+                <image class="banner-img" :src="detail.cover_image" mode="aspectFill" lazy-load="true" />
+                <view class="vr-badge" v-if="detail.has_vr" @click="goVR">
+                    <text class="vr-icon">🎥</text>
+                    <text class="vr-text">VR看房</text>
+                </view>
+            </view>
+            <house-detail-header :house="headerData" />
+            <view class="section" v-if="detail.description.length > 0">
+                <text class="section-title">房源描述</text>
+                <text class="section-content">{{ detail.description }}</text>
+            </view>
+            <view class="section" v-if="detail.facilities.length > 0">
+                <text class="section-title">配套设施</text>
+                <view class="facilities-row">
+                    <view class="facility-item" v-for="(f, idx) in facilities" :key="idx">
+                        <text class="facility-text">{{ f }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="section" v-if="detail.address.length > 0">
+                <text class="section-title">房源地址</text>
+                <text class="section-content">{{ detail.address }}</text>
+            </view>
+            <view class="section" v-if="communityData.id > 0">
+                <text class="section-title">小区信息</text>
+                <house-community-info :community="communityData" @click="goCommunity" />
+            </view>
+            <view class="section" v-if="agentData.id > 0">
+                <text class="section-title">经纪人</text>
+                <house-agent-card :agent="agentData" @click="goAgent" @call="onCallAgent" @chat="onChatAgent" />
+            </view>
+            <view class="section" v-if="vrData.id > 0">
+                <text class="section-title">VR看房</text>
+                <house-vr-entry :vr="vrData" @click="goVRDetail" />
+            </view>
+            <view class="section" v-if="similarList.length > 0">
+                <text class="section-title">相似房源</text>
+                <house-card v-for="item in similarList" :key="item.id" :house="transformSimilar(item)" @click="goSimilar" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="toggleFav">
+                <text class="bottom-icon">{{ detail.is_faved ? '★' : '☆' }}</text>
+                <text class="bottom-icon-text">{{ detail.is_faved ? '已收藏' : '收藏' }}</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="onShare">
+                <text class="bottom-icon">📤</text>
+                <text class="bottom-icon-text">分享</text>
+            </view>
+            <view class="bottom-btn primary-btn" @click="onBookViewing">
+                <text class="primary-btn-text">预约看房</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getHouseDetail, listSimilarHouses, favHouse, favHouseStatus, incrContactCount, incrShareCount, createViewing } from '@/api/business/house.uts'
+
+    type Detail = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        price: number
+        unit_price: number
+        area_num: number
+        layout: string
+        area_text: string
+        orientation: string
+        floor_text: string
+        decoration: string
+        years_text: string
+        description: string
+        address: string
+        facilities: string
+        view_count: number
+        fav_count: number
+        viewing_count: number
+        is_urgent: boolean
+        is_featured: boolean
+        has_vr: boolean
+        is_faved: boolean
+        community_id: number
+        community_name: string
+        community_address: string
+        community_district: string
+        community_bizcircle: string
+        community_build_year: number
+        community_on_sale_count: number
+        community_on_rent_count: number
+        community_avg_price: number
+        agent_id: number
+        agent_name: string
+        agent_avatar: string
+        agent_phone: string
+        agent_company: string
+        agent_is_verified: boolean
+        agent_on_sale_count: number
+        agent_deal_count: number
+        agent_rating: number
+        agent_service_years: number
+        vr_id: number
+        vr_title: string
+        vr_cover_image: string
+        vr_scene_count: number
+        vr_url: string
+    }
+    type HeaderData = {
+        id: number
+        title: string
+        listing_type: string
+        price: number
+        unit_price: number
+        area_num: number
+        layout: string
+        area_text: string
+        orientation: string
+        floor_text: string
+        decoration: string
+        years_text: string
+        view_count: number
+        fav_count: number
+        viewing_count: number
+        is_urgent: boolean
+        is_featured: boolean
+        has_vr: boolean
+    }
+    type CommunityData = {
+        id: number
+        name: string
+        address: string
+        district: string
+        bizcircle: string
+        build_year: number
+        on_sale_count: number
+        on_rent_count: number
+        avg_price: number
+        green_rate: number
+        parking_count: number
+    }
+    type AgentData = {
+        id: number
+        name: string
+        avatar: string
+        phone: string
+        company: string
+        is_verified: boolean
+        on_sale_count: number
+        deal_count: number
+        rating: number
+        service_years: number
+    }
+    type VRData = {
+        id: number
+        title: string
+        cover_image: string
+        scene_count: number
+        url: string
+    }
+    type SimilarItem = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+
+    const houseId = ref(0)
+    const detail = ref({
+        id: 0, title: '', cover_image: '', listing_type: 'sale', price: 0, unit_price: 0, area_num: 0,
+        layout: '', area_text: '', orientation: '', floor_text: '', decoration: '', years_text: '',
+        description: '', address: '', facilities: '',
+        view_count: 0, fav_count: 0, viewing_count: 0,
+        is_urgent: false, is_featured: false, has_vr: false, is_faved: false,
+        community_id: 0, community_name: '', community_address: '', community_district: '', community_bizcircle: '',
+        community_build_year: 0, community_on_sale_count: 0, community_on_rent_count: 0, community_avg_price: 0,
+        agent_id: 0, agent_name: '', agent_avatar: '', agent_phone: '', agent_company: '',
+        agent_is_verified: false, agent_on_sale_count: 0, agent_deal_count: 0, agent_rating: 0, agent_service_years: 0,
+        vr_id: 0, vr_title: '', vr_cover_image: '', vr_scene_count: 0, vr_url: ''
+    } as Detail)
+    const similarList = ref([] as SimilarItem[])
+
+    const headerData = computed(() : HeaderData => {
+        return {
+            id: detail.value.id,
+            title: detail.value.title,
+            listing_type: detail.value.listing_type,
+            price: detail.value.price,
+            unit_price: detail.value.unit_price,
+            area_num: detail.value.area_num,
+            layout: detail.value.layout,
+            area_text: detail.value.area_text,
+            orientation: detail.value.orientation,
+            floor_text: detail.value.floor_text,
+            decoration: detail.value.decoration,
+            years_text: detail.value.years_text,
+            view_count: detail.value.view_count,
+            fav_count: detail.value.fav_count,
+            viewing_count: detail.value.viewing_count,
+            is_urgent: detail.value.is_urgent,
+            is_featured: detail.value.is_featured,
+            has_vr: detail.value.has_vr
+        } as HeaderData
+    })
+
+    const communityData = computed(() : CommunityData => {
+        return {
+            id: detail.value.community_id,
+            name: detail.value.community_name,
+            address: detail.value.community_address,
+            district: detail.value.community_district,
+            bizcircle: detail.value.community_bizcircle,
+            build_year: detail.value.community_build_year,
+            on_sale_count: detail.value.community_on_sale_count,
+            on_rent_count: detail.value.community_on_rent_count,
+            avg_price: detail.value.community_avg_price,
+            green_rate: 0,
+            parking_count: 0
+        } as CommunityData
+    })
+
+    const agentData = computed(() : AgentData => {
+        return {
+            id: detail.value.agent_id,
+            name: detail.value.agent_name,
+            avatar: detail.value.agent_avatar,
+            phone: detail.value.agent_phone,
+            company: detail.value.agent_company,
+            is_verified: detail.value.agent_is_verified,
+            on_sale_count: detail.value.agent_on_sale_count,
+            deal_count: detail.value.agent_deal_count,
+            rating: detail.value.agent_rating,
+            service_years: detail.value.agent_service_years
+        } as AgentData
+    })
+
+    const vrData = computed(() : VRData => {
+        return {
+            id: detail.value.vr_id,
+            title: detail.value.vr_title,
+            cover_image: detail.value.vr_cover_image,
+            scene_count: detail.value.vr_scene_count,
+            url: detail.value.vr_url
+        } as VRData
+    })
+
+    const facilities = computed(() : string[] => {
+        if (detail.value.facilities.length == 0) return [] as string[]
+        return detail.value.facilities.split(',')
+    })
+
+    const transformSimilar = (item: SimilarItem) : HouseCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            listing_type: item.listing_type,
+            layout: item.layout,
+            area_text: item.area_text,
+            floor_text: item.floor_text,
+            orientation: item.orientation,
+            price: item.price,
+            community_name: item.community_name,
+            has_vr: item.has_vr,
+            is_urgent: item.is_urgent,
+            is_featured: item.is_featured
+        } as HouseCardData
+    }
+
+    type HouseCardData = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+
+    const loadDetail = () => {
+        getHouseDetail(houseId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = mapDetail(d)
+            }
+        })
+        favHouseStatus(houseId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value.is_faved = ((d['is_faved'] as boolean) ?? false)
+            }
+        })
+        loadSimilar()
+    }
+
+    const mapDetail = (d: UTSJSONObject) : Detail => {
+        const c = (d['community'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+        const a = (d['agent'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+        const v = (d['vr_tour'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+        return {
+            id: (d['id'] as number) ?? 0,
+            title: (d['title'] as string) ?? '',
+            cover_image: (d['cover_image'] as string) ?? '',
+            listing_type: (d['listing_type'] as string) ?? 'sale',
+            price: (d['price'] as number) ?? 0,
+            unit_price: (d['unit_price'] as number) ?? 0,
+            area_num: (d['area_num'] as number) ?? 0,
+            layout: (d['layout'] as string) ?? '',
+            area_text: (d['area_text'] as string) ?? '',
+            orientation: (d['orientation'] as string) ?? '',
+            floor_text: (d['floor_text'] as string) ?? '',
+            decoration: (d['decoration'] as string) ?? '',
+            years_text: (d['years_text'] as string) ?? '',
+            description: (d['description'] as string) ?? '',
+            address: (d['address'] as string) ?? '',
+            facilities: (d['facilities'] as string) ?? '',
+            view_count: (d['view_count'] as number) ?? 0,
+            fav_count: (d['fav_count'] as number) ?? 0,
+            viewing_count: (d['viewing_count'] as number) ?? 0,
+            is_urgent: (d['is_urgent'] as boolean) ?? false,
+            is_featured: (d['is_featured'] as boolean) ?? false,
+            has_vr: (d['has_vr'] as boolean) ?? false,
+            is_faved: detail.value.is_faved,
+            community_id: (c['id'] as number) ?? 0,
+            community_name: (c['name'] as string) ?? '',
+            community_address: (c['address'] as string) ?? '',
+            community_district: (c['district'] as string) ?? '',
+            community_bizcircle: (c['bizcircle'] as string) ?? '',
+            community_build_year: (c['build_year'] as number) ?? 0,
+            community_on_sale_count: (c['on_sale_count'] as number) ?? 0,
+            community_on_rent_count: (c['on_rent_count'] as number) ?? 0,
+            community_avg_price: (c['avg_price'] as number) ?? 0,
+            agent_id: (a['id'] as number) ?? 0,
+            agent_name: (a['name'] as string) ?? '',
+            agent_avatar: (a['avatar'] as string) ?? '',
+            agent_phone: (a['phone'] as string) ?? '',
+            agent_company: (a['company'] as string) ?? '',
+            agent_is_verified: (a['is_verified'] as boolean) ?? false,
+            agent_on_sale_count: (a['on_sale_count'] as number) ?? 0,
+            agent_deal_count: (a['deal_count'] as number) ?? 0,
+            agent_rating: (a['rating'] as number) ?? 0,
+            agent_service_years: (a['service_years'] as number) ?? 0,
+            vr_id: (v['id'] as number) ?? 0,
+            vr_title: (v['title'] as string) ?? '',
+            vr_cover_image: (v['cover_image'] as string) ?? '',
+            vr_scene_count: (v['scene_count'] as number) ?? 0,
+            vr_url: (v['url'] as string) ?? ''
+        } as Detail
+    }
+
+    const loadSimilar = () => {
+        const params: UTSJSONObject = { page: 1, page_size: 5 } as UTSJSONObject
+        listSimilarHouses(houseId.value, params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                similarList.value = (d['list'] as SimilarItem[]) ?? ([] as SimilarItem[])
+            }
+        })
+    }
+
+    const toggleFav = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (detail.value.is_faved) {
+            // house 模块无 unfav API，仅做本地状态
+            detail.value.is_faved = false
+            uni.showToast({ title: '已取消收藏', icon: 'none' })
+        } else {
+            favHouse(houseId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = true
+                    uni.showToast({ title: '收藏成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const onShare = () => {
+        incrShareCount(houseId.value)
+        uni.showToast({ title: '分享链接已复制', icon: 'none' })
+    }
+
+    const onBookViewing = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showActionSheet({
+            itemList: ['今天', '明天', '后天'],
+            success: (r) => {
+                const dates = ['今天', '明天', '后天']
+                const dateStr = dates[r.tapIndex]
+                uni.showModal({
+                    title: '预约看房',
+                    content: '确认 ' + dateStr + ' 看房？',
+                    success: (m) => {
+                        if (m.confirm) {
+                            const data: UTSJSONObject = {
+                                house_id: houseId.value,
+                                preferred_date: dateStr
+                            } as UTSJSONObject
+                            createViewing(data).then((res: ApiResult) => {
+                                if (res.code == 200) {
+                                    uni.showToast({ title: '预约成功', icon: 'success' })
+                                } else {
+                                    uni.showToast({ title: res.message || '预约失败', icon: 'none' })
+                                }
+                            })
+                        }
+                    }
+                })
+            }
+        })
+    }
+
+    const goCommunity = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/community/index?id=' + id })
+    }
+
+    const goAgent = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/agent/index?id=' + id })
+    }
+
+    const onCallAgent = (id: number) => {
+        if (detail.value.agent_phone.length > 0) {
+            incrContactCount(houseId.value)
+            uni.makePhoneCall({ phoneNumber: detail.value.agent_phone })
+        } else {
+            uni.showToast({ title: '暂无联系电话', icon: 'none' })
+        }
+    }
+
+    const onChatAgent = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/fang/messages/chat?agent_id=' + id + '&house_id=' + houseId.value })
+    }
+
+    const goVR = () => {
+        if (detail.value.vr_id > 0) {
+            uni.navigateTo({ url: '/pages/business/fang/detail/index?id=' + houseId.value + '&vr=1' })
+        }
+    }
+
+    const goVRDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/detail/index?id=' + houseId.value + '&vr=1' })
+    }
+
+    const goSimilar = (id: number) => {
+        uni.redirectTo({ url: '/pages/business/fang/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            houseId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .image-banner {
+        width: 100%;
+        height: 240px;
+        background-color: #F5F5F5;
+        position: relative;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .vr-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background-color: rgba(0, 0, 0, 0.6);
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 16px;
+    }
+
+    .vr-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .vr-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .facilities-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .facility-item {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 4px 8px;
+        margin-right: 6px;
+        margin-top: 4px;
+    }
+
+    .facility-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .primary-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 22px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-left: 12px;
+    }
+
+    .primary-btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

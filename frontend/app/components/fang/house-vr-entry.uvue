@@ -1,0 +1,133 @@
+<template>
+    <view class="vr-entry" @click="onClick">
+        <image class="cover" :src="vr.cover_image" mode="aspectFill" lazy-load="true" v-if="vr.cover_image.length > 0" />
+        <view class="cover-placeholder" v-else>
+            <text class="placeholder-icon">🏠</text>
+        </view>
+        <view class="vr-overlay">
+            <view class="vr-badge">
+                <text class="vr-icon">🎥</text>
+                <text class="vr-text">VR全景</text>
+            </view>
+            <view class="play-icon">
+                <text class="play-text">▶</text>
+            </view>
+        </view>
+        <view class="info" v-if="vr.title.length > 0">
+            <text class="title">{{ vr.title }}</text>
+            <text class="sub" v-if="vr.scene_count > 0">{{ vr.scene_count }}个场景</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type VR = {
+        id: number
+        title: string
+        cover_image: string
+        scene_count: number
+        url: string
+    }
+
+    const props = withDefaults(defineProps<{
+        vr: VR
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const onClick = () => {
+        emit('click', props.vr.id)
+    }
+</script>
+
+<style>
+    .vr-entry {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        position: relative;
+    }
+
+    .cover {
+        width: 100%;
+        height: 200px;
+    }
+
+    .cover-placeholder {
+        width: 100%;
+        height: 200px;
+        background-color: #F5F5F5;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .placeholder-icon {
+        font-size: 48px;
+    }
+
+    .vr-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .vr-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.6);
+        flex-direction: row;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 14px;
+    }
+
+    .vr-icon {
+        font-size: 12px;
+        margin-right: 4px;
+    }
+
+    .vr-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .play-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background-color: rgba(255, 107, 53, 0.9);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .play-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        margin-left: 4px;
+    }
+
+    .info {
+        padding: 10px 12px;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .sub {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+</style>

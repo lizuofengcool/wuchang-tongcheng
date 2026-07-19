@@ -1,0 +1,317 @@
+<template>
+    <view class="page">
+        <view class="search-bar">
+            <text class="search-icon">🔍</text>
+            <input class="search-input" type="text" v-model="keyword" placeholder="搜索小区/房源/位置" :focus="true" @confirm="onSearch" />
+            <text class="cancel-btn" @click="onCancel">取消</text>
+        </view>
+        <scroll-view class="content" scroll-y>
+            <view v-if="!searched">
+                <view class="section" v-if="hotKeywords.length > 0">
+                    <text class="section-title">热门搜索</text>
+                    <view class="tag-wrap">
+                        <view class="tag" v-for="(k, idx) in hotKeywords" :key="idx" @click="onHotKeyword(k)">
+                            <text class="tag-text">{{ k }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="section" v-if="history.length > 0">
+                    <view class="section-header">
+                        <text class="section-title">搜索历史</text>
+                        <text class="clear-btn" @click="clearHistory">清空</text>
+                    </view>
+                    <view class="history-list">
+                        <view class="history-item" v-for="(h, idx) in history" :key="idx" @click="onHistory(h)">
+                            <text class="history-icon">🕒</text>
+                            <text class="history-text">{{ h }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <view v-else>
+                <view class="result-bar">
+                    <text class="result-text">找到 {{ total }} 条结果</text>
+                </view>
+                <view class="list-wrap">
+                    <house-card v-for="item in list" :key="item.id" :house="transformHouse(item)" @click="goDetail" />
+                </view>
+                <view class="load-more" v-if="loading">
+                    <text class="load-text">加载中...</text>
+                </view>
+                <house-empty v-if="list.length == 0 && !loading" icon="🔍" text="没有找到相关房源" btn-text="重置" @click="resetKeyword" />
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { searchHouses, getSearchHistory, clearSearchHistory, addSearchHistory } from '@/api/business/house.uts'
+
+    type ListItem = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+    type HouseCardData = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+
+    const keyword = ref('')
+    const searched = ref(false)
+    const loading = ref(false)
+    const list = ref([] as ListItem[])
+    const total = ref(0)
+    const page = ref(1)
+    const pageSize = 20
+    const hasMore = ref(true)
+    const history = ref(getSearchHistory())
+    const hotKeywords = ['两居室', '三居室', '学区房', '地铁房', '精装修', '急售', 'VR看房', '次新房']
+
+    const transformHouse = (item: ListItem) : HouseCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            listing_type: item.listing_type,
+            layout: item.layout,
+            area_text: item.area_text,
+            floor_text: item.floor_text,
+            orientation: item.orientation,
+            price: item.price,
+            community_name: item.community_name,
+            has_vr: item.has_vr,
+            is_urgent: item.is_urgent,
+            is_featured: item.is_featured
+        } as HouseCardData
+    }
+
+    const onSearch = () => {
+        const kw = keyword.value.trim()
+        if (kw.length == 0) return
+        addSearchHistory(kw)
+        history.value = getSearchHistory()
+        page.value = 1
+        hasMore.value = true
+        searched.value = true
+        list.value = [] as ListItem[]
+        doSearch()
+    }
+
+    const doSearch = () => {
+        if (loading.value) return
+        loading.value = true
+        const params: UTSJSONObject = {
+            keyword: keyword.value,
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        searchHouses(params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const arr = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (page.value == 1) {
+                    list.value = arr
+                } else {
+                    list.value = list.value.concat(arr)
+                }
+                total.value = (d['total'] as number) ?? list.value.length
+                hasMore.value = arr.length >= pageSize
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const onHotKeyword = (k: string) => {
+        keyword.value = k
+        onSearch()
+    }
+
+    const onHistory = (h: string) => {
+        keyword.value = h
+        onSearch()
+    }
+
+    const clearHistory = () => {
+        uni.showModal({
+            title: '提示',
+            content: '确认清空搜索历史？',
+            success: (r) => {
+                if (r.confirm) {
+                    clearSearchHistory()
+                    history.value = [] as string[]
+                }
+            }
+        })
+    }
+
+    const resetKeyword = () => {
+        keyword.value = ''
+        searched.value = false
+        list.value = [] as ListItem[]
+    }
+
+    const onCancel = () => {
+        uni.navigateBack()
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/fang/detail/index?id=' + id })
+    }
+
+    onReachBottom(() => {
+        if (!hasMore.value || loading.value) return
+        page.value++
+        doSearch()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-input {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 18px;
+        padding: 6px 12px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .cancel-btn {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 12px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .clear-btn {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .tag-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        background-color: #F5F5F5;
+        border-radius: 14px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+
+    .tag-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .history-list {
+        flex-direction: column;
+    }
+
+    .history-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .history-icon {
+        font-size: 13px;
+        color: #CCC;
+        margin-right: 8px;
+    }
+
+    .history-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .result-bar {
+        padding: 10px 16px;
+    }
+
+    .result-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

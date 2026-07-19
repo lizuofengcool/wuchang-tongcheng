@@ -1,0 +1,154 @@
+<template>
+    <view class="community" @click="onClick">
+        <view class="info-row">
+            <view class="info-block">
+                <text class="name">{{ community.name }}</text>
+                <view class="meta-row" v-if="metaText.length > 0">
+                    <text class="meta">{{ metaText }}</text>
+                </view>
+            </view>
+            <text class="arrow">›</text>
+        </view>
+        <view class="stats-row">
+            <view class="stat-cell">
+                <text class="stat-value">{{ community.on_sale_count }}</text>
+                <text class="stat-label">在售</text>
+            </view>
+            <view class="stat-cell">
+                <text class="stat-value">{{ community.on_rent_count }}</text>
+                <text class="stat-label">在租</text>
+            </view>
+            <view class="stat-cell">
+                <text class="stat-value">{{ community.avg_price }}元/㎡</text>
+                <text class="stat-label">均价</text>
+            </view>
+            <view class="stat-cell" v-if="community.build_year > 0">
+                <text class="stat-value">{{ community.build_year }}年</text>
+                <text class="stat-label">建成</text>
+            </view>
+        </view>
+        <view class="address-row" v-if="community.address.length > 0">
+            <text class="address-icon">📍</text>
+            <text class="address-text">{{ community.address }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Community = {
+        id: number
+        name: string
+        address: string
+        district: string
+        bizcircle: string
+        build_year: number
+        on_sale_count: number
+        on_rent_count: number
+        avg_price: number
+        green_rate: number
+        parking_count: number
+    }
+
+    const props = withDefaults(defineProps<{
+        community: Community
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.community.district.length > 0) parts.push(props.community.district)
+        if (props.community.bizcircle.length > 0) parts.push(props.community.bizcircle)
+        return parts.join(' · ')
+    })
+
+    const onClick = () => {
+        emit('click', props.community.id)
+    }
+</script>
+
+<style>
+    .community {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .info-block {
+        flex: 1;
+    }
+
+    .name {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .arrow {
+        font-size: 20px;
+        color: #CCC;
+        margin-left: 8px;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 12px;
+        padding: 10px 0;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .stat-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .address-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .address-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .address-text {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+</style>

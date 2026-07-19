@@ -1,0 +1,149 @@
+<template>
+    <view class="company-info" @click="onClick">
+        <image class="logo" :src="company.logo" mode="aspectFill" lazy-load="true" v-if="company.logo.length > 0" />
+        <view class="logo-placeholder" v-else>
+            <text class="logo-text">{{ company.name.length > 0 ? company.name.charAt(0) : 'C' }}</text>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ company.name }}</text>
+                <view class="verified-tag" v-if="company.is_verified">
+                    <text class="verified-text">✓ 已认证</text>
+                </view>
+            </view>
+            <view class="meta-row" v-if="metaText.length > 0">
+                <text class="meta">{{ metaText }}</text>
+            </view>
+            <view class="stats-row">
+                <text class="stat" v-if="company.size.length > 0">{{ company.size }}</text>
+                <text class="stat" v-if="company.industry.length > 0">{{ company.industry }}</text>
+                <text class="stat" v-if="company.job_count > 0">在招 {{ company.job_count }}</text>
+            </view>
+        </view>
+        <text class="arrow">›</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Company = {
+        id: number
+        name: string
+        logo: string
+        size: string
+        industry: string
+        stage: string
+        city: string
+        is_verified: boolean
+        job_count: number
+        follower_count: number
+    }
+
+    const props = withDefaults(defineProps<{
+        company: Company
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.company.stage.length > 0) parts.push(props.company.stage)
+        if (props.company.city.length > 0) parts.push(props.company.city)
+        return parts.join(' · ')
+    })
+
+    const onClick = () => {
+        emit('click', props.company.id)
+    }
+</script>
+
+<style>
+    .company-info {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        margin-right: 12px;
+    }
+
+    .logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .logo-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .verified-tag {
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 1px 5px;
+        margin-left: 6px;
+    }
+
+    .verified-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .stat {
+        font-size: 11px;
+        color: #666;
+        margin-right: 10px;
+    }
+
+    .arrow {
+        font-size: 20px;
+        color: #CCCCCC;
+        margin-left: 8px;
+    }
+</style>

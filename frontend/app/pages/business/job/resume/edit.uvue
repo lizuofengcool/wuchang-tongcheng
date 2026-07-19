@@ -1,0 +1,356 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">基本信息</text>
+                <view class="form-row">
+                    <text class="label">姓名<text class="required">*</text></text>
+                    <input class="input" v-model="form.name" placeholder="请输入姓名" />
+                </view>
+                <view class="form-row">
+                    <text class="label">手机号<text class="required">*</text></text>
+                    <input class="input" v-model="form.phone" placeholder="请输入手机号" type="number" />
+                </view>
+                <view class="form-row">
+                    <text class="label">邮箱</text>
+                    <input class="input" v-model="form.email" placeholder="请输入邮箱" />
+                </view>
+                <view class="form-row">
+                    <text class="label">城市</text>
+                    <input class="input" v-model="form.city" placeholder="请输入期望城市" />
+                </view>
+                <view class="form-row">
+                    <text class="label">期望薪资</text>
+                    <input class="input" v-model="form.expect_salary" placeholder="例如：15-25K" />
+                </view>
+                <view class="form-row">
+                    <text class="label">求职状态</text>
+                    <input class="input" v-model="form.job_status" placeholder="例如：离职-随时到岗" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">个人介绍</text>
+                <textarea class="textarea" v-model="form.introduction" placeholder="请输入个人介绍" />
+            </view>
+
+            <view class="form-card">
+                <view class="card-title-row">
+                    <text class="card-title">工作经历</text>
+                    <text class="add-btn" @click="addWork">+ 添加</text>
+                </view>
+                <view class="exp-item" v-for="(item, idx) in form.work_experiences" :key="idx">
+                    <view class="exp-header">
+                        <input class="exp-input" v-model="item.company" placeholder="公司名称" />
+                        <text class="del-btn" @click="delWork(idx)">✕</text>
+                    </view>
+                    <input class="exp-input" v-model="item.position" placeholder="职位" />
+                    <input class="exp-input" v-model="item.duration" placeholder="时间，例如：2022.01-至今" />
+                    <textarea class="exp-textarea" v-model="item.description" placeholder="工作内容描述" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="card-title-row">
+                    <text class="card-title">教育经历</text>
+                    <text class="add-btn" @click="addEdu">+ 添加</text>
+                </view>
+                <view class="exp-item" v-for="(item, idx) in form.educations" :key="idx">
+                    <view class="exp-header">
+                        <input class="exp-input" v-model="item.school" placeholder="学校名称" />
+                        <text class="del-btn" @click="delEdu(idx)">✕</text>
+                    </view>
+                    <input class="exp-input" v-model="item.major" placeholder="专业" />
+                    <input class="exp-input" v-model="item.degree" placeholder="学历，例如：本科" />
+                    <input class="exp-input" v-model="item.duration" placeholder="时间，例如：2018.09-2022.06" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">技能标签</text>
+                <textarea class="textarea" v-model="form.skills" placeholder="例如：JavaScript, React, Node.js" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save" @click="onSave">
+                <text class="btn-text-white">保存简历</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createResume, updateResume, getResumeDetail } from '@/api/business/job.uts'
+
+    type WorkExp = {
+        id: number
+        company: string
+        position: string
+        duration: string
+        description: string
+    }
+    type Edu = {
+        id: number
+        school: string
+        major: string
+        degree: string
+        duration: string
+    }
+    type Form = {
+        id: number
+        name: string
+        phone: string
+        email: string
+        city: string
+        expect_salary: string
+        job_status: string
+        introduction: string
+        skills: string
+        work_experiences: WorkExp[]
+        educations: Edu[]
+    }
+
+    const form = ref({
+        id: 0,
+        name: '',
+        phone: '',
+        email: '',
+        city: '',
+        expect_salary: '',
+        job_status: '',
+        introduction: '',
+        skills: '',
+        work_experiences: [] as WorkExp[],
+        educations: [] as Edu[]
+    } as Form)
+
+    const addWork = () => {
+        form.value.work_experiences.push({
+            id: 0, company: '', position: '', duration: '', description: ''
+        } as WorkExp)
+    }
+
+    const delWork = (idx: number) => {
+        form.value.work_experiences.splice(idx, 1)
+    }
+
+    const addEdu = () => {
+        form.value.educations.push({
+            id: 0, school: '', major: '', degree: '', duration: ''
+        } as Edu)
+    }
+
+    const delEdu = (idx: number) => {
+        form.value.educations.splice(idx, 1)
+    }
+
+    const onSave = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.name.length == 0) {
+            uni.showToast({ title: '请输入姓名', icon: 'none' })
+            return
+        }
+        if (form.value.phone.length == 0) {
+            uni.showToast({ title: '请输入手机号', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            name: form.value.name,
+            phone: form.value.phone,
+            email: form.value.email,
+            city: form.value.city,
+            expect_salary: form.value.expect_salary,
+            job_status: form.value.job_status,
+            introduction: form.value.introduction,
+            skills: form.value.skills,
+            work_experiences: form.value.work_experiences,
+            educations: form.value.educations
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '保存中...' })
+        const reqFn = form.value.id > 0 ? updateResume(form.value.id, data) : createResume(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '保存成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getResumeDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    phone: (d['phone'] as string) ?? '',
+                    email: (d['email'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    expect_salary: (d['expect_salary'] as string) ?? '',
+                    job_status: (d['job_status'] as string) ?? '',
+                    introduction: (d['introduction'] as string) ?? '',
+                    skills: (d['skills'] as string) ?? '',
+                    work_experiences: (d['work_experiences'] as WorkExp[]) ?? ([] as WorkExp[]),
+                    educations: (d['educations'] as Edu[]) ?? ([] as Edu[])
+                } as Form
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        const id = options['id']
+        if (id != null) {
+            form.value.id = parseInt(id as string)
+            loadEdit(form.value.id)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .add-btn {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 90px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .exp-item {
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 8px;
+    }
+
+    .exp-header {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .exp-input {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+        padding: 6px 8px;
+        margin-top: 4px;
+        background-color: #FFFFFF;
+        border-radius: 6px;
+    }
+
+    .exp-textarea {
+        font-size: 13px;
+        color: #333;
+        margin-top: 4px;
+        height: 60px;
+        padding: 8px;
+        background-color: #FFFFFF;
+        border-radius: 6px;
+    }
+
+    .del-btn {
+        font-size: 14px;
+        color: #EE0A24;
+        margin-left: 8px;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

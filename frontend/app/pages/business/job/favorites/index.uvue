@@ -1,0 +1,166 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap">
+                <job-card v-for="item in favList" :key="item.id" :job="transformJob(item)" @click="goDetail" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && favList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <job-empty v-if="favList.length == 0 && !loading" icon="★" text="暂无收藏职位" btn-text="去找工作" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listFavoriteJobs } from '@/api/business/job.uts'
+
+    type FavItem = {
+        id: number
+        job_id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        view_count: number
+        fav_count: number
+        application_count: number
+        fav_time: string
+    }
+    type JobCardData = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        view_count: number
+        fav_count: number
+        application_count: number
+    }
+
+    const favList = ref([] as FavItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformJob = (item: FavItem) : JobCardData => {
+        return {
+            id: item.job_id > 0 ? item.job_id : item.id,
+            title: item.title,
+            salary_range: item.salary_range,
+            city: item.city,
+            experience: item.experience,
+            education: item.education,
+            is_urgent: item.is_urgent,
+            is_hot: item.is_hot,
+            is_remote: item.is_remote,
+            view_count: item.view_count,
+            fav_count: item.fav_count,
+            application_count: item.application_count
+        } as JobCardData
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listFavoriteJobs(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as FavItem[]) ?? ([] as FavItem[])
+                if (reset) {
+                    favList.value = newList
+                } else {
+                    favList.value = favList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/detail/index?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/job/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

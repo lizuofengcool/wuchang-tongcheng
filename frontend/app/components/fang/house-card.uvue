@@ -1,0 +1,229 @@
+<template>
+    <view class="house-card" @click="onClick">
+        <view class="image-wrap">
+            <image class="cover" :src="house.cover_image" mode="aspectFill" lazy-load="true" />
+            <view class="badge" v-if="house.listing_type == 'rent'">
+                <text class="badge-text">租</text>
+            </view>
+            <view class="badge sale" v-else-if="house.listing_type == 'sale'">
+                <text class="badge-text">售</text>
+            </view>
+            <view class="vr-tag" v-if="house.has_vr">
+                <text class="vr-tag-text">VR</text>
+            </view>
+        </view>
+        <view class="info">
+            <text class="title">{{ house.title }}</text>
+            <view class="tag-row" v-if="tags.length > 0">
+                <view class="tag" v-for="(t, idx) in tags" :key="idx">
+                    <text class="tag-text">{{ t }}</text>
+                </view>
+            </view>
+            <text class="layout">{{ house.layout }}</text>
+            <view class="meta-row">
+                <text class="meta" v-if="house.area_text.length > 0">{{ house.area_text }}</text>
+                <text class="meta" v-if="house.floor_text.length > 0">{{ house.floor_text }}</text>
+                <text class="meta" v-if="house.orientation.length > 0">{{ house.orientation }}</text>
+            </view>
+            <view class="bottom-row">
+                <view class="price-wrap">
+                    <text class="price-symbol">¥</text>
+                    <text class="price">{{ formatPrice(house.price) }}</text>
+                    <text class="price-unit">{{ house.listing_type == 'rent' ? '/月' : '万' }}</text>
+                </view>
+                <view class="location-row" v-if="house.community_name.length > 0">
+                    <text class="location">{{ house.community_name }}</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type House = {
+        id: number
+        title: string
+        cover_image: string
+        listing_type: string
+        layout: string
+        area_text: string
+        floor_text: string
+        orientation: string
+        price: number
+        community_name: string
+        has_vr: boolean
+        is_urgent: boolean
+        is_featured: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        house: House
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const tags = computed(() : string[] => {
+        const list = [] as string[]
+        if (props.house.is_urgent) list.push('急售')
+        if (props.house.is_featured) list.push('精选')
+        return list
+    })
+
+    const onClick = () => {
+        emit('click', props.house.id)
+    }
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+</script>
+
+<style>
+    .house-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+    }
+
+    .image-wrap {
+        position: relative;
+        width: 110px;
+        height: 110px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+
+    .cover {
+        width: 100%;
+        height: 100%;
+    }
+
+    .badge {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: #FF6B35;
+        padding: 2px 6px;
+        border-bottom-right-radius: 6px;
+    }
+
+    .badge.sale {
+        background-color: #07C160;
+    }
+
+    .badge-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .vr-tag {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background-color: rgba(0, 0, 0, 0.6);
+        border-radius: 4px;
+        padding: 1px 4px;
+    }
+
+    .vr-tag-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .info {
+        flex: 1;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .tag {
+        background-color: #FFF5F0;
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+    }
+
+    .tag-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .layout {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 11px;
+        color: #999;
+        margin-right: 8px;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-top: 4px;
+    }
+
+    .price-wrap {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .price-symbol {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-unit {
+        font-size: 11px;
+        color: #FF6B35;
+        margin-left: 2px;
+    }
+
+    .location-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .location {
+        font-size: 11px;
+        color: #999;
+    }
+</style>

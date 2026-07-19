@@ -1,0 +1,118 @@
+<template>
+    <view class="msg-item" :class="{ mine: isMine }">
+        <image class="avatar" :src="message.avatar" mode="aspectFill" lazy-load="true" v-if="message.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ message.sender_name.length > 0 ? message.sender_name.charAt(0) : 'U' }}</text>
+        </view>
+        <view class="bubble-wrap">
+            <text class="sender" v-if="!isMine && showSender">{{ message.sender_name }}</text>
+            <view class="bubble">
+                <text class="content">{{ message.content }}</text>
+            </view>
+            <text class="time">{{ message.time }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Message = {
+        id: number
+        sender_id: number
+        sender_name: string
+        avatar: string
+        content: string
+        time: string
+        is_read: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        message: Message
+        isMine: boolean
+        showSender: boolean
+    }>(), {
+        isMine: false,
+        showSender: false
+    } as any)
+</script>
+
+<style>
+    .msg-item {
+        flex-direction: row;
+        margin-bottom: 12px;
+        padding: 0 12px;
+    }
+
+    .msg-item.mine {
+        flex-direction: row-reverse;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        margin-right: 8px;
+    }
+
+    .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .msg-item.mine .avatar,
+    .msg-item.mine .avatar-placeholder {
+        margin-right: 0;
+        margin-left: 8px;
+    }
+
+    .avatar-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .bubble-wrap {
+        max-width: 70%;
+        flex: 1;
+    }
+
+    .sender {
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 2px;
+    }
+
+    .bubble {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 10px 12px;
+    }
+
+    .msg-item.mine .bubble {
+        background-color: #FF6B35;
+    }
+
+    .content {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.4;
+    }
+
+    .msg-item.mine .content {
+        color: #FFFFFF;
+    }
+
+    .time {
+        font-size: 10px;
+        color: #BBB;
+        margin-top: 4px;
+    }
+
+    .msg-item.mine .time {
+        text-align: right;
+    }
+</style>

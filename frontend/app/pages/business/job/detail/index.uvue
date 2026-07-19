@@ -1,0 +1,402 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="image-banner" v-if="detail.cover_image.length > 0">
+                <image class="banner-img" :src="detail.cover_image" mode="aspectFill" lazy-load="true" />
+            </view>
+            <job-detail-header :job="headerData" />
+            <view class="section">
+                <text class="section-title">职位描述</text>
+                <text class="section-content">{{ detail.description || '暂无描述' }}</text>
+            </view>
+            <view class="section" v-if="detail.requirements.length > 0">
+                <text class="section-title">任职要求</text>
+                <text class="section-content">{{ detail.requirements }}</text>
+            </view>
+            <view class="section" v-if="detail.welfare.length > 0">
+                <text class="section-title">福利待遇</text>
+                <text class="section-content">{{ detail.welfare }}</text>
+            </view>
+            <view class="section" v-if="detail.address.length > 0">
+                <text class="section-title">工作地址</text>
+                <text class="section-content">{{ detail.address }}</text>
+            </view>
+            <view class="section" v-if="detail.company_id > 0">
+                <text class="section-title">公司信息</text>
+                <job-company-info :company="companyData" @click="goCompany" />
+            </view>
+            <view class="section" v-if="similarList.length > 0">
+                <text class="section-title">相似职位</text>
+                <job-card v-for="item in similarList" :key="item.id" :job="transformSimilar(item)" @click="goSimilar" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="toggleFav">
+                <text class="bottom-icon">{{ detail.is_faved ? '★' : '☆' }}</text>
+                <text class="bottom-icon-text">{{ detail.is_faved ? '已收藏' : '收藏' }}</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="goChat">
+                <text class="bottom-icon">💬</text>
+                <text class="bottom-icon-text">沟通</text>
+            </view>
+            <view class="bottom-btn primary-btn" @click="onApply">
+                <text class="primary-btn-text">投递简历</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getJobDetail, listSimilarJobs, favJob, unfavJob, favJobStatus, createApplication } from '@/api/business/job.uts'
+
+    type Detail = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        cover_image: string
+        description: string
+        requirements: string
+        welfare: string
+        address: string
+        company_id: number
+        company_name: string
+        company_logo: string
+        company_size: string
+        company_industry: string
+        company_stage: string
+        company_city: string
+        company_is_verified: boolean
+        company_job_count: number
+        company_follower_count: number
+        view_count: number
+        fav_count: number
+        application_count: number
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        is_faved: boolean
+    }
+    type SimilarItem = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        view_count: number
+        fav_count: number
+        application_count: number
+    }
+    type CompanyData = {
+        id: number
+        name: string
+        logo: string
+        size: string
+        industry: string
+        stage: string
+        city: string
+        is_verified: boolean
+        job_count: number
+        follower_count: number
+    }
+    type HeaderData = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        view_count: number
+        fav_count: number
+        application_count: number
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+    }
+
+    const jobId = ref(0)
+    const detail = ref({
+        id: 0, title: '', salary_range: '', city: '', experience: '', education: '',
+        cover_image: '', description: '', requirements: '', welfare: '', address: '',
+        company_id: 0, company_name: '', company_logo: '', company_size: '', company_industry: '',
+        company_stage: '', company_city: '', company_is_verified: false, company_job_count: 0, company_follower_count: 0,
+        view_count: 0, fav_count: 0, application_count: 0,
+        is_urgent: false, is_hot: false, is_remote: false, is_faved: false
+    } as Detail)
+    const similarList = ref([] as SimilarItem[])
+
+    const headerData = computed(() : HeaderData => {
+        return {
+            id: detail.value.id,
+            title: detail.value.title,
+            salary_range: detail.value.salary_range,
+            city: detail.value.city,
+            experience: detail.value.experience,
+            education: detail.value.education,
+            view_count: detail.value.view_count,
+            fav_count: detail.value.fav_count,
+            application_count: detail.value.application_count,
+            is_urgent: detail.value.is_urgent,
+            is_hot: detail.value.is_hot,
+            is_remote: detail.value.is_remote
+        } as HeaderData
+    })
+
+    const companyData = computed(() : CompanyData => {
+        return {
+            id: detail.value.company_id,
+            name: detail.value.company_name,
+            logo: detail.value.company_logo,
+            size: detail.value.company_size,
+            industry: detail.value.company_industry,
+            stage: detail.value.company_stage,
+            city: detail.value.company_city,
+            is_verified: detail.value.company_is_verified,
+            job_count: detail.value.company_job_count,
+            follower_count: detail.value.company_follower_count
+        } as CompanyData
+    })
+
+    const transformSimilar = (item: SimilarItem) : HeaderData => {
+        return {
+            id: item.id,
+            title: item.title,
+            salary_range: item.salary_range,
+            city: item.city,
+            experience: item.experience,
+            education: item.education,
+            view_count: item.view_count,
+            fav_count: item.fav_count,
+            application_count: item.application_count,
+            is_urgent: item.is_urgent,
+            is_hot: item.is_hot,
+            is_remote: item.is_remote
+        } as HeaderData
+    }
+
+    const loadDetail = () => {
+        getJobDetail(jobId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = mapDetail(d)
+            }
+        })
+        favJobStatus(jobId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value.is_faved = ((d['is_faved'] as boolean) ?? false)
+            }
+        })
+        loadSimilar()
+    }
+
+    const mapDetail = (d: UTSJSONObject) : Detail => {
+        return {
+            id: (d['id'] as number) ?? 0,
+            title: (d['title'] as string) ?? '',
+            salary_range: (d['salary_range'] as string) ?? '',
+            city: (d['city'] as string) ?? '',
+            experience: (d['experience'] as string) ?? '',
+            education: (d['education'] as string) ?? '',
+            cover_image: (d['cover_image'] as string) ?? '',
+            description: (d['description'] as string) ?? '',
+            requirements: (d['requirements'] as string) ?? '',
+            welfare: (d['welfare'] as string) ?? '',
+            address: (d['address'] as string) ?? '',
+            company_id: (d['company_id'] as number) ?? 0,
+            company_name: (d['company_name'] as string) ?? '',
+            company_logo: (d['company_logo'] as string) ?? '',
+            company_size: (d['company_size'] as string) ?? '',
+            company_industry: (d['company_industry'] as string) ?? '',
+            company_stage: (d['company_stage'] as string) ?? '',
+            company_city: (d['company_city'] as string) ?? '',
+            company_is_verified: (d['company_is_verified'] as boolean) ?? false,
+            company_job_count: (d['company_job_count'] as number) ?? 0,
+            company_follower_count: (d['company_follower_count'] as number) ?? 0,
+            view_count: (d['view_count'] as number) ?? 0,
+            fav_count: (d['fav_count'] as number) ?? 0,
+            application_count: (d['application_count'] as number) ?? 0,
+            is_urgent: (d['is_urgent'] as boolean) ?? false,
+            is_hot: (d['is_hot'] as boolean) ?? false,
+            is_remote: (d['is_remote'] as boolean) ?? false,
+            is_faved: detail.value.is_faved
+        } as Detail
+    }
+
+    const loadSimilar = () => {
+        const params: UTSJSONObject = { page: 1, page_size: 5 } as UTSJSONObject
+        listSimilarJobs(jobId.value, params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                similarList.value = (d['list'] as SimilarItem[]) ?? ([] as SimilarItem[])
+            }
+        })
+    }
+
+    const toggleFav = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (detail.value.is_faved) {
+            unfavJob(jobId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = false
+                    uni.showToast({ title: '已取消收藏', icon: 'none' })
+                }
+            })
+        } else {
+            favJob(jobId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = true
+                    uni.showToast({ title: '收藏成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const goChat = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/job/messages/chat?job_id=' + jobId.value + '&company_id=' + detail.value.company_id })
+    }
+
+    const onApply = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '投递简历',
+            content: '确认投递该职位？',
+            success: (res) => {
+                if (res.confirm) {
+                    const data: UTSJSONObject = { job_id: jobId.value } as UTSJSONObject
+                    createApplication(data).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '投递成功', icon: 'success' })
+                        } else {
+                            uni.showToast({ title: r.message || '投递失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goCompany = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/company/index?id=' + id })
+    }
+
+    const goSimilar = (id: number) => {
+        uni.redirectTo({ url: '/pages/business/job/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            jobId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .image-banner {
+        width: 100%;
+        height: 200px;
+        background-color: #F5F5F5;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .primary-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 22px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-left: 12px;
+    }
+
+    .primary-btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

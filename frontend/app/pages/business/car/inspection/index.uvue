@@ -1,0 +1,377 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="header-card" v-if="report.score > 0">
+                <view class="score-wrap">
+                    <text class="score-value">{{ report.score }}</text>
+                    <text class="score-unit">分</text>
+                </view>
+                <text class="score-level" :class="scoreLevel">{{ scoreLevelText }}</text>
+                <text class="summary" v-if="report.summary.length > 0">{{ report.summary }}</text>
+            </view>
+
+            <view class="section" v-for="(cat, idx) in report.categories" :key="idx">
+                <view class="section-header">
+                    <text class="section-title">{{ cat.name }}</text>
+                    <view class="status-tag" :class="cat.status">
+                        <text class="status-text">{{ getStatusText(cat.status) }}</text>
+                    </view>
+                </view>
+                <view class="item-list">
+                    <view class="inspect-item" v-for="(item, iIdx) in cat.items" :key="iIdx">
+                        <view class="item-dot" :class="item.level"></view>
+                        <view class="item-info">
+                            <text class="item-name">{{ item.name }}</text>
+                            <text class="item-result" :class="item.level">{{ item.result }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="report.inspector.length > 0 || report.inspect_time.length > 0">
+                <text class="section-title">检测信息</text>
+                <view class="info-row" v-if="report.inspector.length > 0">
+                    <text class="info-label">检测师</text>
+                    <text class="info-value">{{ report.inspector }}</text>
+                </view>
+                <view class="info-row" v-if="report.inspect_time.length > 0">
+                    <text class="info-label">检测时间</text>
+                    <text class="info-value">{{ report.inspect_time }}</text>
+                </view>
+            </view>
+
+            <car-empty v-if="report.score == 0 && !loading" icon="🔍" text="暂无检测报告" btn-text="返回" @click="goBack" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getInspectionDetail, getCarInspection } from '@/api/business/car.uts'
+
+    type InspectItem = {
+        name: string
+        result: string
+        level: string
+    }
+    type Category = {
+        name: string
+        status: string
+        items: InspectItem[]
+    }
+    type Report = {
+        score: number
+        summary: string
+        categories: Category[]
+        inspector: string
+        inspect_time: string
+    }
+
+    const inspectionId = ref(0)
+    const carId = ref(0)
+    const loading = ref(false)
+    const report = ref({
+        score: 0,
+        summary: '',
+        categories: [] as Category[],
+        inspector: '',
+        inspect_time: ''
+    } as Report)
+
+    const scoreLevel = computed(() : string => {
+        const s = report.value.score
+        if (s >= 90) return 'excellent'
+        if (s >= 75) return 'good'
+        if (s >= 60) return 'normal'
+        return 'bad'
+    })
+
+    const scoreLevelText = computed(() : string => {
+        const s = report.value.score
+        if (s >= 90) return '优秀'
+        if (s >= 75) return '良好'
+        if (s >= 60) return '一般'
+        return '较差'
+    })
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'pass') return '正常'
+        if (status == 'warn') return '注意'
+        if (status == 'fail') return '异常'
+        if (status == 'unknown') return '未检'
+        return status
+    }
+
+    const loadReport = () => {
+        loading.value = true
+        if (inspectionId.value > 0) {
+            getInspectionDetail(inspectionId.value).then((res: ApiResult) => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    report.value = mapReport(d)
+                }
+            }).catch(() => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+            })
+        } else if (carId.value > 0) {
+            getCarInspection(carId.value).then((res: ApiResult) => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    report.value = mapReport(d)
+                }
+            }).catch(() => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+            })
+        }
+    }
+
+    const mapReport = (d: UTSJSONObject) : Report => {
+        return {
+            score: (d['score'] as number) ?? 0,
+            summary: (d['summary'] as string) ?? '',
+            categories: (d['categories'] as Category[]) ?? ([] as Category[]),
+            inspector: (d['inspector'] as string) ?? '',
+            inspect_time: (d['inspect_time'] as string) ?? ''
+        } as Report
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        const cid = options['car_id']
+        if (id != null) {
+            inspectionId.value = parseInt(id as string)
+        } else if (cid != null) {
+            carId.value = parseInt(cid as string)
+        }
+        if (inspectionId.value > 0 || carId.value > 0) {
+            loadReport()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadReport()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .header-card {
+        background-color: #FFFFFF;
+        padding: 24px 16px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .score-wrap {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .score-value {
+        font-size: 48px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .score-unit {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 4px;
+    }
+
+    .score-level {
+        font-size: 14px;
+        margin-top: 8px;
+        padding: 4px 14px;
+        border-radius: 14px;
+    }
+
+    .score-level.excellent {
+        color: #07C160;
+        background-color: #F0FFF8;
+    }
+
+    .score-level.good {
+        color: #1989FA;
+        background-color: #F0F8FF;
+    }
+
+    .score-level.normal {
+        color: #FF976A;
+        background-color: #FFF8E5;
+    }
+
+    .score-level.bad {
+        color: #EE0A24;
+        background-color: #FFE5E5;
+    }
+
+    .summary {
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        margin-top: 10px;
+        line-height: 1.5;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .status-tag {
+        border-radius: 4px;
+        padding: 2px 8px;
+    }
+
+    .status-tag.pass {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.warn {
+        background-color: #FFF8E5;
+    }
+
+    .status-tag.fail {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.unknown {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pass .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.warn .status-text {
+        color: #FF976A;
+    }
+
+    .status-tag.fail .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.unknown .status-text {
+        color: #999;
+    }
+
+    .item-list {
+        flex-direction: column;
+    }
+
+    .inspect-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .item-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+
+    .item-dot.pass {
+        background-color: #07C160;
+    }
+
+    .item-dot.warn {
+        background-color: #FF976A;
+    }
+
+    .item-dot.fail {
+        background-color: #EE0A24;
+    }
+
+    .item-dot.unknown {
+        background-color: #CCC;
+    }
+
+    .item-info {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .item-name {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .item-result {
+        font-size: 12px;
+    }
+
+    .item-result.pass {
+        color: #07C160;
+    }
+
+    .item-result.warn {
+        color: #FF976A;
+    }
+
+    .item-result.fail {
+        color: #EE0A24;
+    }
+
+    .item-result.unknown {
+        color: #999;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+</style>

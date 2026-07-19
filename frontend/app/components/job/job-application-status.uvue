@@ -1,0 +1,106 @@
+<template>
+    <view class="status-flow">
+        <view class="step" v-for="(step, idx) in steps" :key="idx" :class="{ done: idx <= currentIndex, current: idx == currentIndex }">
+            <view class="step-circle">
+                <text class="step-icon" v-if="idx < currentIndex">✓</text>
+                <text class="step-num" v-else>{{ idx + 1 }}</text>
+            </view>
+            <view class="step-content">
+                <text class="step-name">{{ step.name }}</text>
+                <text class="step-time" v-if="step.time.length > 0">{{ step.time }}</text>
+            </view>
+            <view class="step-line" v-if="idx < steps.length - 1"></view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Step = { name: string, time: string }
+
+    const props = withDefaults(defineProps<{
+        steps: Step[]
+        currentIndex: number
+    }>(), {
+        currentIndex: 0
+    } as any)
+</script>
+
+<style>
+    .status-flow {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px 12px;
+    }
+
+    .step {
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 16px;
+        position: relative;
+    }
+
+    .step-circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #E5E5E5;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .step.done .step-circle {
+        background-color: #FF6B35;
+    }
+
+    .step.current .step-circle {
+        background-color: #FF6B35;
+    }
+
+    .step-icon {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .step-num {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-name {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .step.done .step-name {
+        color: #333;
+    }
+
+    .step.current .step-name {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .step-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 2px;
+    }
+
+    .step-line {
+        position: absolute;
+        top: 24px;
+        left: 12px;
+        width: 1px;
+        height: 16px;
+        background-color: #E5E5E5;
+    }
+
+    .step.done .step-line {
+        background-color: #FF6B35;
+    }
+</style>

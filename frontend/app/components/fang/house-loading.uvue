@@ -1,0 +1,60 @@
+<template>
+    <view class="loading" :style="{ paddingTop: paddingTop + 'px', paddingBottom: paddingBottom + 'px' }">
+        <view class="spinner">
+            <view class="dot dot1"></view>
+            <view class="dot dot2"></view>
+            <view class="dot dot3"></view>
+        </view>
+        <text class="text">{{ text }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    withDefaults(defineProps<{
+        text?: string
+        paddingTop?: number
+        paddingBottom?: number
+    }>(), {
+        text: '加载中...',
+        paddingTop: 40,
+        paddingBottom: 40
+    } as any)
+</script>
+
+<style>
+    .loading {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .spinner {
+        flex-direction: row;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background-color: #FF6B35;
+        margin: 0 3px;
+    }
+
+    .dot1 {
+        opacity: 0.9;
+    }
+
+    .dot2 {
+        opacity: 0.6;
+    }
+
+    .dot3 {
+        opacity: 0.3;
+    }
+
+    .text {
+        font-size: 13px;
+        color: #999;
+    }
+</style>

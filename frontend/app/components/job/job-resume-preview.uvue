@@ -1,0 +1,213 @@
+<template>
+    <view class="resume-preview" @click="onClick">
+        <view class="header-row">
+            <image class="avatar" :src="resume.avatar" mode="aspectFill" lazy-load="true" v-if="resume.avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ resume.name.length > 0 ? resume.name.charAt(0) : 'U' }}</text>
+            </view>
+            <view class="info">
+                <view class="name-row">
+                    <text class="name">{{ resume.name }}</text>
+                    <text class="status" v-if="resume.status_text.length > 0">{{ resume.status_text }}</text>
+                </view>
+                <text class="meta">{{ metaText }}</text>
+            </view>
+            <text class="arrow" v-if="showArrow">›</text>
+        </view>
+        <view class="section" v-if="resume.experience_list.length > 0">
+            <text class="section-title">工作经历</text>
+            <view class="exp-item" v-for="(exp, idx) in resume.experience_list" :key="idx">
+                <text class="exp-company">{{ exp.company }}</text>
+                <text class="exp-meta">{{ exp.position }} · {{ exp.duration }}</text>
+            </view>
+        </view>
+        <view class="section" v-if="resume.education_list.length > 0">
+            <text class="section-title">教育经历</text>
+            <view class="exp-item" v-for="(edu, idx) in resume.education_list" :key="idx">
+                <text class="exp-company">{{ edu.school }}</text>
+                <text class="exp-meta">{{ edu.major }} · {{ edu.degree }}</text>
+            </view>
+        </view>
+        <view class="section" v-if="resume.skills.length > 0">
+            <text class="section-title">技能标签</text>
+            <view class="skill-row">
+                <view class="skill-tag" v-for="(s, idx) in resume.skills" :key="idx">
+                    <text class="skill-text">{{ s }}</text>
+                </view>
+            </view>
+        </view>
+        <view class="section" v-if="resume.expect_text.length > 0">
+            <text class="section-title">求职意向</text>
+            <text class="expect-text">{{ resume.expect_text }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Experience = { company: string, position: string, duration: string }
+    type Education = { school: string, major: string, degree: string }
+    type Resume = {
+        id: number
+        name: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        status_text: string
+        experience_list: Experience[]
+        education_list: Education[]
+        skills: string[]
+        expect_text: string
+        completeness: number
+    }
+
+    const props = withDefaults(defineProps<{
+        resume: Resume
+        showArrow?: boolean
+    }>(), {
+        showArrow: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.resume.gender.length > 0) parts.push(props.resume.gender)
+        if (props.resume.age > 0) parts.push(props.resume.age + '岁')
+        if (props.resume.city.length > 0) parts.push(props.resume.city)
+        if (props.resume.completeness > 0) parts.push('完整度 ' + props.resume.completeness + '%')
+        return parts.join(' · ')
+    })
+
+    const onClick = () => {
+        emit('click', props.resume.id)
+    }
+</script>
+
+<style>
+    .resume-preview {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 10px;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .avatar-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .status {
+        font-size: 11px;
+        color: #FF6B35;
+        margin-left: 8px;
+        background-color: #FFF5F0;
+        border-radius: 4px;
+        padding: 1px 5px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .arrow {
+        font-size: 20px;
+        color: #CCCCCC;
+    }
+
+    .section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .section-title {
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .exp-item {
+        margin-bottom: 6px;
+    }
+
+    .exp-company {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .exp-meta {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .skill-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .skill-tag {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 3px 8px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+
+    .skill-text {
+        font-size: 11px;
+        color: #666;
+    }
+
+    .expect-text {
+        font-size: 13px;
+        color: #333;
+        line-height: 1.5;
+    }
+</style>

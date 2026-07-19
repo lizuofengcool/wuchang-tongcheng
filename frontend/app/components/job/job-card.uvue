@@ -1,0 +1,208 @@
+<template>
+    <view class="job-card" @click="onClick">
+        <view class="card-main">
+            <view class="title-row">
+                <text class="title">{{ job.title }}</text>
+                <text class="salary">{{ job.salary_range }}</text>
+            </view>
+            <view class="tag-row" v-if="tags.length > 0">
+                <view class="tag" v-for="(t, idx) in tags" :key="idx" :class="t.type">
+                    <text class="tag-text">{{ t.text }}</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="meta">{{ job.city }}</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ job.experience }}</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ job.education }}</text>
+            </view>
+            <view class="company-row">
+                <image class="logo" :src="job.company_logo" mode="aspectFill" lazy-load="true" v-if="job.company_logo.length > 0" />
+                <view class="logo-placeholder" v-else>
+                    <text class="logo-text">{{ job.company_name.length > 0 ? job.company_name.charAt(0) : 'P' }}</text>
+                </view>
+                <text class="company-name">{{ job.company_name }}</text>
+                <text class="stats">{{ job.view_count }}浏览</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tag = { text: string, type: string }
+
+    type Job = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        company_id: number
+        company_name: string
+        company_logo: string
+        view_count: number
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        job: Job
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const tags = computed(() : Tag[] => {
+        const list = [] as Tag[]
+        if (props.job.is_urgent) list.push({ text: '急招', type: 'urgent' } as Tag)
+        if (props.job.is_hot) list.push({ text: '热门', type: 'hot' } as Tag)
+        if (props.job.is_remote) list.push({ text: '远程', type: 'remote' } as Tag)
+        return list
+    })
+
+    const onClick = () => {
+        emit('click', props.job.id)
+    }
+</script>
+
+<style>
+    .job-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-main {
+        flex: 1;
+    }
+
+    .title-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .salary {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+    }
+
+    .tag.urgent {
+        background-color: #FFE5E5;
+    }
+
+    .tag.hot {
+        background-color: #FFF5F0;
+    }
+
+    .tag.remote {
+        background-color: #E5F8FF;
+    }
+
+    .tag-text {
+        font-size: 10px;
+    }
+
+    .tag.urgent .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.hot .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag.remote .tag-text {
+        color: #1989FA;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .company-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .logo {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        margin-right: 6px;
+    }
+
+    .logo-placeholder {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 6px;
+    }
+
+    .logo-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .company-name {
+        flex: 1;
+        font-size: 12px;
+        color: #666;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .stats {
+        font-size: 11px;
+        color: #BBB;
+    }
+</style>

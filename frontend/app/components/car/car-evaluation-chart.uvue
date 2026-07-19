@@ -1,0 +1,203 @@
+<template>
+    <view class="eval-chart">
+        <view class="header-row">
+            <text class="title">车辆评估</text>
+            <view class="score-wrap">
+                <text class="score-value">{{ evaluation.score }}</text>
+                <text class="score-unit">分</text>
+            </view>
+        </view>
+        <view class="radar-section">
+            <view class="radar-row" v-for="(dim, idx) in dimensions" :key="idx">
+                <view class="dim-row">
+                    <text class="dim-name">{{ dim.name }}</text>
+                    <text class="dim-score">{{ dim.score }}</text>
+                </view>
+                <view class="bar-track">
+                    <view class="bar-fill" :style="{ width: dim.percent + '%' }" :class="dim.level"></view>
+                </view>
+            </view>
+        </view>
+        <view class="conclusion-row" v-if="evaluation.conclusion.length > 0">
+            <text class="conclusion-label">综合评估：</text>
+            <text class="conclusion-text">{{ evaluation.conclusion }}</text>
+        </view>
+        <view class="advisor-row" v-if="evaluation.advisor.length > 0">
+            <text class="advisor-label">评估师：</text>
+            <text class="advisor-text">{{ evaluation.advisor }}</text>
+            <text class="time-text" v-if="evaluation.eval_time.length > 0">{{ evaluation.eval_time }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Dimension = {
+        name: string
+        score: number
+        percent: number
+        level: string
+    }
+    type Evaluation = {
+        score: number
+        conclusion: string
+        advisor: string
+        eval_time: string
+        dimensions: Dimension[]
+    }
+
+    const props = withDefaults(defineProps<{
+        evaluation: Evaluation
+    }>(), {} as any)
+
+    const dimensions = computed(() : Dimension[] => {
+        const list = [] as Dimension[]
+        const src = props.evaluation.dimensions as Dimension[] ?? ([] as Dimension[])
+        for (let i = 0; i < src.length; i++) {
+            const d = src[i]
+            let lvl = 'normal'
+            if (d.score >= 85) lvl = 'excellent'
+            else if (d.score >= 70) lvl = 'good'
+            else if (d.score < 60) lvl = 'bad'
+            list.push({
+                name: d.name,
+                score: d.score,
+                percent: d.percent > 0 ? d.percent : d.score,
+                level: lvl
+            } as Dimension)
+        }
+        return list
+    })
+</script>
+
+<style>
+    .eval-chart {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .score-wrap {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .score-value {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .score-unit {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-left: 2px;
+    }
+
+    .radar-section {
+        margin-top: 12px;
+    }
+
+    .radar-row {
+        margin-top: 8px;
+    }
+
+    .dim-row {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .dim-name {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .dim-score {
+        font-size: 12px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .bar-track {
+        height: 6px;
+        background-color: #F5F5F5;
+        border-radius: 3px;
+        margin-top: 4px;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    .bar-fill.excellent {
+        background-color: #07C160;
+    }
+
+    .bar-fill.good {
+        background-color: #1989FA;
+    }
+
+    .bar-fill.normal {
+        background-color: #FF976A;
+    }
+
+    .bar-fill.bad {
+        background-color: #EE0A24;
+    }
+
+    .conclusion-row {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .conclusion-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .conclusion-text {
+        font-size: 12px;
+        color: #333;
+        flex: 1;
+    }
+
+    .advisor-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .advisor-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .advisor-text {
+        font-size: 11px;
+        color: #666;
+        margin-left: 4px;
+    }
+
+    .time-text {
+        font-size: 11px;
+        color: #BBB;
+        margin-left: 12px;
+    }
+</style>

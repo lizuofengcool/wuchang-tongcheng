@@ -4,7 +4,10 @@
         "custom": {
             "^uni-(.*)": "@/uni_modules/uni-$1/components/uni-$1/uni-$1.uvue",
             "^custom-(.*)": "@/components/custom-$1/custom-$1.uvue",
-            "^er-(.*)": "@/components/ershou/er-$1.uvue"
+            "^er-(.*)": "@/components/ershou/er-$1.uvue",
+            "^job-(.*)": "@/components/job/job-$1.uvue",
+            "^house-(.*)": "@/components/fang/house-$1.uvue",
+            "^car-(.*)": "@/components/car/car-$1.uvue"
         }
     },
     "pages": [
@@ -195,6 +198,241 @@
             "style": {
                 "navigationBarTitleText": "消息中心",
                 "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/list/index",
+            "style": {
+                "navigationBarTitleText": "职位列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/detail/index",
+            "style": {
+                "navigationBarTitleText": "职位详情"
+            }
+        },
+        {
+            "path": "pages/business/job/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索职位"
+            }
+        },
+        {
+            "path": "pages/business/job/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布职位"
+            }
+        },
+        {
+            "path": "pages/business/job/company/index",
+            "style": {
+                "navigationBarTitleText": "公司主页",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/resume/list",
+            "style": {
+                "navigationBarTitleText": "我的简历",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/resume/edit",
+            "style": {
+                "navigationBarTitleText": "编辑简历"
+            }
+        },
+        {
+            "path": "pages/business/job/applications/index",
+            "style": {
+                "navigationBarTitleText": "我的投递",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/interviews/index",
+            "style": {
+                "navigationBarTitleText": "面试邀请",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/favorites/index",
+            "style": {
+                "navigationBarTitleText": "职位收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/job/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/fang/list/index",
+            "style": {
+                "navigationBarTitleText": "房源列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/detail/index",
+            "style": {
+                "navigationBarTitleText": "房源详情"
+            }
+        },
+        {
+            "path": "pages/business/fang/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索房源"
+            }
+        },
+        {
+            "path": "pages/business/fang/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布房源"
+            }
+        },
+        {
+            "path": "pages/business/fang/community/index",
+            "style": {
+                "navigationBarTitleText": "小区详情",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/agent/index",
+            "style": {
+                "navigationBarTitleText": "经纪人主页",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/viewings/index",
+            "style": {
+                "navigationBarTitleText": "看房记录",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/contracts/index",
+            "style": {
+                "navigationBarTitleText": "合同列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/fang/favorites/index",
+            "style": {
+                "navigationBarTitleText": "我的收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/fang/mortgage/calculator",
+            "style": {
+                "navigationBarTitleText": "房贷计算器"
+            }
+        },
+        {
+            "path": "pages/business/car/list/index",
+            "style": {
+                "navigationBarTitleText": "车源列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/car/detail/index",
+            "style": {
+                "navigationBarTitleText": "车源详情"
+            }
+        },
+        {
+            "path": "pages/business/car/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索车源"
+            }
+        },
+        {
+            "path": "pages/business/car/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布车源"
+            }
+        },
+        {
+            "path": "pages/business/car/brand/index",
+            "style": {
+                "navigationBarTitleText": "品牌车型库"
+            }
+        },
+        {
+            "path": "pages/business/car/inspection/index",
+            "style": {
+                "navigationBarTitleText": "检测报告"
+            }
+        },
+        {
+            "path": "pages/business/car/test-drive/index",
+            "style": {
+                "navigationBarTitleText": "试驾记录",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/car/contracts/index",
+            "style": {
+                "navigationBarTitleText": "合同列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/car/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/car/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/car/favorites/index",
+            "style": {
+                "navigationBarTitleText": "我的收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/car/evaluation/index",
+            "style": {
+                "navigationBarTitleText": "车辆评估"
             }
         }
     ],

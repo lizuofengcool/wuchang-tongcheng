@@ -1,0 +1,223 @@
+<template>
+    <view class="header">
+        <view class="type-row">
+            <view class="type-tag" :class="house.listing_type">
+                <text class="type-text">{{ house.listing_type == 'rent' ? '出租' : '出售' }}</text>
+            </view>
+            <view class="tag" v-if="house.is_urgent">
+                <text class="tag-text urgent">⚡急售</text>
+            </view>
+            <view class="tag" v-if="house.is_featured">
+                <text class="tag-text featured">★精选</text>
+            </view>
+            <view class="tag" v-if="house.has_vr">
+                <text class="tag-text vr">VR</text>
+            </view>
+        </view>
+        <text class="title">{{ house.title }}</text>
+        <view class="price-row">
+            <text class="price-symbol">¥</text>
+            <text class="price-value">{{ formatPrice(house.price) }}</text>
+            <text class="price-unit">{{ house.listing_type == 'rent' ? '/月' : '万' }}</text>
+            <text class="price-extra" v-if="house.listing_type == 'sale' && house.area_num > 0">
+                ¥{{ formatPrice(house.unit_price) }}/㎡
+            </text>
+        </view>
+        <view class="meta-grid">
+            <view class="meta-cell">
+                <text class="meta-label">户型</text>
+                <text class="meta-value">{{ house.layout }}</text>
+            </view>
+            <view class="meta-cell">
+                <text class="meta-label">面积</text>
+                <text class="meta-value">{{ house.area_text }}</text>
+            </view>
+            <view class="meta-cell">
+                <text class="meta-label">朝向</text>
+                <text class="meta-value">{{ house.orientation }}</text>
+            </view>
+            <view class="meta-cell">
+                <text class="meta-label">楼层</text>
+                <text class="meta-value">{{ house.floor_text }}</text>
+            </view>
+            <view class="meta-cell">
+                <text class="meta-label">装修</text>
+                <text class="meta-value">{{ house.decoration }}</text>
+            </view>
+            <view class="meta-cell">
+                <text class="meta-label">年限</text>
+                <text class="meta-value">{{ house.years_text }}</text>
+            </view>
+        </view>
+        <view class="stats-row" v-if="house.view_count > 0 || house.fav_count > 0">
+            <text class="stat" v-if="house.view_count > 0">浏览 {{ house.view_count }}</text>
+            <text class="stat" v-if="house.fav_count > 0">收藏 {{ house.fav_count }}</text>
+            <text class="stat" v-if="house.viewing_count > 0">看房 {{ house.viewing_count }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type House = {
+        id: number
+        title: string
+        listing_type: string
+        price: number
+        unit_price: number
+        area_num: number
+        layout: string
+        area_text: string
+        orientation: string
+        floor_text: string
+        decoration: string
+        years_text: string
+        view_count: number
+        fav_count: number
+        viewing_count: number
+        is_urgent: boolean
+        is_featured: boolean
+        has_vr: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        house: House
+    }>(), {} as any)
+
+    const formatPrice = (p: number) : string => {
+        if (p == 0) return '0'
+        if (p == Math.floor(p)) return p.toString()
+        return p.toFixed(2)
+    }
+</script>
+
+<style>
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+    }
+
+    .type-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .type-tag {
+        border-radius: 4px;
+        padding: 2px 8px;
+        margin-right: 6px;
+    }
+
+    .type-tag.rent {
+        background-color: #FF6B35;
+    }
+
+    .type-tag.sale {
+        background-color: #07C160;
+    }
+
+    .type-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .tag {
+        margin-right: 6px;
+    }
+
+    .tag-text {
+        font-size: 11px;
+        border-radius: 4px;
+        padding: 2px 6px;
+    }
+
+    .tag-text.urgent {
+        color: #EE0A24;
+        background-color: #FFE5E5;
+    }
+
+    .tag-text.featured {
+        color: #FF6B35;
+        background-color: #FFF5F0;
+    }
+
+    .tag-text.vr {
+        color: #1989FA;
+        background-color: #E5F8FF;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+        line-height: 1.4;
+        margin-top: 10px;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 10px;
+    }
+
+    .price-symbol {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .price-value {
+        font-size: 24px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-left: 2px;
+    }
+
+    .price-unit {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-left: 2px;
+    }
+
+    .price-extra {
+        font-size: 12px;
+        color: #999;
+        margin-left: 12px;
+    }
+
+    .meta-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .meta-cell {
+        width: 33.33%;
+        margin-top: 8px;
+    }
+
+    .meta-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .meta-value {
+        font-size: 13px;
+        color: #333;
+        margin-top: 2px;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .stat {
+        font-size: 11px;
+        color: #BBB;
+        margin-right: 12px;
+    }
+</style>

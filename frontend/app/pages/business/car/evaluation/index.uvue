@@ -1,0 +1,489 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="header-card" v-if="evaluation.score > 0">
+                <view class="score-wrap">
+                    <text class="score-value">{{ evaluation.score }}</text>
+                    <text class="score-unit">分</text>
+                </view>
+                <text class="score-level" :class="scoreLevel">{{ scoreLevelText }}</text>
+                <text class="conclusion" v-if="evaluation.conclusion.length > 0">{{ evaluation.conclusion }}</text>
+            </view>
+
+            <view class="section" v-if="dimensions.length > 0">
+                <text class="section-title">维度评分</text>
+                <view class="dim-row" v-for="(dim, idx) in dimensions" :key="idx">
+                    <view class="dim-info">
+                        <text class="dim-name">{{ dim.name }}</text>
+                        <text class="dim-score">{{ dim.score }}分</text>
+                    </view>
+                    <view class="bar-track">
+                        <view class="bar-fill" :style="{ width: dim.percent + '%' }" :class="dim.level"></view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="evaluation.advisor.length > 0 || evaluation.eval_time.length > 0">
+                <text class="section-title">评估信息</text>
+                <view class="info-row" v-if="evaluation.advisor.length > 0">
+                    <text class="info-label">评估师</text>
+                    <text class="info-value">{{ evaluation.advisor }}</text>
+                </view>
+                <view class="info-row" v-if="evaluation.eval_time.length > 0">
+                    <text class="info-label">评估时间</text>
+                    <text class="info-value">{{ evaluation.eval_time }}</text>
+                </view>
+            </view>
+
+            <view class="section online-section">
+                <text class="section-title">在线估值</text>
+                <text class="section-desc">填写以下信息获取参考估值</text>
+                <view class="form-row">
+                    <text class="form-label">品牌</text>
+                    <input class="form-input" v-model="brand" placeholder="如：大众" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">车型</text>
+                    <input class="form-input" v-model="model" placeholder="如：朗逸" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">年份</text>
+                    <input class="form-input" type="number" v-model="year" placeholder="如：2022" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">里程（万公里）</text>
+                    <input class="form-input" type="number" v-model="mileage" placeholder="如：3.5" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">车况</text>
+                    <view class="condition-options">
+                        <text class="cond-text" v-for="c in conditions" :key="c" :class="{ active: condition == c }" @click="onCondition(c)">{{ conditionText(c) }}</text>
+                    </view>
+                </view>
+                <view class="online-btn" @click="onEvaluate">
+                    <text class="online-btn-text">{{ evaluating ? '估值中...' : '获取估值' }}</text>
+                </view>
+                <view class="online-result" v-if="onlinePrice.length > 0">
+                    <text class="result-label">参考估值</text>
+                    <text class="result-value">¥{{ onlinePrice }} 万</text>
+                </view>
+            </view>
+
+            <car-empty v-if="evaluation.score == 0 && dimensions.length == 0 && !loading" icon="📊" text="暂无评估信息" btn-text="返回" @click="goBack" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getEvaluationDetail, getCarEvaluation, onlineEvaluate } from '@/api/business/car.uts'
+
+    type Dimension = {
+        name: string
+        score: number
+        percent: number
+        level: string
+    }
+    type Evaluation = {
+        score: number
+        conclusion: string
+        advisor: string
+        eval_time: string
+        dimensions: Dimension[]
+    }
+
+    const evaluationId = ref(0)
+    const carId = ref(0)
+    const loading = ref(false)
+    const evaluating = ref(false)
+    const evaluation = ref({
+        score: 0,
+        conclusion: '',
+        advisor: '',
+        eval_time: '',
+        dimensions: [] as Dimension[]
+    } as Evaluation)
+
+    const brand = ref('')
+    const model = ref('')
+    const year = ref('')
+    const mileage = ref('')
+    const condition = ref('good')
+    const onlinePrice = ref('')
+    const conditions = ['excellent', 'good', 'normal', 'bad'] as string[]
+
+    const scoreLevel = computed(() : string => {
+        const s = evaluation.value.score
+        if (s >= 90) return 'excellent'
+        if (s >= 75) return 'good'
+        if (s >= 60) return 'normal'
+        return 'bad'
+    })
+
+    const scoreLevelText = computed(() : string => {
+        const s = evaluation.value.score
+        if (s >= 90) return '优秀'
+        if (s >= 75) return '良好'
+        if (s >= 60) return '一般'
+        return '较差'
+    })
+
+    const dimensions = computed(() : Dimension[] => {
+        const list = [] as Dimension[]
+        const src = evaluation.value.dimensions as Dimension[] ?? ([] as Dimension[])
+        for (let i = 0; i < src.length; i++) {
+            const d = src[i]
+            let lvl = 'normal'
+            if (d.score >= 85) lvl = 'excellent'
+            else if (d.score >= 70) lvl = 'good'
+            else if (d.score < 60) lvl = 'bad'
+            list.push({
+                name: d.name,
+                score: d.score,
+                percent: d.percent > 0 ? d.percent : d.score,
+                level: lvl
+            } as Dimension)
+        }
+        return list
+    })
+
+    const conditionText = (c: string) : string => {
+        if (c == 'excellent') return '优秀'
+        if (c == 'good') return '良好'
+        if (c == 'normal') return '一般'
+        if (c == 'bad') return '较差'
+        return c
+    }
+
+    const onCondition = (c: string) => {
+        condition.value = c
+    }
+
+    const loadEvaluation = () => {
+        loading.value = true
+        if (evaluationId.value > 0) {
+            getEvaluationDetail(evaluationId.value).then((res: ApiResult) => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    evaluation.value = mapEvaluation(d)
+                }
+            }).catch(() => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+            })
+        } else if (carId.value > 0) {
+            getCarEvaluation(carId.value).then((res: ApiResult) => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+                if (res.code == 200 && res.data) {
+                    const d = res.data as UTSJSONObject
+                    evaluation.value = mapEvaluation(d)
+                }
+            }).catch(() => {
+                loading.value = false
+                uni.stopPullDownRefresh()
+            })
+        }
+    }
+
+    const mapEvaluation = (d: UTSJSONObject) : Evaluation => {
+        return {
+            score: (d['score'] as number) ?? 0,
+            conclusion: (d['conclusion'] as string) ?? '',
+            advisor: (d['advisor'] as string) ?? '',
+            eval_time: (d['eval_time'] as string) ?? '',
+            dimensions: (d['dimensions'] as Dimension[]) ?? ([] as Dimension[])
+        } as Evaluation
+    }
+
+    const onEvaluate = () => {
+        if (evaluating.value) return
+        if (brand.value.length == 0 || model.value.length == 0 || year.value.length == 0 || mileage.value.length == 0) {
+            uni.showToast({ title: '请填写完整信息', icon: 'none' })
+            return
+        }
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        evaluating.value = true
+        const data: UTSJSONObject = {
+            brand: brand.value,
+            model: model.value,
+            year: parseInt(year.value),
+            mileage: parseFloat(mileage.value),
+            condition: condition.value
+        } as UTSJSONObject
+        onlineEvaluate(data).then((res: ApiResult) => {
+            evaluating.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const price = (d['price'] as number) ?? (d['estimated_price'] as number) ?? 0
+                onlinePrice.value = price.toString()
+                // 如果返回了完整评估信息，则更新
+                if (d['score'] != null) {
+                    evaluation.value = mapEvaluation(d)
+                }
+            }
+        }).catch(() => {
+            evaluating.value = false
+        })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        const cid = options['car_id']
+        if (id != null) {
+            evaluationId.value = parseInt(id as string)
+        } else if (cid != null) {
+            carId.value = parseInt(cid as string)
+        }
+        if (evaluationId.value > 0 || carId.value > 0) {
+            loadEvaluation()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        if (evaluationId.value > 0 || carId.value > 0) {
+            loadEvaluation()
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .header-card {
+        background-color: #FFFFFF;
+        padding: 24px 16px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .score-wrap {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .score-value {
+        font-size: 48px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .score-unit {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-left: 4px;
+    }
+
+    .score-level {
+        font-size: 14px;
+        margin-top: 8px;
+        padding: 4px 14px;
+        border-radius: 14px;
+    }
+
+    .score-level.excellent {
+        color: #07C160;
+        background-color: #F0FFF8;
+    }
+
+    .score-level.good {
+        color: #1989FA;
+        background-color: #F0F8FF;
+    }
+
+    .score-level.normal {
+        color: #FF976A;
+        background-color: #FFF8E5;
+    }
+
+    .score-level.bad {
+        color: #EE0A24;
+        background-color: #FFE5E5;
+    }
+
+    .conclusion {
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        margin-top: 10px;
+        line-height: 1.5;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .dim-row {
+        margin-bottom: 12px;
+    }
+
+    .dim-info {
+        flex-direction: row;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .dim-name {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .dim-score {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .bar-track {
+        height: 6px;
+        background-color: #F5F5F5;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    .bar-fill.excellent {
+        background-color: #07C160;
+    }
+
+    .bar-fill.good {
+        background-color: #1989FA;
+    }
+
+    .bar-fill.normal {
+        background-color: #FF976A;
+    }
+
+    .bar-fill.bad {
+        background-color: #EE0A24;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .online-section {
+        margin-bottom: 0;
+    }
+
+    .section-desc {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        margin-bottom: 12px;
+    }
+
+    .form-label {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 6px;
+    }
+
+    .form-input {
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .condition-options {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+
+    .cond-text {
+        font-size: 12px;
+        color: #666;
+        padding: 6px 14px;
+        border-radius: 16px;
+        background-color: #F5F5F5;
+        margin-right: 8px;
+        margin-top: 4px;
+    }
+
+    .cond-text.active {
+        color: #FFFFFF;
+        background-color: #FF6B35;
+    }
+
+    .online-btn {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 12px;
+        align-items: center;
+        margin-top: 16px;
+    }
+
+    .online-btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .online-result {
+        background-color: #FFF5F0;
+        border-radius: 12px;
+        padding: 16px;
+        align-items: center;
+        margin-top: 12px;
+    }
+
+    .result-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .result-value {
+        font-size: 24px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+</style>

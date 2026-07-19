@@ -1,0 +1,252 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="card-wrap">
+                <job-interview-card v-for="item in interviewList" :key="item.id" :interview="transformInterview(item)" :show-actions="true" @click="goDetail" @accept="onAccept" @reject="onReject" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && interviewList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <job-empty v-if="interviewList.length == 0 && !loading" icon="📅" text="暂无面试邀约" btn-text="去找工作" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyInterviews, acceptInterview, rejectInterview } from '@/api/business/job.uts'
+
+    type Tab = { key: string, name: string }
+    type InterviewItem = {
+        id: number
+        application_id: number
+        job_id: number
+        job_title: string
+        company_name: string
+        time: string
+        location: string
+        interviewer: string
+        type: string
+        status: string
+    }
+    type CardData = {
+        id: number
+        position: string
+        company: string
+        time: string
+        location: string
+        interviewer: string
+        type: string
+        status: string
+    }
+
+    const tabs = ref([
+        { key: 'all', name: '全部' },
+        { key: 'pending', name: '待回复' },
+        { key: 'accepted', name: '已接受' },
+        { key: 'rejected', name: '已拒绝' },
+        { key: 'completed', name: '已完成' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const interviewList = ref([] as InterviewItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformInterview = (item: InterviewItem) : CardData => {
+        return {
+            id: item.id,
+            position: item.job_title,
+            company: item.company_name,
+            time: item.time,
+            location: item.location,
+            interviewer: item.interviewer,
+            type: item.type,
+            status: item.status
+        } as CardData
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const status = tabs.value[currentTab.value].key
+        if (status != 'all') {
+            params['status'] = status
+        }
+
+        listMyInterviews(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as InterviewItem[]) ?? ([] as InterviewItem[])
+                if (reset) {
+                    interviewList.value = newList
+                } else {
+                    interviewList.value = interviewList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadList(true)
+    }
+
+    const onAccept = (id: number) => {
+        uni.showModal({
+            title: '接受面试',
+            content: '确认接受此面试邀约？',
+            success: (res) => {
+                if (res.confirm) {
+                    acceptInterview(id).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已接受', icon: 'success' })
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onReject = (id: number) => {
+        uni.showModal({
+            title: '拒绝面试',
+            content: '确认拒绝此面试邀约？',
+            success: (res) => {
+                if (res.confirm) {
+                    rejectInterview(id).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已拒绝', icon: 'none' })
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/interviews/detail?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/job/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom-width: 1px;
+        border-bottom-color: #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .card-wrap {
+        flex-direction: column;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

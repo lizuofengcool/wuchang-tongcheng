@@ -1,0 +1,369 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="company-header" :style="{ backgroundColor: company.logo.length > 0 ? '#F5F5F5' : '#FF6B35' }">
+                <view class="logo-row">
+                    <image class="logo" :src="company.logo" mode="aspectFill" lazy-load="true" v-if="company.logo.length > 0" />
+                    <view class="logo-placeholder" v-else>
+                        <text class="logo-text">{{ company.name.charAt(0) }}</text>
+                    </view>
+                    <view class="info">
+                        <text class="name">{{ company.name }}</text>
+                        <view class="meta-row" v-if="metaText.length > 0">
+                            <text class="meta">{{ metaText }}</text>
+                        </view>
+                        <view class="verified-row" v-if="company.is_verified">
+                            <text class="verified-text">✓ 企业认证</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="stats-row">
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ company.job_count }}</text>
+                        <text class="stat-label">在招职位</text>
+                    </view>
+                    <view class="stat-cell">
+                        <text class="stat-value">{{ company.follower_count }}</text>
+                        <text class="stat-label">关注者</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="company.description.length > 0">
+                <text class="section-title">公司简介</text>
+                <text class="section-content">{{ company.description }}</text>
+            </view>
+
+            <view class="section" v-if="company.address.length > 0">
+                <text class="section-title">公司地址</text>
+                <text class="section-content">{{ company.address }}</text>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">在招职位</text>
+                    <text class="count-text">共 {{ jobList.length }} 个</text>
+                </view>
+                <job-card v-for="item in jobList" :key="item.id" :job="transformJob(item)" @click="goJobDetail" />
+                <job-empty v-if="jobList.length == 0 && !loading" icon="💼" text="暂无在招职位" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn outline" @click="toggleFollow">
+                <text class="bottom-btn-text">{{ isFollowed ? '已关注' : '+ 关注' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getCompanyDetail, listCompanyJobs, followCompany, unfollowCompany } from '@/api/business/job.uts'
+
+    type Company = {
+        id: number
+        name: string
+        logo: string
+        size: string
+        industry: string
+        stage: string
+        city: string
+        address: string
+        description: string
+        is_verified: boolean
+        job_count: number
+        follower_count: number
+    }
+    type JobItem = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        view_count: number
+        fav_count: number
+        application_count: number
+    }
+    type JobCardData = {
+        id: number
+        title: string
+        salary_range: string
+        city: string
+        experience: string
+        education: string
+        is_urgent: boolean
+        is_hot: boolean
+        is_remote: boolean
+        view_count: number
+        fav_count: number
+        application_count: number
+    }
+
+    const companyId = ref(0)
+    const company = ref({
+        id: 0, name: '', logo: '', size: '', industry: '', stage: '', city: '',
+        address: '', description: '', is_verified: false, job_count: 0, follower_count: 0
+    } as Company)
+    const jobList = ref([] as JobItem[])
+    const loading = ref(false)
+    const isFollowed = ref(false)
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (company.value.industry.length > 0) parts.push(company.value.industry)
+        if (company.value.size.length > 0) parts.push(company.value.size)
+        if (company.value.stage.length > 0) parts.push(company.value.stage)
+        if (company.value.city.length > 0) parts.push(company.value.city)
+        return parts.join(' · ')
+    })
+
+    const transformJob = (item: JobItem) : JobCardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            salary_range: item.salary_range,
+            city: item.city,
+            experience: item.experience,
+            education: item.education,
+            is_urgent: item.is_urgent,
+            is_hot: item.is_hot,
+            is_remote: item.is_remote,
+            view_count: item.view_count,
+            fav_count: item.fav_count,
+            application_count: item.application_count
+        } as JobCardData
+    }
+
+    const loadCompany = () => {
+        getCompanyDetail(companyId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                company.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    logo: (d['logo'] as string) ?? '',
+                    size: (d['size'] as string) ?? '',
+                    industry: (d['industry'] as string) ?? '',
+                    stage: (d['stage'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    address: (d['address'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    is_verified: (d['is_verified'] as boolean) ?? false,
+                    job_count: (d['job_count'] as number) ?? 0,
+                    follower_count: (d['follower_count'] as number) ?? 0
+                } as Company
+                isFollowed.value = (d['is_followed'] as boolean) ?? false
+            }
+        })
+        loadJobs()
+    }
+
+    const loadJobs = () => {
+        loading.value = true
+        const params: UTSJSONObject = { page: 1, page_size: 50 } as UTSJSONObject
+        listCompanyJobs(companyId.value, params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                jobList.value = (d['list'] as JobItem[]) ?? ([] as JobItem[])
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const toggleFollow = () => {
+        if (isFollowed.value) {
+            unfollowCompany(companyId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    isFollowed.value = false
+                    company.value.follower_count = Math.max(0, company.value.follower_count - 1)
+                    uni.showToast({ title: '已取消关注', icon: 'none' })
+                }
+            })
+        } else {
+            followCompany(companyId.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    isFollowed.value = true
+                    company.value.follower_count = company.value.follower_count + 1
+                    uni.showToast({ title: '关注成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const goJobDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/job/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            companyId.value = parseInt(id as string)
+            loadCompany()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadCompany()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .company-header {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .logo-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        margin-right: 12px;
+    }
+
+    .logo-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        background-color: #FFFFFF;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .logo-text {
+        font-size: 32px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .verified-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .verified-text {
+        font-size: 11px;
+        color: #07C160;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .stat-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .count-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bottom-btn.outline {
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .bottom-btn-text {
+        font-size: 15px;
+        color: #FF6B35;
+    }
+</style>

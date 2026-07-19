@@ -1,0 +1,472 @@
+// 同城招聘求职模块 API 封装
+// 对应后端 backend/internal/modules/job/plugin.go 路由清单（90+ API）
+// 路由前缀：/job（由 request.uts 中 BASE_URL 拼接为 /api/v1/job）
+// 按场景分组：职位/收藏/推广/公司/认证/简历/投递/面试/消息/会话/评价/举报/统计
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 职位 =====
+// 职位列表（公开）
+export const listJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job', params)
+}
+
+// 职位详情（公开）
+export const getJobDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/' + id)
+}
+
+// 搜索职位（公开，走 Elasticsearch）
+export const searchJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/search', params)
+}
+
+// 高级搜索（公开）
+export const advancedSearchJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/advanced-search', params)
+}
+
+// 附近职位（公开）
+export const listNearbyJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/nearby', params)
+}
+
+// 相似职位（公开）
+export const listSimilarJobs = (id: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/' + id + '/similar', params)
+}
+
+// 发布职位（需登录）
+export const createJob = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job', data)
+}
+
+// 更新职位（需登录）
+export const updateJob = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/' + id, data)
+}
+
+// 删除职位（需登录）
+export const deleteJob = (id: number) : Promise<ApiResult> => {
+    return del('/job/' + id)
+}
+
+// 更新职位状态（需登录，状态机：上架/下架/关闭）
+export const updateJobStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/' + id + '/status', data)
+}
+
+// 我的发布（需登录）
+export const listMyJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/mine', params)
+}
+
+// ===== 职位收藏 =====
+// 收藏（需登录）
+export const favJob = (id: number) : Promise<ApiResult> => {
+    return post('/job/' + id + '/fav', null)
+}
+
+// 取消收藏（需登录）
+export const unfavJob = (id: number) : Promise<ApiResult> => {
+    return del('/job/' + id + '/fav')
+}
+
+// 收藏状态（公开）
+export const favJobStatus = (id: number) : Promise<ApiResult> => {
+    return get('/job/' + id + '/fav')
+}
+
+// 我的收藏列表（需登录）
+export const listFavoriteJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/favorites', params)
+}
+
+// ===== 职位推广 =====
+export const promotionJob = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/' + id + '/promotion', data)
+}
+
+// ===== 投递记录（按职位查询） =====
+export const listApplicationsByJob = (jobId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/' + jobId + '/applications', params)
+}
+
+// ===== 公司 =====
+// 公司列表（公开）
+export const listCompanies = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/companies', params)
+}
+
+// 公司详情（公开）
+export const getCompanyDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/companies/' + id)
+}
+
+// 我的公司（需登录）
+export const getMyCompany = () : Promise<ApiResult> => {
+    return get('/job/companies/mine')
+}
+
+// 创建公司（需登录）
+export const createCompany = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/companies', data)
+}
+
+// 更新公司（需登录）
+export const updateCompany = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/companies/' + id, data)
+}
+
+// 关注公司（需登录）
+export const followCompany = (id: number) : Promise<ApiResult> => {
+    return post('/job/companies/' + id + '/follow', null)
+}
+
+// 取消关注公司（需登录）
+export const unfollowCompany = (id: number) : Promise<ApiResult> => {
+    return del('/job/companies/' + id + '/follow')
+}
+
+// 我关注的公司（需登录）
+export const listFollowingCompanies = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/companies/following', params)
+}
+
+// 公司认证列表（公开）
+export const listCertsByCompany = (companyId: number) : Promise<ApiResult> => {
+    return get('/job/companies/' + companyId + '/certifications')
+}
+
+// ===== 企业认证 =====
+// 认证列表（公开）
+export const listCertifications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/certifications', params)
+}
+
+// 认证详情（公开）
+export const getCertification = (id: number) : Promise<ApiResult> => {
+    return get('/job/certifications/' + id)
+}
+
+// 提交认证申请（需登录）
+export const createCertification = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/certifications', data)
+}
+
+// ===== 简历 =====
+// 简历列表（需登录）
+export const listResumes = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/resumes', params)
+}
+
+// 我的简历（需登录）
+export const listMyResumes = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/resumes/mine', params)
+}
+
+// 默认简历（需登录）
+export const getDefaultResume = () : Promise<ApiResult> => {
+    return get('/job/resumes/default')
+}
+
+// 简历详情（需登录）
+export const getResumeDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/resumes/' + id)
+}
+
+// 创建简历（需登录）
+export const createResume = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/resumes', data)
+}
+
+// 更新简历（需登录）
+export const updateResume = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/resumes/' + id, data)
+}
+
+// 删除简历（需登录）
+export const deleteResume = (id: number) : Promise<ApiResult> => {
+    return del('/job/resumes/' + id)
+}
+
+// 设为默认简历（需登录）
+export const setDefaultResume = (id: number) : Promise<ApiResult> => {
+    return put('/job/resumes/' + id + '/default', null)
+}
+
+// 更新简历状态（需登录）
+export const updateResumeStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/resumes/' + id + '/status', data)
+}
+
+// ===== 投递记录 =====
+// 投递职位（需登录）
+export const createApplication = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/applications', data)
+}
+
+// 投递列表（需登录）
+export const listApplications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/applications', params)
+}
+
+// 投递统计（需登录）
+export const getApplicationStats = () : Promise<ApiResult> => {
+    return get('/job/applications/stats')
+}
+
+// 投递详情（需登录）
+export const getApplicationDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/applications/' + id)
+}
+
+// 更新投递状态（需登录）
+export const updateApplicationStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/applications/' + id + '/status', data)
+}
+
+// 批量操作（需登录）
+export const batchActionApplications = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/applications/batch', data)
+}
+
+// ===== 面试邀约 =====
+// 创建面试（需登录）
+export const createInterview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/interviews', data)
+}
+
+// 面试列表（需登录）
+export const listInterviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/interviews', params)
+}
+
+// 面试统计（需登录）
+export const getInterviewStats = () : Promise<ApiResult> => {
+    return get('/job/interviews/stats')
+}
+
+// 面试详情（需登录）
+export const getInterviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/interviews/' + id)
+}
+
+// 更新面试（需登录）
+export const updateInterview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/interviews/' + id, data)
+}
+
+// 面试操作：接受/拒绝/改期（需登录）
+export const interviewAction = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/interviews/' + id + '/action', data)
+}
+
+// 提交面试反馈（需登录）
+export const interviewFeedback = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/interviews/' + id + '/feedback', data)
+}
+
+// 某投递记录关联的面试（需登录）
+export const listInterviewsByApplication = (applicationId: number) : Promise<ApiResult> => {
+    return get('/job/applications/' + applicationId + '/interviews')
+}
+
+// ===== 沟通消息 =====
+// 发送消息（需登录）
+export const sendMessage = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/messages', data)
+}
+
+// 消息列表（需登录）
+export const listMessages = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/messages', params)
+}
+
+// 未读消息数（需登录）
+export const countUnreadMessages = () : Promise<ApiResult> => {
+    return get('/job/messages/unread/count')
+}
+
+// 消息详情（需登录）
+export const getMessageDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/messages/' + id)
+}
+
+// 删除消息（需登录）
+export const deleteMessage = (id: number) : Promise<ApiResult> => {
+    return del('/job/messages/' + id)
+}
+
+// 批量删除消息（需登录）
+export const batchDeleteMessages = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/messages/batch-delete', data)
+}
+
+// 撤回消息（需登录）
+export const recallMessage = (id: number) : Promise<ApiResult> => {
+    return put('/job/messages/' + id + '/recall', null)
+}
+
+// ===== 会话 =====
+// 会话列表（需登录）
+export const listConversations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/conversations', params)
+}
+
+// 会话消息列表（需登录）
+export const listConversationMessages = (conversationId: string, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/conversations/' + conversationId + '/messages', params)
+}
+
+// 标记会话已读（需登录）
+export const markConversationRead = (conversationId: string) : Promise<ApiResult> => {
+    return put('/job/conversations/' + conversationId + '/read', null)
+}
+
+// ===== 评价 =====
+// 评价列表（公开）
+export const listReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/reviews', params)
+}
+
+// 评价详情（公开）
+export const getReviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/job/reviews/' + id)
+}
+
+// 某用户的评价（公开）
+export const listReviewsByUser = (userId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/users/' + userId + '/reviews', params)
+}
+
+// 公司评价列表（公开）
+export const listCompanyReviews = (companyId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/companies/' + companyId + '/reviews', params)
+}
+
+// 公司评价统计（公开）
+export const getCompanyReviewStats = (companyId: number) : Promise<ApiResult> => {
+    return get('/job/companies/' + companyId + '/reviews/stats')
+}
+
+// 创建评价（需登录）
+export const createReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/reviews', data)
+}
+
+// 我的评价（需登录）
+export const listMyReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/reviews/mine', params)
+}
+
+// 更新评价（需登录）
+export const updateReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/job/reviews/' + id, data)
+}
+
+// 删除评价（需登录）
+export const deleteReview = (id: number) : Promise<ApiResult> => {
+    return del('/job/reviews/' + id)
+}
+
+// 回复评价（需登录）
+export const replyReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/reviews/' + id + '/reply', data)
+}
+
+// 追加评价（需登录）
+export const appendReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/reviews/' + id + '/append', data)
+}
+
+// 点赞评价（需登录）
+export const likeReview = (id: number) : Promise<ApiResult> => {
+    return post('/job/reviews/' + id + '/like', null)
+}
+
+// ===== 举报 =====
+// 创建举报（需登录）
+export const createReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/reports', data)
+}
+
+// 我的举报（需登录）
+export const listMyReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/reports/mine', params)
+}
+
+// 申诉举报（需登录）
+export const appealReport = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/job/reports/' + id + '/appeal', data)
+}
+
+// ===== 统计（公开部分） =====
+// 热门职位
+export const getHotJobs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/statistics/hot-jobs', params)
+}
+
+// 薪资趋势
+export const getSalaryTrend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/statistics/salary-trend', params)
+}
+
+// 分类统计
+export const getCategoryStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/statistics/category', params)
+}
+
+// 地区统计
+export const getRegionStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/statistics/region', params)
+}
+
+// 职位趋势
+export const getJobTrend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/job/statistics/job-trend', params)
+}
+
+// ===== 统计（C 端登录） =====
+// 招聘方统计
+export const getRecruiterStats = () : Promise<ApiResult> => {
+    return get('/job/statistics/recruiter')
+}
+
+// 求职方统计
+export const getApplicantStats = () : Promise<ApiResult> => {
+    return get('/job/statistics/applicant')
+}
+
+// 个人面板
+export const getDashboard = () : Promise<ApiResult> => {
+    return get('/job/statistics/dashboard')
+}
+
+// ===== 搜索历史（本地存储） =====
+export const getSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('job_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+export const clearSearchHistory = () => {
+    uni.removeStorageSync('job_search_history')
+}
+
+export const addSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('job_search_history', list)
+}

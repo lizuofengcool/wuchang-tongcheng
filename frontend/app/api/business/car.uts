@@ -1,0 +1,488 @@
+// 同城车辆买卖模块 API 封装
+// 对应后端 backend/internal/modules/car/plugin.go 路由清单（80+ API）
+// 路由前缀：/car（由 request.uts 中 BASE_URL 拼接为 /api/v1/car）
+// 按场景分组：车源/收藏/发布单/检测/评估/分期/车险/试驾/过户/合同/担保/评价/举报/推荐/车型库/统计
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 车源 =====
+// 车源列表（公开）
+export const listCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car', params)
+}
+
+// 车源详情（公开）
+export const getCarDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/' + id)
+}
+
+// 搜索车源（公开）
+export const searchCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/search', params)
+}
+
+// 高级搜索（公开）
+export const advancedSearchCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/advanced-search', params)
+}
+
+// 附近车源（公开）
+export const listNearbyCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/nearby', params)
+}
+
+// 发布车源（需登录）
+export const createCar = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car', data)
+}
+
+// 更新车源（需登录）
+export const updateCar = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/' + id, data)
+}
+
+// 删除车源（需登录）
+export const deleteCar = (id: number) : Promise<ApiResult> => {
+    return del('/car/' + id)
+}
+
+// 我的发布（需登录）
+export const listMyCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/mine', params)
+}
+
+// ===== 车源收藏 =====
+export const favCar = (id: number) : Promise<ApiResult> => {
+    return post('/car/' + id + '/fav', null)
+}
+
+export const favCarStatus = (id: number) : Promise<ApiResult> => {
+    return get('/car/' + id + '/fav')
+}
+
+export const listFavoriteCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/favorites', params)
+}
+
+// 增加联系次数（需登录）
+export const incrCarContact = (id: number) : Promise<ApiResult> => {
+    return post('/car/' + id + '/contact', null)
+}
+
+// 增加分享次数（需登录）
+export const incrCarShare = (id: number) : Promise<ApiResult> => {
+    return post('/car/' + id + '/share', null)
+}
+
+// 记录浏览（需登录）
+export const recordCarView = (id: number) : Promise<ApiResult> => {
+    return post('/car/' + id + '/views', null)
+}
+
+// ===== 发布单（listing） =====
+export const listCarListings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/listings', params)
+}
+
+export const getCarListingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/listings/' + id)
+}
+
+export const createCarListing = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/listings', data)
+}
+
+export const updateCarListing = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/listings/' + id, data)
+}
+
+export const deleteCarListing = (id: number) : Promise<ApiResult> => {
+    return del('/car/listings/' + id)
+}
+
+export const listMyCarListings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/listings/mine', params)
+}
+
+// ===== 检测报告 =====
+export const listInspections = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/inspections', params)
+}
+
+export const getInspectionDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/inspections/' + id)
+}
+
+export const getCarInspection = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/inspection')
+}
+
+export const createInspection = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/inspections', data)
+}
+
+export const updateInspection = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/inspections/' + id, data)
+}
+
+export const deleteInspection = (id: number) : Promise<ApiResult> => {
+    return del('/car/inspections/' + id)
+}
+
+export const listMyInspections = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/inspections/mine', params)
+}
+
+// ===== 评估 =====
+export const listEvaluations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/evaluations', params)
+}
+
+export const getEvaluationDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/evaluations/' + id)
+}
+
+export const getCarEvaluation = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/evaluation')
+}
+
+export const listCarEvaluations = (carId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/evaluations', params)
+}
+
+export const createEvaluation = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/evaluations', data)
+}
+
+export const updateEvaluation = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/evaluations/' + id, data)
+}
+
+export const deleteEvaluation = (id: number) : Promise<ApiResult> => {
+    return del('/car/evaluations/' + id)
+}
+
+export const listMyEvaluations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/evaluations/mine', params)
+}
+
+// 在线估值（需登录）
+export const onlineEvaluate = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/evaluations/online', data)
+}
+
+// ===== 分期 =====
+export const listFinancings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/financings', params)
+}
+
+export const listHotFinancings = () : Promise<ApiResult> => {
+    return get('/car/financings/hot')
+}
+
+export const getFinancingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/financings/' + id)
+}
+
+// 分期计算（需登录）
+export const calculateFinancing = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/financings/calculate', data)
+}
+
+// ===== 车险 =====
+export const listInsurances = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/insurances', params)
+}
+
+export const listHotInsurances = () : Promise<ApiResult> => {
+    return get('/car/insurances/hot')
+}
+
+export const getInsuranceDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/insurances/' + id)
+}
+
+// 车险报价（需登录）
+export const quoteInsurance = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/insurances/quote', data)
+}
+
+// ===== 试驾 =====
+export const listTestDrives = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/test-drives', params)
+}
+
+export const getTestDriveDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/test-drives/' + id)
+}
+
+export const listTestDrivesByDealer = (dealerId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/dealers/' + dealerId + '/test-drives', params)
+}
+
+export const createTestDrive = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/test-drives', data)
+}
+
+export const updateTestDrive = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/test-drives/' + id, data)
+}
+
+export const cancelTestDrive = (id: number) : Promise<ApiResult> => {
+    return post('/car/test-drives/' + id + '/cancel', null)
+}
+
+export const listMyTestDrives = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/test-drives/mine', params)
+}
+
+export const listSalesTestDrives = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/test-drives/sales', params)
+}
+
+export const uploadTestDriveLicense = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/test-drives/' + id + '/license', data)
+}
+
+// ===== 过户 =====
+export const getTransferDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/transfers/' + id)
+}
+
+export const getCarTransfer = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/transfer')
+}
+
+export const listTransfers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/transfers', params)
+}
+
+export const listSoldTransfers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/transfers/sold', params)
+}
+
+export const listBoughtTransfers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/transfers/bought', params)
+}
+
+export const createTransfer = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/transfers', data)
+}
+
+export const updateTransfer = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/transfers/' + id, data)
+}
+
+export const deleteTransfer = (id: number) : Promise<ApiResult> => {
+    return del('/car/transfers/' + id)
+}
+
+// ===== 担保交易 =====
+export const listCarEscrowsByCar = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/escrows')
+}
+
+export const listEscrows = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/escrows', params)
+}
+
+export const getEscrowDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/escrows/' + id)
+}
+
+export const getEscrowByNo = (no: string) : Promise<ApiResult> => {
+    return get('/car/escrows/no/' + no)
+}
+
+export const escrowAction = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/escrows/' + id + '/action', data)
+}
+
+// ===== 合同 =====
+export const listCarContractsByCar = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/contracts')
+}
+
+export const listContracts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/contracts', params)
+}
+
+export const getContractDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/contracts/' + id)
+}
+
+export const getContractByNo = (no: string) : Promise<ApiResult> => {
+    return get('/car/contracts/no/' + no)
+}
+
+export const signContract = (id: number) : Promise<ApiResult> => {
+    return post('/car/contracts/' + id + '/sign', null)
+}
+
+export const terminateContract = (id: number) : Promise<ApiResult> => {
+    return post('/car/contracts/' + id + '/terminate', null)
+}
+
+// ===== 评价 =====
+export const listReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reviews', params)
+}
+
+export const listReviewsByTarget = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reviews/by-target', params)
+}
+
+export const getReviewStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reviews/stats', params)
+}
+
+export const getReviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/car/reviews/' + id)
+}
+
+export const createReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/reviews', data)
+}
+
+export const updateReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/car/reviews/' + id, data)
+}
+
+export const deleteReview = (id: number) : Promise<ApiResult> => {
+    return del('/car/reviews/' + id)
+}
+
+export const listMyReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reviews/mine', params)
+}
+
+export const replyReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/reviews/' + id + '/reply', data)
+}
+
+export const appendReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/reviews/' + id + '/append', data)
+}
+
+export const likeReview = (id: number) : Promise<ApiResult> => {
+    return post('/car/reviews/' + id + '/like', null)
+}
+
+// ===== 举报 =====
+export const listReportsByTarget = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reports/by-target', params)
+}
+
+export const createReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/reports', data)
+}
+
+export const listMyReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/reports/mine', params)
+}
+
+export const appealReport = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/car/reports/' + id + '/appeal', data)
+}
+
+// ===== 推荐 =====
+export const listCarRecommendations = (carId: number) : Promise<ApiResult> => {
+    return get('/car/cars/' + carId + '/recommendations')
+}
+
+export const listMyRecommendations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/recommendations', params)
+}
+
+export const markRecClicked = (id: number) : Promise<ApiResult> => {
+    return post('/car/recommendations/' + id + '/click', null)
+}
+
+export const markRecContacted = (id: number) : Promise<ApiResult> => {
+    return post('/car/recommendations/' + id + '/contact', null)
+}
+
+export const markRecDismissed = (id: number) : Promise<ApiResult> => {
+    return post('/car/recommendations/' + id + '/dismiss', null)
+}
+
+// ===== 车型库 =====
+export const listModels = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/models', params)
+}
+
+export const getModel = (id: number) : Promise<ApiResult> => {
+    return get('/car/models/' + id)
+}
+
+export const listBrands = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/brands', params)
+}
+
+export const listAllBrands = () : Promise<ApiResult> => {
+    return get('/car/brands/all')
+}
+
+export const listModelsByBrand = (brandId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/brands/' + brandId + '/models', params)
+}
+
+export const listCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/categories', params)
+}
+
+export const listCategoriesByLevel = (level: number) : Promise<ApiResult> => {
+    return get('/car/categories/level/' + level)
+}
+
+export const getCategory = (id: number) : Promise<ApiResult> => {
+    return get('/car/categories/' + id)
+}
+
+export const listCategoryChildren = (id: number) : Promise<ApiResult> => {
+    return get('/car/categories/' + id + '/children')
+}
+
+// ===== 统计 =====
+// 热门车源（公开）
+export const getHotCars = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/statistics/hot-cars', params)
+}
+
+// 价格趋势（公开）
+export const getPriceTrend = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/car/statistics/price-trend', params)
+}
+
+// 卖家统计（需登录）
+export const getSellerStats = () : Promise<ApiResult> => {
+    return get('/car/statistics/seller')
+}
+
+// ===== 搜索历史（本地存储） =====
+export const getSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('car_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+export const clearSearchHistory = () => {
+    uni.removeStorageSync('car_search_history')
+}
+
+export const addSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('car_search_history', list)
+}

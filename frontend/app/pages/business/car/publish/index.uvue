@@ -1,0 +1,671 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <text class="title">{{ isEdit ? '编辑车源' : '发布车源' }}</text>
+            <text class="subtitle">请如实填写车源信息</text>
+        </view>
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">基本信息</text>
+                <view class="form-row">
+                    <text class="form-label">标题</text>
+                    <input class="form-input" v-model="form.title" placeholder="如：2018款 丰田凯美瑞 2.0G 豪华版" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">类型</text>
+                    <view class="radio-row">
+                        <view class="radio-item" :class="{ active: form.listing_type == 'sale' }" @click="form.listing_type = 'sale'">
+                            <text class="radio-text">出售</text>
+                        </view>
+                        <view class="radio-item" :class="{ active: form.listing_type == 'rent' }" @click="form.listing_type = 'rent'">
+                            <text class="radio-text">出租</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">价格</text>
+                    <view class="input-suffix-wrap">
+                        <input class="form-input" type="number" v-model="form.price_text" placeholder="请输入价格" />
+                        <text class="suffix">{{ form.listing_type == 'rent' ? '元/日' : '万元' }}</text>
+                    </view>
+                </view>
+                <view class="form-row" @click="showBrandSelector = true">
+                    <text class="form-label">品牌</text>
+                    <text class="form-value" :class="{ placeholder: form.brand_name.length == 0 }">{{ form.brand_name.length > 0 ? form.brand_name : '请选择品牌' }}</text>
+                    <text class="arrow">›</text>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">车型</text>
+                    <input class="form-input" v-model="form.model_name" placeholder="如：凯美瑞 2.0G 豪华版" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">年份</text>
+                    <input class="form-input" type="number" v-model="form.year_text" placeholder="如：2018" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">里程</text>
+                    <view class="input-suffix-wrap">
+                        <input class="form-input" type="number" v-model="form.mileage_text" placeholder="如：5.2" />
+                        <text class="suffix">万公里</text>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">变速箱</text>
+                    <view class="radio-row">
+                        <view class="radio-item" :class="{ active: form.transmission == '自动' }" @click="form.transmission = '自动'">
+                            <text class="radio-text">自动</text>
+                        </view>
+                        <view class="radio-item" :class="{ active: form.transmission == '手动' }" @click="form.transmission = '手动'">
+                            <text class="radio-text">手动</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="form-label">排放</text>
+                    <input class="form-input" v-model="form.emission_standard" placeholder="如：国V" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">颜色</text>
+                    <input class="form-input" v-model="form.color" placeholder="如：白色" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">燃料</text>
+                    <view class="radio-row">
+                        <view class="radio-item" v-for="(f, idx) in fuelTypes" :key="idx" :class="{ active: form.fuel_type == f }" @click="form.fuel_type = f">
+                            <text class="radio-text">{{ f }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">车源详情</text>
+                <view class="form-row column">
+                    <text class="form-label">车辆描述</text>
+                    <textarea class="form-textarea" v-model="form.description" placeholder="请输入车源详细描述（车况、配置、亮点等）" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">所在城市</text>
+                    <input class="form-input" v-model="form.city" placeholder="请输入城市" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">详细地址</text>
+                    <input class="form-input" v-model="form.address" placeholder="请输入详细地址" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">车源图片</text>
+                <view class="image-row">
+                    <view class="image-item" v-for="(img, idx) in form.images" :key="idx">
+                        <image class="image-preview" :src="img" mode="aspectFill" />
+                        <view class="image-del" @click="removeImage(idx)">
+                            <text class="del-text">×</text>
+                        </view>
+                    </view>
+                    <view class="image-add" @click="addImage">
+                        <text class="add-icon">+</text>
+                        <text class="add-text">添加图片</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn outline" @click="onSaveDraft">
+                <text class="btn-text">存草稿</text>
+            </view>
+            <view class="bottom-btn primary" @click="onPublish">
+                <text class="btn-text-white">{{ isEdit ? '保存' : '发布车源' }}</text>
+            </view>
+        </view>
+
+        <view v-if="showBrandSelector">
+            <view class="selector-mask" @click="showBrandSelector = false"></view>
+            <view class="selector-panel">
+                <view class="selector-header">
+                    <text class="selector-title">选择品牌</text>
+                    <text class="selector-close" @click="showBrandSelector = false">✕</text>
+                </view>
+                <scroll-view class="selector-scroll" scroll-y>
+                    <view class="brand-group" v-for="(group, idx) in brandList" :key="idx">
+                        <text class="group-letter">{{ group.initial }}</text>
+                        <view class="brand-list">
+                            <view class="brand-item" v-for="(b, bIdx) in group.list" :key="bIdx" @click="onSelectBrand(b)">
+                                <text class="brand-text">{{ b }}</text>
+                            </view>
+                        </view>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createCar, updateCar, getCarDetail, listAllBrands } from '@/api/business/car.uts'
+
+    type Form = {
+        id: number
+        title: string
+        listing_type: string
+        price_text: string
+        brand_name: string
+        model_name: string
+        year_text: string
+        mileage_text: string
+        transmission: string
+        emission_standard: string
+        color: string
+        fuel_type: string
+        description: string
+        city: string
+        address: string
+        images: string[]
+    }
+    type BrandGroup = {
+        initial: string
+        list: string[]
+    }
+
+    const isEdit = ref(false)
+    const showBrandSelector = ref(false)
+    const form = ref({
+        id: 0,
+        title: '',
+        listing_type: 'sale',
+        price_text: '',
+        brand_name: '',
+        model_name: '',
+        year_text: '',
+        mileage_text: '',
+        transmission: '自动',
+        emission_standard: '',
+        color: '',
+        fuel_type: '汽油',
+        description: '',
+        city: '',
+        address: '',
+        images: [] as string[]
+    } as Form)
+
+    const fuelTypes = ['汽油', '柴油', '电动', '混动'] as string[]
+    const brandList = ref([
+        { initial: '热', list: ['大众', '丰田', '本田', '日产', '宝马', '奔驰', '奥迪', '现代'] },
+        { initial: 'A', list: ['奥迪', '阿尔法·罗密欧', '阿斯顿·马丁'] },
+        { initial: 'B', list: ['宝马', '奔驰', '别克', '本田', '标致', '比亚迪'] },
+        { initial: 'C', list: ['长安', '长城', '创维'] },
+        { initial: 'F', list: ['丰田', '福特', '法拉利'] },
+        { initial: 'G', list: ['广汽', '哥斯卡'] },
+        { initial: 'H', list: ['本田', '海马', '红旗', '哈弗'] },
+        { initial: 'J', list: ['捷达', '吉利', '江淮'] },
+        { initial: 'K', list: ['凯迪拉克', '起亚', '克莱斯勒'] },
+        { initial: 'L', list: ['雷克萨斯', '林肯', '路虎'] },
+        { initial: 'M', list: ['马自达', 'MG', 'MINI'] },
+        { initial: 'O', list: ['欧拉'] },
+        { initial: 'P', list: ['帕萨特', 'Polo', '标致'] },
+        { initial: 'Q', list: ['奇瑞', '起亚'] },
+        { initial: 'R', list: ['日产', '荣威'] },
+        { initial: 'S', list: ['斯柯达', '斯巴鲁', '三菱'] },
+        { initial: 'T', list: ['特斯拉', '腾势'] },
+        { initial: 'W', list: ['五菱', '沃尔沃'] },
+        { initial: 'X', list: ['现代', '小鹏'] },
+        { initial: 'Y', list: ['一汽'] },
+        { initial: 'Z', list: ['众泰'] }
+    ] as BrandGroup[])
+
+    const onSelectBrand = (b: string) => {
+        form.value.brand_name = b
+        showBrandSelector.value = false
+    }
+
+    const addImage = () => {
+        uni.chooseImage({
+            count: 9,
+            success: (res) => {
+                const paths = res.tempFilePaths
+                for (let i = 0; i < paths.length; i++) {
+                    form.value.images.push(paths[i])
+                }
+            }
+        })
+    }
+
+    const removeImage = (idx: number) => {
+        form.value.images.splice(idx, 1)
+    }
+
+    const validate = () : string => {
+        if (form.value.title.length == 0) return '请输入标题'
+        if (form.value.price_text.length == 0) return '请输入价格'
+        if (form.value.brand_name.length == 0) return '请选择品牌'
+        if (form.value.model_name.length == 0) return '请输入车型'
+        if (form.value.year_text.length == 0) return '请输入年份'
+        if (form.value.mileage_text.length == 0) return '请输入里程'
+        if (form.value.city.length == 0) return '请输入城市'
+        return ''
+    }
+
+    const buildData = () : UTSJSONObject => {
+        const data: UTSJSONObject = {
+            title: form.value.title,
+            listing_type: form.value.listing_type,
+            price: parseFloat(form.value.price_text) || 0,
+            brand_name: form.value.brand_name,
+            model_name: form.value.model_name,
+            year_text: form.value.year_text,
+            mileage_text: form.value.mileage_text,
+            transmission: form.value.transmission,
+            emission_standard: form.value.emission_standard,
+            color: form.value.color,
+            fuel_type: form.value.fuel_type,
+            description: form.value.description,
+            city: form.value.city,
+            address: form.value.address,
+            images: form.value.images
+        } as UTSJSONObject
+        if (isEdit.value) data['id'] = form.value.id
+        return data
+    }
+
+    const onSaveDraft = () => {
+        uni.setStorageSync('car_draft', form.value)
+        uni.showToast({ title: '已保存草稿', icon: 'success' })
+    }
+
+    const loadDraft = () => {
+        const d = uni.getStorageSync('car_draft')
+        if (d != null && d != '' && d != undefined) {
+            uni.showModal({
+                title: '提示',
+                content: '检测到未完成的草稿，是否继续编辑？',
+                success: (r) => {
+                    if (r.confirm) {
+                        form.value = (d as Form) ?? form.value
+                    } else {
+                        uni.removeStorageSync('car_draft')
+                    }
+                }
+            })
+        }
+    }
+
+    const onPublish = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const err = validate()
+        if (err.length > 0) {
+            uni.showToast({ title: err, icon: 'none' })
+            return
+        }
+        uni.showLoading({ title: '提交中...' })
+        const data = buildData()
+        const reqFn = isEdit.value ? updateCar(form.value.id, data) : createCar(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.removeStorageSync('car_draft')
+                uni.showToast({ title: isEdit.value ? '保存成功' : '发布成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getCarDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value.id = (d['id'] as number) ?? 0
+                form.value.title = (d['title'] as string) ?? ''
+                form.value.listing_type = (d['listing_type'] as string) ?? 'sale'
+                form.value.price_text = (((d['price'] as number) ?? 0)).toString()
+                form.value.brand_name = (d['brand_name'] as string) ?? ''
+                form.value.model_name = (d['model_name'] as string) ?? ''
+                form.value.year_text = (d['year_text'] as string) ?? ''
+                form.value.mileage_text = (d['mileage_text'] as string) ?? ''
+                form.value.transmission = (d['transmission'] as string) ?? '自动'
+                form.value.emission_standard = (d['emission_standard'] as string) ?? ''
+                form.value.color = (d['color'] as string) ?? ''
+                form.value.fuel_type = (d['fuel_type'] as string) ?? '汽油'
+                form.value.description = (d['description'] as string) ?? ''
+                form.value.city = (d['city'] as string) ?? ''
+                form.value.address = (d['address'] as string) ?? ''
+                const imgs = (d['images'] as string[]) ?? ([] as string[])
+                form.value.images = imgs
+            }
+        })
+    }
+
+    const loadBrands = () => {
+        listAllBrands().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const arr = (res.data as BrandGroup[]) ?? ([] as BrandGroup[])
+                if (arr.length > 0) brandList.value = arr
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            isEdit.value = true
+            loadEdit(parseInt(id as string))
+        } else {
+            loadDraft()
+        }
+        loadBrands()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .form-row.column .form-label {
+        width: auto;
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .form-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .form-value.placeholder {
+        color: #CCC;
+    }
+
+    .arrow {
+        font-size: 16px;
+        color: #CCC;
+        margin-left: 8px;
+    }
+
+    .form-textarea {
+        font-size: 13px;
+        color: #333;
+        padding: 8px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        height: 100px;
+    }
+
+    .input-suffix-wrap {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .suffix {
+        font-size: 12px;
+        color: #999;
+        margin-left: 6px;
+    }
+
+    .radio-row {
+        flex: 1;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .radio-item {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-bottom: 4px;
+    }
+
+    .radio-item.active {
+        background-color: #FF6B35;
+    }
+
+    .radio-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .radio-item.active .radio-text {
+        color: #FFFFFF;
+    }
+
+    .image-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .image-item {
+        width: 100px;
+        height: 100px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+
+    .image-preview {
+        width: 100%;
+        height: 100%;
+        border-radius: 6px;
+    }
+
+    .image-del {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background-color: #EE0A24;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .del-text {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .image-add {
+        width: 100px;
+        height: 100px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .add-icon {
+        font-size: 28px;
+        color: #CCC;
+    }
+
+    .add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        align-items: center;
+        justify-content: center;
+        margin: 0 6px;
+    }
+
+    .bottom-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .bottom-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .btn-text {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .selector-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .selector-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .selector-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .selector-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .selector-close {
+        font-size: 16px;
+        color: #999;
+    }
+
+    .selector-scroll {
+        max-height: 360px;
+    }
+
+    .brand-group {
+        margin-top: 4px;
+    }
+
+    .group-letter {
+        padding: 4px 16px;
+        background-color: #F5F5F5;
+        font-size: 12px;
+        color: #999;
+        font-weight: 600;
+    }
+
+    .brand-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+    }
+
+    .brand-item {
+        width: 33.33%;
+        padding: 10px 8px;
+    }
+
+    .brand-text {
+        font-size: 13px;
+        color: #333;
+    }
+</style>

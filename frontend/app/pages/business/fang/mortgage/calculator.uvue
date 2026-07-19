@@ -1,0 +1,199 @@
+<template>
+    <view class="page">
+        <view class="header">
+            <text class="title">房贷计算器</text>
+            <text class="subtitle">帮您快速计算月供和利息</text>
+        </view>
+        <scroll-view class="content" scroll-y>
+            <house-mortgage-calculator :default-amount="defaultAmount" :default-years="defaultYears" />
+            <view class="info-card">
+                <text class="info-title">说明</text>
+                <text class="info-text">1. 本计算器仅供参考，实际月供以银行核定为准。</text>
+                <text class="info-text">2. 商业贷款基准利率 4.2%，公积金贷款利率 3.1%。</text>
+                <text class="info-text">3. 采用等额本息还款方式计算。</text>
+                <text class="info-text">4. 您可以调整贷款金额、年限、利率进行计算。</text>
+            </view>
+            <view class="action-card">
+                <view class="action-btn outline" @click="onReset">
+                    <text class="btn-text">重置</text>
+                </view>
+                <view class="action-btn primary" @click="onSavePlan">
+                    <text class="btn-text-white">保存方案</text>
+                </view>
+            </view>
+            <view class="section-title">参考利率表</view>
+            <view class="rate-card">
+                <view class="rate-row" v-for="(r, idx) in rateTable" :key="idx">
+                    <text class="rate-name">{{ r.name }}</text>
+                    <text class="rate-value">{{ r.rate }}%</text>
+                </view>
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { calculateMortgage } from '@/api/business/house.uts'
+
+    type RateItem = {
+        name: string
+        rate: number
+    }
+
+    const defaultAmount = ref(100)
+    const defaultYears = ref(30)
+    const rateTable = [
+        { name: '商业贷款（1-5年）', rate: 4.05 },
+        { name: '商业贷款（5年以上）', rate: 4.2 },
+        { name: '公积金贷款（1-5年）', rate: 2.75 },
+        { name: '公积金贷款（5年以上）', rate: 3.1 },
+        { name: '组合贷款', rate: 3.65 }
+    ] as RateItem[]
+
+    const onReset = () => {
+        defaultAmount.value = 100
+        defaultYears.value = 30
+        uni.showToast({ title: '已重置', icon: 'none' })
+    }
+
+    const onSavePlan = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = {
+            amount: defaultAmount.value,
+            years: defaultYears.value,
+            calc_type: 'commercial'
+        } as UTSJSONObject
+        calculateMortgage(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '方案已保存', icon: 'success' })
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        })
+    }
+
+    onLoad(() => {
+        // 可以从路由参数预填贷款金额
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header {
+        background-color: #FFFFFF;
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .info-card {
+        background-color: #FFF5F0;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .info-title {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .info-text {
+        font-size: 12px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .action-card {
+        flex-direction: row;
+        margin-bottom: 16px;
+    }
+
+    .action-btn {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        align-items: center;
+        justify-content: center;
+        margin: 0 6px;
+    }
+
+    .action-btn.outline {
+        background-color: #FFFFFF;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .btn-text {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .rate-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .rate-row {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .rate-name {
+        font-size: 13px;
+        color: #666;
+        flex: 1;
+    }
+
+    .rate-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+</style>
