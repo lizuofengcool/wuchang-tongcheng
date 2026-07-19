@@ -10,7 +10,7 @@ services:
     container_name: wuchang-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${WCTC_POSTGRES_PORT:-5434}:5432"
     environment:
       POSTGRES_DB: wuchang_tongcheng
       POSTGRES_USER: postgres
@@ -33,7 +33,7 @@ services:
     container_name: wuchang-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${WCTC_REDIS_PORT:-6380}:6379"
     command: redis-server --appendonly yes --requirepass redis123
     volumes:
       - redis_data:/data
@@ -51,8 +51,8 @@ services:
     container_name: wuchang-rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"   # AMQP协议端口
-      - "15672:15672" # 管理界面端口
+      - "${WCTC_RABBITMQ_AMQP_PORT:-5673}:5672"   # AMQP协议端口
+      - "${WCTC_RABBITMQ_MGMT_PORT:-15673}:15672" # 管理界面端口
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
@@ -74,7 +74,7 @@ services:
     container_name: wuchang-elasticsearch
     restart: unless-stopped
     ports:
-      - "9200:9200"
+      - "${WCTC_ELASTICSEARCH_PORT:-9210}:9200"
       - "9300:9300"
     environment:
       - discovery.type=single-node
@@ -100,7 +100,7 @@ services:
     container_name: wuchang-kibana
     restart: unless-stopped
     ports:
-      - "5601:5601"
+      - "${WCTC_KIBANA_PORT:-5602}:5601"
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - TZ=Asia/Shanghai
@@ -117,8 +117,8 @@ services:
     container_name: wuchang-minio
     restart: unless-stopped
     ports:
-      - "9000:9000"   # API端口
-      - "9001:9001"   # 控制台端口
+      - "${WCTC_MINIO_API_PORT:-9010}:9000"   # API端口
+      - "${WCTC_MINIO_CONSOLE_PORT:-9011}:9001"   # 控制台端口
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
@@ -142,7 +142,7 @@ services:
     container_name: wuchang-pgadmin
     restart: unless-stopped
     ports:
-      - "5050:80"
+      - "${WCTC_PGADMIN_PORT:-5051}:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@wuchang.com
       PGADMIN_DEFAULT_PASSWORD: admin123
@@ -156,6 +156,200 @@ services:
     profiles:
       - optional
 
+  # ===============================
+  # 监控基座（Prometheus + Grafana）
+  # ===============================
+
+  # Prometheus 监控数据采集
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wuchang-prometheus
+    restart: unless-stopped
+    ports:
+      - "${WCTC_PROMETHEUS_PORT:-9090}:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - wuchang-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Grafana 可视化仪表盘
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wuchang-grafana
+    restart: unless-stopped
+    ports:
+      - "${WCTC_GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      TZ: Asia/Shanghai
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - wuchang-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # node-exporter 主机指标采集
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: wuchang-node-exporter
+    restart: unless-stopped
+    ports:
+      - "${WCTC_NODE_EXPORTER_PORT:-9100}:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    networks:
+      - wuchang-network
+
+  # postgres-exporter PostgreSQL 指标采集
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: wuchang-postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "${WCTC_PG_EXPORTER_PORT:-9187}:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres123@postgres:5432/wuchang_tongcheng?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wuchang-network
+
+  # redis-exporter Redis 指标采集
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: wuchang-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "${WCTC_REDIS_EXPORTER_PORT:-9121}:9121"
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: redis123
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - wuchang-network
+
+  # rabbitmq-exporter RabbitMQ 指标采集（可选，需 --profile monitoring 启动）
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    container_name: wuchang-rabbitmq-exporter
+    restart: unless-stopped
+    ports:
+      - "${WCTC_RABBITMQ_EXPORTER_PORT:-9419}:9419"
+    environment:
+      RABBIT_URL: "http://rabbitmq:15672"
+      RABBIT_USER: admin
+      RABBIT_PASSWORD: admin123
+    depends_on:
+      - rabbitmq
+    networks:
+      - wuchang-network
+    profiles:
+      - monitoring
+
+  # ===============================
+  # 应用服务（backend / admin / pc）
+  # ===============================
+
+  # 后端服务
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: wuchang-backend
+    restart: unless-stopped
+    ports:
+      - "${WCTC_SERVER_PORT:-8088}:8088"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres123
+      DB_NAME: wuchang_tongcheng
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis123
+      ES_HOST: http://elasticsearch:9200
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: admin
+      RABBITMQ_PASSWORD: admin123
+      TZ: Asia/Shanghai
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    networks:
+      - wuchang-network
+    profiles:
+      - app
+
+  # 管理后台（Vue3 + Vite 构建产物，Nginx 托管）
+  admin:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: wuchang-admin
+    restart: unless-stopped
+    ports:
+      - "${WCTC_ADMIN_PORT:-5177}:80"
+    depends_on:
+      - backend
+    networks:
+      - wuchang-network
+    profiles:
+      - app
+
+  # PC 门户（Next.js 16 SSR）
+  pc:
+    build:
+      context: ../frontend/pc
+      dockerfile: Dockerfile
+    container_name: wuchang-pc
+    restart: unless-stopped
+    ports:
+      - "${WCTC_PC_PORT:-3010}:3000"
+    environment:
+      BACKEND_URL: http://backend:8088
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - wuchang-network
+    profiles:
+      - app
+
 volumes:
   postgres_data:
     driver: local
@@ -168,6 +362,10 @@ volumes:
   minio_data:
     driver: local
   pgadmin_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

@@ -1,0 +1,64 @@
+# 五常同城 - 后端配置文件模板（P0 基座版）
+# 用法：复制本文件为 config.yaml 并修改相应配置
+# 注意：本项目同时存在 config.yaml.example（完整版），本文件为 P0 阶段精简模板
+
+# 服务配置
+server:
+  port: 8088
+  mode: debug  # debug / release / test
+
+# 数据库配置（对应 deploy/docker-compose.yml 中的 postgres 服务）
+database:
+  host: localhost
+  port: 5434
+  user: postgres
+  password: postgres123
+  dbname: wuchang_tongcheng
+  sslmode: disable
+  max_open_conns: 100
+  max_idle_conns: 10
+
+# Redis 配置（对应 deploy/docker-compose.yml 中的 redis 服务）
+redis:
+  host: localhost
+  port: 6380
+  password: redis123
+  db: 0
+
+# Elasticsearch 配置
+es:
+  host: http://localhost:9210
+
+# RabbitMQ 配置
+rabbitmq:
+  host: localhost
+  port: 5673
+  user: admin
+  password: admin123
+  vhost: /wuchang
+
+# 对象存储配置
+storage:
+  driver: minio  # minio / qiniu
+  minio:
+    endpoint: localhost:9010
+    access_key: minioadmin
+    secret_key: minioadmin123
+    bucket: wuchang
+    use_ssl: false
+
+# JWT 配置
+jwt:
+  secret: your-super-secret-key-change-this-in-production
+  expire_hours: 24
+
+# 日志配置
+log:
+  level: info  # debug / info / warn / error
+  format: json  # json / console
+  output: file  # file / console
+  file:
+    path: logs
+    max_size: 100  # MB
+    max_backups: 10
+    max_age: 30  # days

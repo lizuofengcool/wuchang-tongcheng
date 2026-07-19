@@ -1,0 +1,54 @@
+# 五常同城 - 持续部署流水线
+# 触发：推送 v* 形式的 tag（如 v1.0.0）
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set tag name
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # ===== 构建并推送后端镜像 =====
+      - name: Build and push backend image
+        run: |
+          docker build -t registry.cn-hangzhou.aliyuncs.com/wuchang/backend:${{ steps.tag.outputs.VERSION }} ./backend
+          docker push registry.cn-hangzhou.aliyuncs.com/wuchang/backend:${{ steps.tag.outputs.VERSION }}
+
+      # ===== 构建并推送管理后台镜像 =====
+      - name: Build and push admin image
+        run: |
+          docker build -t registry.cn-hangzhou.aliyuncs.com/wuchang/admin:${{ steps.tag.outputs.VERSION }} ./frontend
+          docker push registry.cn-hangzhou.aliyuncs.com/wuchang/admin:${{ steps.tag.outputs.VERSION }}
+
+      # ===== 构建并推送 PC 门户镜像 =====
+      - name: Build and push pc image
+        run: |
+          docker build -t registry.cn-hangzhou.aliyuncs.com/wuchang/pc:${{ steps.tag.outputs.VERSION }} ./frontend/pc
+          docker push registry.cn-hangzhou.aliyuncs.com/wuchang/pc:${{ steps.tag.outputs.VERSION }}
+
+      # ===== 远程部署（需配置 SSH 私钥与部署主机） =====
+      - name: Deploy to production
+        if: ${{ secrets.DEPLOY_HOST != '' }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Run deploy commands on remote
+        if: ${{ secrets.DEPLOY_HOST != '' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd /opt/wuchang && \
+             export TAG=${{ steps.tag.outputs.VERSION }} && \
+             docker-compose -f deploy/docker-compose.yml --profile app pull && \
+             docker-compose -f deploy/docker-compose.yml --profile app up -d"
