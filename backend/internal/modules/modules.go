@@ -20,12 +20,20 @@ import (
 
 	_ "wuchang-tongcheng/internal/modules/groupbuy"
 
+	// P1 阶段2 第1批：同城业务垂直模块（job/house/car）
+	_ "wuchang-tongcheng/internal/modules/job"
+	_ "wuchang-tongcheng/internal/modules/house"
+	_ "wuchang-tongcheng/internal/modules/car"
+
 	// P1 中台精简版（ershou 模块依赖）
 	_ "wuchang-tongcheng/internal/modules/pay"
 	_ "wuchang-tongcheng/internal/modules/im"
 	_ "wuchang-tongcheng/internal/modules/material"
 	_ "wuchang-tongcheng/internal/modules/risk"
 	_ "wuchang-tongcheng/internal/modules/ai"
+
+	// 招聘求职模块
+	_ "wuchang-tongcheng/internal/modules/job"
 
 	// 模块管理（注册表 + 开关 + 元信息同步，需最后注册，确保同步时其他模块已就绪）
 	_ "wuchang-tongcheng/internal/modules/module"

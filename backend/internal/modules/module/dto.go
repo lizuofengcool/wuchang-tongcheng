@@ -76,14 +76,14 @@ func parseDependencies(s string) []string {
 }
 
 // toJSON 将 []string 序列化为 JSON 数组字符串
-// nil 返回空串
+// 空切片返回 "[]"（modules 表 dependencies 字段为 JSONB 类型，空串会触发 "类型json的输入语法无效" 错误）
 func toJSON(deps []string) string {
 	if len(deps) == 0 {
-		return ""
+		return "[]"
 	}
 	b, err := json.Marshal(deps)
 	if err != nil {
-		return ""
+		return "[]"
 	}
 	return string(b)
 }
