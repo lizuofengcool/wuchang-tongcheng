@@ -20,6 +20,13 @@ import (
 
 	_ "wuchang-tongcheng/internal/modules/groupbuy"
 
+	// P1 中台精简版（ershou 模块依赖）
+	_ "wuchang-tongcheng/internal/modules/pay"
+	_ "wuchang-tongcheng/internal/modules/im"
+	_ "wuchang-tongcheng/internal/modules/material"
+	_ "wuchang-tongcheng/internal/modules/risk"
+	_ "wuchang-tongcheng/internal/modules/ai"
+
 	// 模块管理（注册表 + 开关 + 元信息同步，需最后注册，确保同步时其他模块已就绪）
 	_ "wuchang-tongcheng/internal/modules/module"
 
