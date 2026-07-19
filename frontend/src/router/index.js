@@ -81,7 +81,7 @@ export const constantRoutes = [
               { path: 'list', name: 'ErshouList', component: () => import('@/views/business/ershou/index.vue'), meta: { title: '商品列表', icon: 'List', permission: 'ershou:read', menuLevel: 3 } },
               { path: 'detail/:id', name: 'ErshouDetail', component: () => import('@/views/business/ershou/detail.vue'), meta: { title: '商品详情', hidden: true, permission: 'ershou:read' } },
               { path: 'orders', name: 'ErshouOrders', component: () => import('@/views/business/ershou/orders.vue'), meta: { title: '订单管理', icon: 'Tickets', permission: 'ershou:read', menuLevel: 3 } },
-              { path: 'auctions', name: 'ErshouAuctions', component: () => import('@/views/business/ershou/auctions.vue'), meta: { title: '拍卖管理', icon: 'Hammer', permission: 'ershou:read', menuLevel: 3 } },
+              { path: 'auctions', name: 'ErshouAuctions', component: () => import('@/views/business/ershou/auctions.vue'), meta: { title: '拍卖管理', icon: 'Trophy', permission: 'ershou:read', menuLevel: 3 } },
               { path: 'promotions', name: 'ErshouPromotions', component: () => import('@/views/business/ershou/promotions.vue'), meta: { title: '付费推广', icon: 'Promotion', permission: 'ershou:read', menuLevel: 3 } },
               { path: 'refunds', name: 'ErshouRefunds', component: () => import('@/views/business/ershou/refunds.vue'), meta: { title: '退款管理', icon: 'RefreshLeft', permission: 'ershou:read', menuLevel: 3 } },
               { path: 'reports', name: 'ErshouReports', component: () => import('@/views/business/ershou/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'ershou:read', menuLevel: 3 } },
@@ -96,10 +96,86 @@ export const constantRoutes = [
               { path: 'batch', name: 'ErshouBatch', component: () => import('@/views/business/ershou/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
             ]
           },
-          // 其他 7 个垂直业务模块（空壳，开发中）
-          { path: 'job', name: 'Job', component: () => import('@/views/business/job/index.vue'), meta: { title: '招聘求职', icon: 'Briefcase', permission: 'job:read', menuLevel: 2 } },
-          { path: 'fang', name: 'Fang', component: () => import('@/views/business/fang/index.vue'), meta: { title: '房屋租售', icon: 'House', permission: 'fang:read', menuLevel: 2 } },
-          { path: 'car', name: 'Car', component: () => import('@/views/business/car/index.vue'), meta: { title: '车辆买卖', icon: 'Van', permission: 'car:read', menuLevel: 2 } },
+          // 招聘求职（完整功能：17 个管理页面）
+          {
+            path: 'job',
+            name: 'Job',
+            redirect: '/business/job/list',
+            meta: { title: '招聘求职', icon: 'Briefcase', permission: 'job:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'JobList', component: () => import('@/views/business/job/index.vue'), meta: { title: '职位列表', icon: 'List', permission: 'job:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'JobDetail', component: () => import('@/views/business/job/detail.vue'), meta: { title: '职位详情', hidden: true, permission: 'job:read' } },
+              { path: 'companies', name: 'JobCompanies', component: () => import('@/views/business/job/companies.vue'), meta: { title: '公司管理', icon: 'OfficeBuilding', permission: 'job:read', menuLevel: 3 } },
+              { path: 'applications', name: 'JobApplications', component: () => import('@/views/business/job/applications.vue'), meta: { title: '投递管理', icon: 'Tickets', permission: 'job:read', menuLevel: 3 } },
+              { path: 'interviews', name: 'JobInterviews', component: () => import('@/views/business/job/interviews.vue'), meta: { title: '面试管理', icon: 'Calendar', permission: 'job:read', menuLevel: 3 } },
+              { path: 'resumes', name: 'JobResumes', component: () => import('@/views/business/job/resumes.vue'), meta: { title: '简历管理', icon: 'Document', permission: 'job:read', menuLevel: 3 } },
+              { path: 'categories', name: 'JobCategories', component: () => import('@/views/business/job/categories.vue'), meta: { title: '职位分类', icon: 'Files', permission: 'job:read', menuLevel: 3 } },
+              { path: 'salary-ranges', name: 'JobSalaryRanges', component: () => import('@/views/business/job/salary-ranges.vue'), meta: { title: '薪资范围', icon: 'Money', permission: 'job:read', menuLevel: 3 } },
+              { path: 'skills', name: 'JobSkills', component: () => import('@/views/business/job/skills.vue'), meta: { title: '技能标签', icon: 'PriceTag', permission: 'job:read', menuLevel: 3 } },
+              { path: 'benefits', name: 'JobBenefits', component: () => import('@/views/business/job/benefits.vue'), meta: { title: '福利管理', icon: 'Present', permission: 'job:read', menuLevel: 3 } },
+              { path: 'certifications', name: 'JobCertifications', component: () => import('@/views/business/job/certifications.vue'), meta: { title: '资质管理', icon: 'Postcard', permission: 'job:read', menuLevel: 3 } },
+              { path: 'escrows', name: 'JobEscrows', component: () => import('@/views/business/job/escrows.vue'), meta: { title: '担保交易', icon: 'Wallet', permission: 'job:read', menuLevel: 3 } },
+              { path: 'reports', name: 'JobReports', component: () => import('@/views/business/job/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'job:read', menuLevel: 3 } },
+              { path: 'reviews', name: 'JobReviews', component: () => import('@/views/business/job/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'job:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'JobAuditRules', component: () => import('@/views/business/job/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'JobStatistics', component: () => import('@/views/business/job/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'job:read', menuLevel: 3 } },
+              { path: 'batch', name: 'JobBatch', component: () => import('@/views/business/job/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          },
+          // 房屋租售（完整功能：17 个管理页面）
+          {
+            path: 'fang',
+            name: 'Fang',
+            redirect: '/business/fang/list',
+            meta: { title: '房屋租售', icon: 'House', permission: 'fang:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'FangList', component: () => import('@/views/business/fang/index.vue'), meta: { title: '房源列表', icon: 'List', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'FangDetail', component: () => import('@/views/business/fang/detail.vue'), meta: { title: '房源详情', hidden: true, permission: 'fang:read' } },
+              { path: 'listings', name: 'FangListings', component: () => import('@/views/business/fang/listings.vue'), meta: { title: '发布管理', icon: 'Promotion', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'agents', name: 'FangAgents', component: () => import('@/views/business/fang/agents.vue'), meta: { title: '经纪人', icon: 'User', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'communities', name: 'FangCommunities', component: () => import('@/views/business/fang/communities.vue'), meta: { title: '小区管理', icon: 'OfficeBuilding', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'categories', name: 'FangCategories', component: () => import('@/views/business/fang/categories.vue'), meta: { title: '房源分类', icon: 'Files', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'facilities', name: 'FangFacilities', component: () => import('@/views/business/fang/facilities.vue'), meta: { title: '配套设施', icon: 'SetUp', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'viewings', name: 'FangViewings', component: () => import('@/views/business/fang/viewings.vue'), meta: { title: '看房预约', icon: 'Calendar', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'vr-tours', name: 'FangVrTours', component: () => import('@/views/business/fang/vr-tours.vue'), meta: { title: 'VR看房', icon: 'VideoCamera', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'contracts', name: 'FangContracts', component: () => import('@/views/business/fang/contracts.vue'), meta: { title: '合同管理', icon: 'Tickets', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'deals', name: 'FangDeals', component: () => import('@/views/business/fang/deals.vue'), meta: { title: '成交记录', icon: 'SuccessFilled', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'mortgages', name: 'FangMortgages', component: () => import('@/views/business/fang/mortgages.vue'), meta: { title: '房贷计算', icon: 'Money', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'escrows', name: 'FangEscrows', component: () => import('@/views/business/fang/escrows.vue'), meta: { title: '担保交易', icon: 'Wallet', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'reports', name: 'FangReports', component: () => import('@/views/business/fang/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'reviews', name: 'FangReviews', component: () => import('@/views/business/fang/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'FangAuditRules', component: () => import('@/views/business/fang/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'FangStatistics', component: () => import('@/views/business/fang/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'fang:read', menuLevel: 3 } },
+              { path: 'batch', name: 'FangBatch', component: () => import('@/views/business/fang/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          },
+          // 车辆买卖（完整功能：17 个管理页面）
+          {
+            path: 'car',
+            name: 'Car',
+            redirect: '/business/car/list',
+            meta: { title: '车辆买卖', icon: 'Van', permission: 'car:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'CarList', component: () => import('@/views/business/car/index.vue'), meta: { title: '车源列表', icon: 'List', permission: 'car:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'CarDetail', component: () => import('@/views/business/car/detail.vue'), meta: { title: '车源详情', hidden: true, permission: 'car:read' } },
+              { path: 'listings', name: 'CarListings', component: () => import('@/views/business/car/listings.vue'), meta: { title: '发布管理', icon: 'Promotion', permission: 'car:read', menuLevel: 3 } },
+              { path: 'models', name: 'CarModels', component: () => import('@/views/business/car/models.vue'), meta: { title: '车型库', icon: 'Collection', permission: 'car:read', menuLevel: 3 } },
+              { path: 'inspections', name: 'CarInspections', component: () => import('@/views/business/car/inspections.vue'), meta: { title: '检测报告', icon: 'Checked', permission: 'car:read', menuLevel: 3 } },
+              { path: 'evaluations', name: 'CarEvaluations', component: () => import('@/views/business/car/evaluations.vue'), meta: { title: '评估管理', icon: 'DataAnalysis', permission: 'car:read', menuLevel: 3 } },
+              { path: 'test-drives', name: 'CarTestDrives', component: () => import('@/views/business/car/test-drives.vue'), meta: { title: '试驾预约', icon: 'Calendar', permission: 'car:read', menuLevel: 3 } },
+              { path: 'contracts', name: 'CarContracts', component: () => import('@/views/business/car/contracts.vue'), meta: { title: '合同管理', icon: 'Tickets', permission: 'car:read', menuLevel: 3 } },
+              { path: 'financing', name: 'CarFinancing', component: () => import('@/views/business/car/financing.vue'), meta: { title: '分期付款', icon: 'Money', permission: 'car:read', menuLevel: 3 } },
+              { path: 'insurance', name: 'CarInsurance', component: () => import('@/views/business/car/insurance.vue'), meta: { title: '保险管理', icon: 'Umbrella', permission: 'car:read', menuLevel: 3 } },
+              { path: 'transfers', name: 'CarTransfers', component: () => import('@/views/business/car/transfers.vue'), meta: { title: '过户管理', icon: 'Switch', permission: 'car:read', menuLevel: 3 } },
+              { path: 'escrows', name: 'CarEscrows', component: () => import('@/views/business/car/escrows.vue'), meta: { title: '担保交易', icon: 'Wallet', permission: 'car:read', menuLevel: 3 } },
+              { path: 'reports', name: 'CarReports', component: () => import('@/views/business/car/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'car:read', menuLevel: 3 } },
+              { path: 'reviews', name: 'CarReviews', component: () => import('@/views/business/car/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'car:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'CarAuditRules', component: () => import('@/views/business/car/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'CarStatistics', component: () => import('@/views/business/car/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'car:read', menuLevel: 3 } },
+              { path: 'batch', name: 'CarBatch', component: () => import('@/views/business/car/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          },
+          // 其他 4 个垂直业务模块（空壳，开发中）
           { path: 'love', name: 'Love', component: () => import('@/views/business/love/index.vue'), meta: { title: '相亲交友', icon: 'User', permission: 'love:read', menuLevel: 2 } },
           { path: 'pinche', name: 'Pinche', component: () => import('@/views/business/pinche/index.vue'), meta: { title: '拼车出行', icon: 'Van', permission: 'pinche:read', menuLevel: 2 } },
           { path: 'linggong', name: 'Linggong', component: () => import('@/views/business/linggong/index.vue'), meta: { title: '零工兼职', icon: 'Briefcase', permission: 'linggong:read', menuLevel: 2 } },
