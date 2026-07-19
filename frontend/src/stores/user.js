@@ -19,7 +19,7 @@ export const useUserStore = defineStore('user', {
     isLoggedIn: (state) => !!state.token,
     nickname: (state) => state.userInfo?.nickname || state.userInfo?.username || '管理员',
     avatar: (state) => state.userInfo?.avatar || '',
-    isSuperAdmin: (state) => state.roles.includes('admin')
+    isSuperAdmin: (state) => state.roles.includes('super_admin') || state.roles.includes('admin')
   },
   actions: {
     // 登录

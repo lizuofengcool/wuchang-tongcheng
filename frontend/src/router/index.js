@@ -127,7 +127,30 @@ export const constantRoutes = [
             redirect: '/module-center/business/ershou',
             meta: { title: '同城业务', icon: 'ShoppingBag', menuLevel: 2 },
             children: [
-              { path: 'ershou', name: 'Ershou', component: () => import('@/views/business/ershou/index.vue'), meta: { title: '二手交易', icon: 'ShoppingBag', permission: 'ershou:read', menuLevel: 3 } },
+              {
+                path: 'ershou',
+                name: 'Ershou',
+                redirect: '/module-center/business/ershou/list',
+                meta: { title: '二手交易', icon: 'ShoppingBag', permission: 'ershou:read', menuLevel: 3 },
+                children: [
+                  { path: 'list', name: 'ErshouList', component: () => import('@/views/business/ershou/index.vue'), meta: { title: '商品列表', icon: 'List', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'detail/:id', name: 'ErshouDetail', component: () => import('@/views/business/ershou/detail.vue'), meta: { title: '商品详情', hidden: true, permission: 'ershou:read' } },
+                  { path: 'orders', name: 'ErshouOrders', component: () => import('@/views/business/ershou/orders.vue'), meta: { title: '订单管理', icon: 'Tickets', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'auctions', name: 'ErshouAuctions', component: () => import('@/views/business/ershou/auctions.vue'), meta: { title: '拍卖管理', icon: 'Hammer', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'promotions', name: 'ErshouPromotions', component: () => import('@/views/business/ershou/promotions.vue'), meta: { title: '付费推广', icon: 'Promotion', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'refunds', name: 'ErshouRefunds', component: () => import('@/views/business/ershou/refunds.vue'), meta: { title: '退款管理', icon: 'RefreshLeft', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'reports', name: 'ErshouReports', component: () => import('@/views/business/ershou/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'reviews', name: 'ErshouReviews', component: () => import('@/views/business/ershou/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'shops', name: 'ErshouShops', component: () => import('@/views/business/ershou/shops.vue'), meta: { title: '商家店铺', icon: 'Shop', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'tags', name: 'ErshouTags', component: () => import('@/views/business/ershou/tags.vue'), meta: { title: '标签管理', icon: 'PriceTag', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'brands', name: 'ErshouBrands', component: () => import('@/views/business/ershou/brands.vue'), meta: { title: '品牌型号', icon: 'Collection', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'category-attrs', name: 'ErshouCategoryAttrs', component: () => import('@/views/business/ershou/category-attrs.vue'), meta: { title: '分类属性', icon: 'Files', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'audit-rules', name: 'ErshouAuditRules', component: () => import('@/views/business/ershou/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 4 } },
+                  { path: 'user-credit', name: 'ErshouUserCredit', component: () => import('@/views/business/ershou/user-credit.vue'), meta: { title: '用户信用', icon: 'CreditCard', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'statistics', name: 'ErshouStatistics', component: () => import('@/views/business/ershou/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'ershou:read', menuLevel: 4 } },
+                  { path: 'batch', name: 'ErshouBatch', component: () => import('@/views/business/ershou/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 4 } }
+                ]
+              },
               { path: 'job', name: 'Job', component: () => import('@/views/business/job/index.vue'), meta: { title: '招聘求职', icon: 'Briefcase', permission: 'job:read', menuLevel: 3 } },
               { path: 'fang', name: 'Fang', component: () => import('@/views/business/fang/index.vue'), meta: { title: '房屋租售', icon: 'House', permission: 'fang:read', menuLevel: 3 } },
               { path: 'pinche', name: 'Pinche', component: () => import('@/views/business/pinche/index.vue'), meta: { title: '拼车出行', icon: 'Van', permission: 'pinche:read', menuLevel: 3 } },
