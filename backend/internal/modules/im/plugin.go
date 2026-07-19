@@ -20,6 +20,7 @@ type Plugin struct {
 	name    string
 	version string
 	handler *handler.Handler
+	extH    *handler.ExtendHandler
 }
 
 // NewPlugin 创建 IM 中台插件
@@ -50,8 +51,11 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 	repo := repository.NewIMRepository(db)
+	extRepo := repository.NewIMExtendRepository(db)
 	svc := service.NewIMService(repo)
+	extSvc := service.NewIMExtendService(repo, extRepo)
 	p.handler = handler.NewHandler(svc)
+	p.extH = handler.NewExtendHandler(extSvc)
 	return nil
 }
 
@@ -80,6 +84,28 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 隐私号码
 	router.POST("/privacy-numbers", auth, writeLimiter, p.handler.BindPrivacyNumber)
 	router.POST("/privacy-numbers/unbind", auth, writeLimiter, p.handler.UnbindPrivacyNumber)
+
+	// 群组
+	router.POST("/groups", auth, writeLimiter, p.extH.CreateGroup)
+	router.GET("/groups", auth, readLimiter, p.extH.ListMyGroups)
+	router.GET("/groups/:group_id", auth, readLimiter, p.extH.GetGroup)
+	router.POST("/groups/:group_id", auth, writeLimiter, p.extH.UpdateGroup)
+	router.DELETE("/groups/:group_id", auth, writeLimiter, p.extH.DissolveGroup)
+	router.GET("/groups/:group_id/members", auth, readLimiter, p.extH.ListGroupMembers)
+	router.POST("/groups/members", auth, writeLimiter, p.extH.AddGroupMembers)
+	router.POST("/groups/members/remove", auth, writeLimiter, p.extH.RemoveMember)
+
+	// 用户设置
+	router.GET("/settings", auth, readLimiter, p.extH.GetMySetting)
+	router.POST("/settings", auth, writeLimiter, p.extH.UpdateMySetting)
+
+	// 消息撤回
+	router.POST("/messages/recall", auth, writeLimiter, p.extH.RecallMessage)
+
+	// M 端管理后台（需 im:manage 权限）
+	imManage := coreRouter.WrapGin(middleware.RequirePermission("im:manage"))
+	admin := router.Group("/admin")
+	admin.GET("/statistics", imManage, p.extH.Statistics)
 }
 
 // Close 关闭插件

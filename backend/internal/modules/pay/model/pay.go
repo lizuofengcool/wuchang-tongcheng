@@ -67,6 +67,44 @@ const (
 	PeriodMonthly = "monthly"
 )
 
+// === 交易状态常量（pay_transactions.status） ===
+const (
+	TxnStatusPending   = 0 // 处理中
+	TxnStatusSuccess    = 1 // 成功
+	TxnStatusFailed     = 2 // 失败
+	TxnStatusReversed   = 3 // 已撤销
+)
+
+// === 渠道类型常量 ===
+const (
+	ChannelWechat   = "wechat"
+	ChannelAlipay   = "alipay"
+	ChannelUnionPay = "unionpay"
+	ChannelStripe   = "stripe"
+)
+
+// === 商户状态常量 ===
+const (
+	MerchantStatusPending  = 0 // 待审
+	MerchantStatusApproved = 1 // 通过
+	MerchantStatusRejected = 2 // 拒绝
+	MerchantStatusFrozen   = 3 // 冻结
+)
+
+// === 回调处理状态 ===
+const (
+	CallbackStatusPending  = 0 // 待处理
+	CallbackStatusDone     = 1 // 已处理
+	CallbackStatusFailed   = 2 // 处理失败
+)
+
+// === 担保争议状态 ===
+const (
+	DisputeStatusNone       = 0 // 无争议
+	DisputeStatusActive     = 1 // 争议中
+	DisputeStatusArbitrated = 2 // 已仲裁
+)
+
 // PaymentOrder 支付订单
 type PaymentOrder struct {
 	database.RegionBaseModel
@@ -101,6 +139,13 @@ type EscrowAccount struct {
 	FrozenAt       time.Time  `gorm:"not null;default:now()" json:"frozen_at"`      // 冻结时间
 	ReleaseAt      *time.Time `gorm:"index" json:"release_at"`                      // 放款时间
 	AutoReleaseAt  *time.Time `gorm:"index" json:"auto_release_at"`                 // 自动放款时间
+
+	// === 担保争议仲裁扩展字段（012_pay_full.sql 新增） ===
+	DisputeStatus     int        `gorm:"default:0;index" json:"dispute_status"`         // 争议状态：0无 1争议中 2已仲裁
+	DisputeReason     string     `gorm:"size:512" json:"dispute_reason"`                // 争议原因
+	ArbitratorID      uint       `gorm:"default:0" json:"arbitrator_id"`                // 仲裁人ID
+	ArbitrationRemark string     `gorm:"type:text" json:"arbitration_remark"`           // 仲裁备注
+	ArbitratedAt      *time.Time `gorm:"index" json:"arbitrated_at"`                    // 仲裁时间
 }
 
 // TableName 表名

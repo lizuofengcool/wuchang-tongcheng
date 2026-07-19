@@ -107,6 +107,65 @@ const (
 	CodeErshouPublishError = 2703
 	CodeErshouAuditError   = 2704
 
+	// ===== 同城招聘求职模块错误 2800-2899 =====
+	CodeJobError            = 2801 // 招聘通用错误
+	CodeJobNotFound         = 2802 // 职位不存在
+	CodeJobPublishError     = 2803 // 职位发布失败
+	CodeJobAuditError       = 2804 // 职位审核错误
+	CodeJobNoPermission     = 2805 // 无权操作职位
+	CodeResumeError         = 2806 // 简历错误
+	CodeResumeNotFound      = 2807 // 简历不存在
+	CodeApplicationError    = 2808 // 投递错误
+	CodeApplicationNotFound = 2809 // 投递不存在
+	CodeInterviewError      = 2810 // 面试错误
+	CodeInterviewNotFound   = 2811 // 面试不存在
+	CodeMessageError        = 2812 // 消息错误
+	CodeReportError         = 2813 // 举报错误
+	CodeReviewError         = 2814 // 评价错误
+	CodeCompanyError        = 2815 // 公司错误
+	CodeCompanyNotFound     = 2816 // 公司不存在
+	CodeAuditRuleError      = 2817 // 审核规则错误
+
+	// ===== 房产模块错误 2900-2999 =====
+	CodeHouseError         = 2901
+	CodeHouseNotFound      = 2902
+	CodeHousePublishError  = 2903
+	CodeHouseAuditError    = 2904
+	CodeHouseNoPermission  = 2905
+	CodeHouseReportError   = 2906
+	CodeHouseReviewError   = 2907
+	CodeHouseContractError = 2908
+	CodeHouseContractNotFound = 2909
+	CodeHouseViewingError      = 2910
+	CodeHouseViewingNotFound   = 2911
+	CodeHouseCommunityError    = 2912
+	CodeHouseCommunityNotFound = 2913
+	CodeHouseAgentError        = 2914
+	CodeHouseAgentNotFound     = 2915
+	CodeHouseAuditRuleError    = 2916
+
+	// ===== 同城车辆买卖模块错误 3000-3099 =====
+	CodeCarError            = 3001
+	CodeCarNotFound         = 3002
+	CodeCarPublishError     = 3003
+	CodeCarAuditError       = 3004
+	CodeCarNoPermission     = 3005
+	CodeInspectionError     = 3006
+	CodeInspectionNotFound  = 3007
+	CodeEvaluationError     = 3008
+	CodeEvaluationNotFound  = 3009
+	CodeFinancingError      = 3010
+	CodeFinancingNotFound   = 3011
+	CodeInsuranceError      = 3012
+	CodeInsuranceNotFound   = 3013
+	CodeTestDriveError      = 3014
+	CodeTestDriveNotFound   = 3015
+	CodeTransferError       = 3016
+	CodeTransferNotFound    = 3017
+	CodeReportErrorCar      = 3018
+	CodeReviewErrorCar      = 3019
+	CodeAuditRuleErrorCar   = 3020
+
 	// ===== 第三方服务错误 4000-4999 =====
 	CodeThirdPartyError = 4001
 	CodeMapAPIError     = 4002
@@ -114,6 +173,82 @@ const (
 	CodeSMSError        = 4004
 	CodeWeChatError     = 4005
 	CodeOAuthError      = 4006 // 第三方登录错误（OAuth 流程：code 换取身份/未配置/网络失败）
+
+	// ===== pay 支付中台错误 4007-4020 =====
+	// 注：4001-4006 已被第三方服务错误占用，pay 从 4007 开始
+	CodePayError             = 4007 // 支付通用错误
+	CodePayOrderNotFound     = 4008 // 支付订单不存在
+	CodePayOrderClosed       = 4009 // 订单已关闭
+	CodePayOrderPaid         = 4010 // 订单已支付
+	CodePayRefundNotFound    = 4011 // 退款单不存在
+	CodePayRefundExceed      = 4012 // 退款金额超过订单
+	CodePayEscrowNotFound    = 4013 // 担保交易不存在
+	CodePayEscrowNotFrozen   = 4014 // 担保交易非冻结状态
+	CodePayInsufficientBalance = 4015 // 余额不足
+	CodePayWithdrawNotFound  = 4016 // 提现单不存在
+	CodePayWithdrawNotPending = 4017 // 提现单非待审核
+	CodePaySettlementNotFound = 4018 // 结算单不存在
+	CodePayAccountNotFound   = 4019 // 资金账户不存在
+	CodePayChannelNotFound   = 4020 // 支付渠道不存在
+
+	// ===== im 即时通讯中台错误 4101-4120 =====
+	CodeIMError              = 4101 // IM 通用错误
+	CodeIMSessionNotFound    = 4102 // 会话不存在
+	CodeIMNotParticipant     = 4103 // 非会话参与者
+	CodeIMMessageNotFound    = 4104 // 消息不存在
+	CodeIMMessageRecalled    = 4105 // 消息已撤回
+	CodeIMGroupNotFound      = 4106 // 群组不存在
+	CodeIMGroupMemberExists  = 4107 // 已是群成员
+	CodeIMGroupMemberNotFound = 4108 // 群成员不存在
+	CodeIMNotGroupOwner       = 4109 // 非群主
+	CodeIMPrivacyNotFound    = 4110 // 隐私号码不存在
+	CodeIMPrivacyUnbound     = 4111 // 隐私号码已解绑
+	CodeIMNotificationNotFound = 4112 // 通知不存在
+	CodeIMUserSettingsNotFound = 4113 // 用户设置不存在
+	CodeIMSessionExists      = 4114 // 会话已存在
+
+	// ===== material 物料中台错误 4201-4220 =====
+	CodeMaterialError           = 4201 // 物料通用错误
+	CodeMaterialFileNotFound    = 4202 // 文件不存在
+	CodeMaterialImageNotFound   = 4203 // 图片不存在
+	CodeMaterialVideoNotFound   = 4204 // 视频不存在
+	CodeMaterialFeatureNotFound = 4205 // 图片特征不存在
+	CodeMaterialUploadFailed    = 4206 // 文件上传失败
+	CodeMaterialUnsupportedType = 4207 // 不支持的文件类型
+	CodeMaterialCategoryNotFound = 4208 // 分类不存在
+	CodeMaterialTagNotFound      = 4209 // 标签不存在
+	CodeMaterialOCRFail          = 4210 // OCR 识别失败
+	CodeMaterialSearchFail       = 4211 // 搜索失败
+	CodeMaterialHashExists       = 4212 // 文件哈希已存在
+
+	// ===== risk 风控中台错误 4301-4320 =====
+	CodeRiskError              = 4301 // 风控通用错误
+	CodeRiskReportNotFound    = 4302 // 举报不存在
+	CodeRiskWordNotFound      = 4303 // 敏感词不存在
+	CodeRiskRuleNotFound      = 4304 // 审核规则不存在
+	CodeRiskBlacklistNotFound = 4305 // 黑名单记录不存在
+	CodeRiskScoreNotFound     = 4306 // 用户风险分不存在
+	CodeRiskViolationNotFound = 4307 // 违规处罚不存在
+	CodeRiskAlreadyBlacklist  = 4308 // 已在黑名单中
+	CodeRiskUserBanned        = 4309 // 用户已被封禁
+	CodeRiskContentRejected   = 4310 // 内容审核未通过
+	CodeRiskAppealNotFound    = 4311 // 申诉记录不存在
+	CodeRiskEvidenceNotFound  = 4312 // 证据不存在
+	CodeRiskAuditLogNotFound  = 4313 // 审核日志不存在
+
+	// ===== ai 智能中台错误 4401-4420 =====
+	CodeAIError               = 4401 // AI 通用错误
+	CodeAITaskNotFound        = 4402 // AI 任务不存在
+	CodeAIModelNotFound      = 4403 // AI 模型不存在
+	CodeAIModelDisabled      = 4404 // AI 模型已禁用
+	CodeAIPromptNotFound    = 4405 // 提示词模板不存在
+	CodeAIGenerationNotFound = 4406 // 生成记录不存在
+	CodeAIUnsupportedType    = 4407 // 不支持的 AI 任务类型
+	CodeAIChatNotFound      = 4408 // 对话会话不存在
+	CodeAIChatMessageNotFound = 4409 // 对话消息不存在
+	CodeAIRecommendationNotFound = 4410 // 推荐记录不存在
+	CodeAITrainingNotFound  = 4411 // 训练数据不存在
+	CodeAIModelConfigNotFound = 4412 // 模型配置不存在
 )
 
 // 错误消息映射
@@ -213,6 +348,65 @@ var codeMessages = map[int]string{
 	CodeErshouPublishError: "二手物品发布错误",
 	CodeErshouAuditError:   "二手物品审核错误",
 
+	// 同城招聘求职模块错误
+	CodeJobError:            "招聘求职错误",
+	CodeJobNotFound:         "职位不存在",
+	CodeJobPublishError:     "职位发布失败",
+	CodeJobAuditError:       "职位审核错误",
+	CodeJobNoPermission:     "无权操作职位",
+	CodeResumeError:         "简历错误",
+	CodeResumeNotFound:      "简历不存在",
+	CodeApplicationError:    "投递错误",
+	CodeApplicationNotFound: "投递不存在",
+	CodeInterviewError:      "面试错误",
+	CodeInterviewNotFound:   "面试不存在",
+	CodeMessageError:        "消息错误",
+	CodeReportError:         "举报错误",
+	CodeReviewError:         "评价错误",
+	CodeCompanyError:        "公司错误",
+	CodeCompanyNotFound:     "公司不存在",
+	CodeAuditRuleError:      "审核规则错误",
+
+	// 房产模块错误
+	CodeHouseError:             "房产错误",
+	CodeHouseNotFound:          "房产不存在",
+	CodeHousePublishError:      "房产发布错误",
+	CodeHouseAuditError:        "房产审核错误",
+	CodeHouseNoPermission:      "无权操作房产",
+	CodeHouseReportError:       "房产举报错误",
+	CodeHouseReviewError:       "房产评价错误",
+	CodeHouseContractError:     "合同错误",
+	CodeHouseContractNotFound:  "合同不存在",
+	CodeHouseViewingError:      "看房预约错误",
+	CodeHouseViewingNotFound:   "看房预约不存在",
+	CodeHouseCommunityError:    "小区错误",
+	CodeHouseCommunityNotFound: "小区不存在",
+	CodeHouseAgentError:        "经纪人错误",
+	CodeHouseAgentNotFound:     "经纪人不存在",
+	CodeHouseAuditRuleError:    "审核规则错误",
+
+	// 同城车辆买卖模块错误
+	CodeCarError:           "车辆错误",
+	CodeCarNotFound:        "车源不存在",
+	CodeCarPublishError:    "车源发布错误",
+	CodeCarAuditError:      "车源审核错误",
+	CodeCarNoPermission:    "无权操作车源",
+	CodeInspectionError:    "车况检测错误",
+	CodeInspectionNotFound: "检测记录不存在",
+	CodeEvaluationError:    "车辆评估错误",
+	CodeEvaluationNotFound: "评估记录不存在",
+	CodeFinancingError:     "分期方案错误",
+	CodeFinancingNotFound:  "分期方案不存在",
+	CodeInsuranceError:     "车险方案错误",
+	CodeInsuranceNotFound:  "车险方案不存在",
+	CodeTestDriveError:     "试驾预约错误",
+	CodeTestDriveNotFound:  "试驾预约不存在",
+	CodeTransferError:      "过户办理错误",
+	CodeTransferNotFound:   "过户记录不存在",
+	CodeReportErrorCar:     "车源举报错误",
+	CodeReviewErrorCar:     "车源评价错误",
+	CodeAuditRuleErrorCar:  "审核规则错误",
+
 	// 第三方服务错误
 	CodeThirdPartyError: "第三方服务错误",
 	CodeMapAPIError:     "地图API错误",
@@ -220,6 +414,81 @@ var codeMessages = map[int]string{
 	CodeSMSError:        "短信服务错误",
 	CodeWeChatError:     "微信服务错误",
 	CodeOAuthError:      "第三方登录错误",
+
+	// pay 支付中台错误
+	CodePayError:               "支付错误",
+	CodePayOrderNotFound:       "支付订单不存在",
+	CodePayOrderClosed:         "订单已关闭",
+	CodePayOrderPaid:           "订单已支付",
+	CodePayRefundNotFound:      "退款单不存在",
+	CodePayRefundExceed:        "退款金额超过订单",
+	CodePayEscrowNotFound:      "担保交易不存在",
+	CodePayEscrowNotFrozen:     "担保交易非冻结状态",
+	CodePayInsufficientBalance:  "余额不足",
+	CodePayWithdrawNotFound:     "提现单不存在",
+	CodePayWithdrawNotPending:   "提现单非待审核状态",
+	CodePaySettlementNotFound:  "结算单不存在",
+	CodePayAccountNotFound:     "资金账户不存在",
+	CodePayChannelNotFound:     "支付渠道不存在",
+
+	// im 即时通讯中台错误
+	CodeIMError:                "IM错误",
+	CodeIMSessionNotFound:      "会话不存在",
+	CodeIMNotParticipant:       "非会话参与者",
+	CodeIMMessageNotFound:      "消息不存在",
+	CodeIMMessageRecalled:      "消息已撤回",
+	CodeIMGroupNotFound:        "群组不存在",
+	CodeIMGroupMemberExists:    "已是群成员",
+	CodeIMGroupMemberNotFound:  "群成员不存在",
+	CodeIMNotGroupOwner:        "非群主",
+	CodeIMPrivacyNotFound:      "隐私号码不存在",
+	CodeIMPrivacyUnbound:       "隐私号码已解绑",
+	CodeIMNotificationNotFound: "通知不存在",
+	CodeIMUserSettingsNotFound: "用户设置不存在",
+	CodeIMSessionExists:        "会话已存在",
+
+	// material 物料中台错误
+	CodeMaterialError:            "物料错误",
+	CodeMaterialFileNotFound:     "文件不存在",
+	CodeMaterialImageNotFound:    "图片不存在",
+	CodeMaterialVideoNotFound:    "视频不存在",
+	CodeMaterialFeatureNotFound:  "图片特征不存在",
+	CodeMaterialUploadFailed:     "文件上传失败",
+	CodeMaterialUnsupportedType:  "不支持的文件类型",
+	CodeMaterialCategoryNotFound: "分类不存在",
+	CodeMaterialTagNotFound:      "标签不存在",
+	CodeMaterialOCRFail:           "OCR识别失败",
+	CodeMaterialSearchFail:        "搜索失败",
+	CodeMaterialHashExists:       "文件哈希已存在",
+
+	// risk 风控中台错误
+	CodeRiskError:              "风控错误",
+	CodeRiskReportNotFound:    "举报不存在",
+	CodeRiskWordNotFound:      "敏感词不存在",
+	CodeRiskRuleNotFound:      "审核规则不存在",
+	CodeRiskBlacklistNotFound: "黑名单记录不存在",
+	CodeRiskScoreNotFound:     "用户风险分不存在",
+	CodeRiskViolationNotFound: "违规处罚不存在",
+	CodeRiskAlreadyBlacklist:  "已在黑名单中",
+	CodeRiskUserBanned:        "用户已被封禁",
+	CodeRiskContentRejected:   "内容审核未通过",
+	CodeRiskAppealNotFound:    "申诉记录不存在",
+	CodeRiskEvidenceNotFound:  "证据不存在",
+	CodeRiskAuditLogNotFound:  "审核日志不存在",
+
+	// ai 智能中台错误
+	CodeAIError:                  "AI错误",
+	CodeAITaskNotFound:           "AI任务不存在",
+	CodeAIModelNotFound:          "AI模型不存在",
+	CodeAIModelDisabled:          "AI模型已禁用",
+	CodeAIPromptNotFound:         "提示词模板不存在",
+	CodeAIGenerationNotFound:     "生成记录不存在",
+	CodeAIUnsupportedType:        "不支持的AI任务类型",
+	CodeAIChatNotFound:           "对话会话不存在",
+	CodeAIChatMessageNotFound:    "对话消息不存在",
+	CodeAIRecommendationNotFound: "推荐记录不存在",
+	CodeAITrainingNotFound:       "训练数据不存在",
+	CodeAIModelConfigNotFound:    "模型配置不存在",
 }
 
 // GetMessage 获取错误码对应的消息

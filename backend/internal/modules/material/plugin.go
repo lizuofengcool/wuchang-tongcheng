@@ -20,6 +20,7 @@ type Plugin struct {
 	name    string
 	version string
 	handler *handler.Handler
+	extH    *handler.ExtendHandler
 }
 
 // NewPlugin 创建素材中台插件
@@ -51,8 +52,11 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 	repo := repository.NewMaterialRepository(db)
+	extRepo := repository.NewMaterialExtendRepository(db)
 	svc := service.NewMaterialService(repo)
+	extSvc := service.NewMaterialExtendService(repo, extRepo)
 	p.handler = handler.NewHandler(svc)
+	p.extH = handler.NewExtendHandler(extSvc)
 	return nil
 }
 
@@ -75,6 +79,40 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 图片处理
 	router.POST("/watermark", auth, writeLimiter, p.handler.AddWatermark)
 	router.POST("/thumbnails", auth, writeLimiter, p.handler.GenerateThumbnail)
+
+	// 分类（公开查询 + M 端管理）
+	router.GET("/categories", auth, readLimiter, p.extH.ListCategories)
+	router.POST("/categories", auth, writeLimiter, p.extH.CreateCategory)
+	router.POST("/categories/:id", auth, writeLimiter, p.extH.UpdateCategory)
+	router.DELETE("/categories/:id", auth, writeLimiter, p.extH.DeleteCategory)
+
+	// 标签
+	router.GET("/tags", auth, readLimiter, p.extH.ListTags)
+	router.POST("/tags", auth, writeLimiter, p.extH.CreateTag)
+	router.POST("/tags/:id", auth, writeLimiter, p.extH.UpdateTag)
+	router.DELETE("/tags/:id", auth, writeLimiter, p.extH.DeleteTag)
+	router.GET("/tags/:id/images", auth, readLimiter, p.extH.ListImagesByTag)
+
+	// 图片标签
+	router.POST("/images/tags", auth, writeLimiter, p.extH.AddImageTags)
+	router.POST("/images/tags/remove", auth, writeLimiter, p.extH.RemoveImageTag)
+	router.GET("/images/:image_id/tags", auth, readLimiter, p.extH.ListImageTags)
+
+	// 搜索历史
+	router.GET("/search/history", auth, readLimiter, p.extH.ListMySearchHistory)
+
+	// 相似图结果
+	router.GET("/similar/:source_image_id", auth, readLimiter, p.extH.ListSimilarResults)
+
+	// OCR
+	router.POST("/ocr", auth, writeLimiter, p.extH.RecognizeOCR)
+	router.GET("/ocr/:image_id", auth, readLimiter, p.extH.GetOCRByImageID)
+
+	// M 端管理后台
+	materialManage := coreRouter.WrapGin(middleware.RequirePermission("material:manage"))
+	admin := router.Group("/admin")
+	admin.GET("/ocr", materialManage, p.extH.ListOCRResults)
+	admin.GET("/statistics", materialManage, p.extH.Statistics)
 }
 
 // Close 关闭插件

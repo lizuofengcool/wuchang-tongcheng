@@ -20,6 +20,7 @@ type Plugin struct {
 	name    string
 	version string
 	handler *handler.Handler
+	extH    *handler.ExtendHandler
 }
 
 // NewPlugin 创建风控中台插件
@@ -51,8 +52,11 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 	repo := repository.NewRiskRepository(db)
+	extRepo := repository.NewRiskExtendRepository(db)
 	svc := service.NewRiskService(repo)
+	extSvc := service.NewRiskExtendService(repo, extRepo)
 	p.handler = handler.NewHandler(svc)
+	p.extH = handler.NewExtendHandler(extSvc)
 	return nil
 }
 
@@ -91,6 +95,33 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 违规处罚
 	router.GET("/violations/:user_id", auth, readLimiter, p.handler.ListUserViolations)
 	router.POST("/violations/appeal", auth, writeLimiter, p.handler.AppealViolation)
+
+	// 举报证据
+	router.POST("/reports/evidence", auth, writeLimiter, p.extH.AddEvidence)
+	router.GET("/reports/:id/evidence", auth, readLimiter, p.extH.ListEvidenceByReport)
+
+	// 申诉
+	router.POST("/appeals", auth, writeLimiter, p.extH.CreateAppeal)
+	router.GET("/appeals", auth, readLimiter, p.extH.ListMyAppeals)
+
+	// 风控规则（公开查询 + M 端管理）
+	router.GET("/rules", auth, readLimiter, p.extH.ListRules)
+	router.GET("/rules/:id", auth, readLimiter, p.extH.GetRule)
+
+	// 风险评分记录
+	router.GET("/score-records", auth, readLimiter, p.extH.ListMyScoreRecords)
+
+	// M 端管理后台
+	admin := router.Group("/admin")
+	admin.DELETE("/reports/evidence/:id", riskManage, p.extH.DeleteEvidence)
+	admin.GET("/appeals", riskManage, p.extH.ListAppeals)
+	admin.POST("/appeals/handle", riskManage, p.extH.HandleAppeal)
+	admin.POST("/rules", riskManage, p.extH.CreateRule)
+	admin.POST("/rules/:id", riskManage, p.extH.UpdateRule)
+	admin.DELETE("/rules/:id", riskManage, p.extH.DeleteRule)
+	admin.GET("/score-records", riskManage, p.extH.ListScoreRecordsByLevel)
+	admin.GET("/audit-logs", riskManage, p.extH.ListAuditLogs)
+	admin.GET("/statistics", riskManage, p.extH.Statistics)
 }
 
 // Close 关闭插件

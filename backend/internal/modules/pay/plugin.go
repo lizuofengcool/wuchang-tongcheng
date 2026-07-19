@@ -20,6 +20,7 @@ type Plugin struct {
 	name    string
 	version string
 	handler *handler.Handler
+	extH    *handler.ExtendHandler
 }
 
 // NewPlugin 创建支付中台插件
@@ -51,8 +52,11 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
 	repo := repository.NewPayRepository(db)
+	extRepo := repository.NewPayExtendRepository(db)
 	svc := service.NewPayService(repo)
+	extSvc := service.NewPayExtendService(repo, extRepo)
 	p.handler = handler.NewHandler(svc)
+	p.extH = handler.NewExtendHandler(extSvc)
 	return nil
 }
 
@@ -88,11 +92,40 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 结算查询
 	router.GET("/settlements", auth, readLimiter, p.handler.ListSettlements)
 
+	// 交易流水
+	router.GET("/transactions", auth, readLimiter, p.extH.ListTransactions)
+	router.GET("/transactions/:txn_no", auth, readLimiter, p.extH.GetTransaction)
+
+	// 渠道（公开查询 + M 端管理）
+	router.GET("/channels", auth, readLimiter, p.extH.ListChannels)
+	router.GET("/channels/:id", auth, readLimiter, p.extH.GetChannel)
+
+	// 商户
+	router.POST("/merchants", auth, writeLimiter, p.extH.CreateMerchant)
+	router.GET("/merchants", auth, readLimiter, p.extH.ListMerchants)
+	router.GET("/merchants/:id", auth, readLimiter, p.extH.GetMerchant)
+
+	// 回调（第三方调用，不强制登录）
+	router.POST("/callbacks", writeLimiter, p.extH.RecordCallback)
+	router.GET("/callbacks/:id", auth, readLimiter, p.extH.GetCallback)
+
+	// 担保争议
+	router.POST("/escrow/disputes", auth, writeLimiter, p.extH.CreateDispute)
+
 	// M 端管理后台（需 finance:reconcile 权限）
 	admin := router.Group("/admin")
 	admin.GET("/withdrawals/pending", financeManage, p.handler.ListPendingWithdrawals)
 	admin.POST("/withdrawals/handle", financeManage, p.handler.HandleWithdrawal)
 	admin.POST("/settlements", financeManage, p.handler.Settle)
+	// 扩展 M 端
+	admin.POST("/channels", financeManage, p.extH.CreateChannel)
+	admin.POST("/channels/:id", financeManage, p.extH.UpdateChannel)
+	admin.DELETE("/channels/:id", financeManage, p.extH.DeleteChannel)
+	admin.POST("/merchants/audit", financeManage, p.extH.AuditMerchant)
+	admin.GET("/callbacks", financeManage, p.extH.ListCallbacks)
+	admin.GET("/disputes", financeManage, p.extH.ListDisputes)
+	admin.POST("/disputes/arbitrate", financeManage, p.extH.ArbitrateDispute)
+	admin.GET("/statistics", financeManage, p.extH.Statistics)
 }
 
 // Close 关闭插件

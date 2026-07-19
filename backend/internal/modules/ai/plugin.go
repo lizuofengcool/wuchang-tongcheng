@@ -1,5 +1,6 @@
 // Package ai AI 智能中台精简版插件
 // 依据 ershou 模块依赖：标题优化 + 描述生成 + 价格建议 + 摘要生成 + 任务管理
+// 扩展：审核/推荐/对话/模型配置/训练数据
 // 路由前缀 /api/v1/ai
 package ai
 
@@ -20,6 +21,7 @@ type Plugin struct {
 	name    string
 	version string
 	handler *handler.Handler
+	extH    *handler.ExtendHandler
 }
 
 // NewPlugin 创建 AI 中台插件
@@ -39,7 +41,7 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 		Name:         "ai",
 		DisplayName:  "AI智能中台",
 		Category:     "middleware",
-		Description:  "AI标题优化、描述生成、价格建议、摘要、任务管理",
+		Description:  "AI标题优化、描述生成、价格建议、摘要、任务管理、审核、推荐、对话",
 		Version:      p.version,
 		Dependencies: []string{"user"},
 		Author:       "wuchang",
@@ -47,12 +49,21 @@ func (p *Plugin) Meta() plugin.PluginMeta {
 }
 
 // Init 初始化插件
-// 注意：不调用 AutoMigrate，表结构由 migrations/005_p1_middlewares.sql 创建
+// 注意：不调用 AutoMigrate，表结构由 migrations/016_ai_full.sql 创建
+// 不使用 GORM AutoMigrate 以避免约束名不一致错误（与 car/house/job 设计一致）
 func (p *Plugin) Init(ctx context.Context) error {
 	db := database.GetDB()
+
+	// 原有依赖注入
 	repo := repository.NewAIRepository(db)
 	svc := service.NewAIService(repo)
 	p.handler = handler.NewHandler(svc)
+
+	// 扩展依赖注入
+	extRepo := repository.NewAIExtendRepository(db)
+	extSvc := service.NewAIExtendService(extRepo)
+	p.extH = handler.NewExtendHandler(extSvc)
+
 	return nil
 }
 
@@ -88,6 +99,40 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 生成记录
 	router.GET("/generations", auth, readLimiter, p.handler.ListMyGenerations)
 	router.POST("/generations/rate", auth, writeLimiter, p.handler.RateGeneration)
+
+	// ===== 扩展路由 =====
+
+	// 审核
+	router.POST("/audit/submit", auth, writeLimiter, p.extH.SubmitAudit)
+	router.GET("/audit/:task_id", auth, readLimiter, p.extH.GetAuditResult)
+	router.GET("/audit", auth, readLimiter, p.extH.ListAuditResults)
+	router.PUT("/audit/:task_id/review", auth, aiManage, writeLimiter, p.extH.ReviewAudit)
+
+	// 推荐
+	router.GET("/recommendations", auth, readLimiter, p.extH.GetRecommendations)
+	router.POST("/recommendations/:id/click", auth, writeLimiter, p.extH.TrackClick)
+	router.POST("/recommendations/:id/dwell", auth, writeLimiter, p.extH.TrackDwell)
+	router.POST("/recommendations/:id/feedback", auth, writeLimiter, p.extH.FeedbackRecommendation)
+
+	// 模型配置（M 端）— 注意路径与上方 /models/:id/status 不冲突
+	router.GET("/model-configs", auth, readLimiter, p.extH.ListModelConfigs)
+	router.POST("/model-configs", auth, aiManage, writeLimiter, p.extH.UpsertModelConfig)
+	router.DELETE("/model-configs/:id", auth, aiManage, writeLimiter, p.extH.DeleteModelConfig)
+
+	// 对话
+	router.POST("/chat/sessions", auth, writeLimiter, p.extH.CreateChatSession)
+	router.GET("/chat/sessions", auth, readLimiter, p.extH.ListChatSessions)
+	router.POST("/chat/messages", auth, writeLimiter, p.extH.Chat)
+	router.GET("/chat/sessions/:session_id/messages", auth, readLimiter, p.extH.ListChatMessages)
+	router.POST("/chat/messages/:id/feedback", auth, writeLimiter, p.extH.MessageFeedback)
+
+	// 训练数据（M 端）
+	router.GET("/training-data", auth, aiManage, readLimiter, p.extH.ListTrainingData)
+	router.POST("/training-data", auth, aiManage, writeLimiter, p.extH.CreateTrainingData)
+	router.PUT("/training-data/:id/used", auth, aiManage, writeLimiter, p.extH.MarkTrainingDataUsed)
+
+	// 统计（M 端）
+	router.GET("/admin/statistics", auth, aiManage, readLimiter, p.extH.GetStatistics)
 }
 
 // Close 关闭插件
