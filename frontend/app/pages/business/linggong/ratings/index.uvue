@@ -1,0 +1,460 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="stats-card" v-if="stats.total_count > 0">
+                <view class="stats-cell">
+                    <text class="stats-value">{{ stats.avg_score }}</text>
+                    <text class="stats-label">平均分</text>
+                </view>
+                <view class="stats-cell">
+                    <text class="stats-value">{{ stats.total_count }}</text>
+                    <text class="stats-label">{{ currentTab == 0 ? '评价数' : '收到评价' }}</text>
+                </view>
+                <view class="stats-cell">
+                    <text class="stats-value">{{ stats.good_rate }}%</text>
+                    <text class="stats-label">好评率</text>
+                </view>
+            </view>
+
+            <view class="rating-card" v-for="item in ratingList" :key="item.id">
+                <view class="rating-header">
+                    <view class="rater-info">
+                        <text class="rater-name">{{ item.rater_name }}</text>
+                        <view class="score-row">
+                            <text class="score">{{ item.score }}</text>
+                            <text class="score-max">/5</text>
+                        </view>
+                    </view>
+                    <text class="rating-time">{{ item.created_at }}</text>
+                </view>
+                <text class="rating-content">{{ item.content }}</text>
+                <view class="rating-tags" v-if="item.tags.length > 0">
+                    <view class="rating-tag" v-for="(t, idx) in item.tags" :key="idx">
+                        <text class="rating-tag-text">{{ t }}</text>
+                    </view>
+                </view>
+                <view class="reply-row" v-if="item.reply.length > 0">
+                    <text class="reply-label">回复：</text>
+                    <text class="reply-content">{{ item.reply }}</text>
+                </view>
+                <view class="action-row">
+                    <view class="like-btn" @click="onLike(item.id)">
+                        <text class="like-icon">👍</text>
+                        <text class="like-count">{{ item.like_count }}</text>
+                    </view>
+                    <view class="reply-btn" v-if="canReply" @click="onReply(item.id)">
+                        <text class="reply-btn-text">回复</text>
+                    </view>
+                </view>
+            </view>
+
+            <linggong-loading v-if="loading" />
+            <view class="no-more" v-if="!hasMore && ratingList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <linggong-empty v-if="ratingList.length == 0 && !loading" icon="⭐" text="暂无评价" btn-text="去评价" @click="goList" />
+        </scroll-view>
+
+        <view class="fab-btn" v-if="currentTab == 0" @click="onCreate">
+            <text class="fab-icon">+</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getRatingStats, listRatingsByLinggong, createRating, replyRating, likeRating } from '@/api/business/linggong.uts'
+
+    type Tab = { key: string, name: string }
+    type Stats = {
+        avg_score: number
+        total_count: number
+        good_rate: number
+    }
+    type Rating = {
+        id: number
+        target_id: number
+        target_type: string
+        rater_name: string
+        score: number
+        content: string
+        reply: string
+        tags: string[]
+        like_count: number
+        created_at: string
+    }
+
+    const tabs = ref([
+        { key: 'rater', name: '我评价的' },
+        { key: 'target', name: '收到的' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const ratingList = ref([] as Rating[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const stats = ref({ avg_score: 0, total_count: 0, good_rate: 0 } as Stats)
+
+    const canReply = computed(() : boolean => {
+        return currentTab.value == 1
+    })
+
+    const loadStats = () => {
+        const params: UTSJSONObject = {
+            target_type: tabs.value[currentTab.value].key
+        } as UTSJSONObject
+        getRatingStats(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                stats.value = {
+                    avg_score: (d['avg_score'] as number) ?? 0,
+                    total_count: (d['total_count'] as number) ?? 0,
+                    good_rate: (d['good_rate'] as number) ?? 0
+                } as Stats
+            }
+        })
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            target_type: tabs.value[currentTab.value].key
+        } as UTSJSONObject
+
+        listRatingsByLinggong(0).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as Rating[]) ?? ([] as Rating[])
+                if (reset) {
+                    ratingList.value = newList
+                } else {
+                    ratingList.value = ratingList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadStats()
+        loadList(true)
+    }
+
+    const onLike = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        likeRating(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已点赞', icon: 'success' })
+            }
+        })
+    }
+
+    const onReply = (id: number) => {
+        uni.showModal({
+            title: '回复评价',
+            editable: true,
+            placeholderText: '请输入回复内容',
+            success: (res) => {
+                if (res.confirm && res.content.length > 0) {
+                    const data: UTSJSONObject = { content: res.content } as UTSJSONObject
+                    replyRating(id, data).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '回复成功', icon: 'success' })
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: r.message || '回复失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onCreate = () => {
+        uni.navigateTo({ url: '/pages/business/linggong/list/index' })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/linggong/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadStats()
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadStats()
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadStats()
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom-width: 1px;
+        border-bottom-color: #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .stats-card {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .stats-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stats-value {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stats-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .rating-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin: 0 12px 10px 12px;
+    }
+
+    .rating-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rater-info {
+        flex: 1;
+    }
+
+    .rater-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .score-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 2px;
+    }
+
+    .score {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .score-max {
+        font-size: 11px;
+        color: #CCC;
+        margin-left: 2px;
+    }
+
+    .rating-time {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .rating-content {
+        font-size: 13px;
+        color: #333;
+        margin-top: 8px;
+        line-height: 1.5;
+    }
+
+    .rating-tags {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .rating-tag {
+        background-color: #FFF5F0;
+        border-radius: 10px;
+        padding: 2px 8px;
+        margin-right: 6px;
+        margin-top: 4px;
+    }
+
+    .rating-tag-text {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .reply-row {
+        background-color: #FAFAFA;
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 8px;
+        flex-direction: row;
+    }
+
+    .reply-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .reply-content {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .action-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .like-btn {
+        flex-direction: row;
+        align-items: center;
+        margin-right: 16px;
+    }
+
+    .like-icon {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-right: 4px;
+    }
+
+    .like-count {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .reply-btn {
+        background-color: #FF6B35;
+        border-radius: 12px;
+        padding: 4px 12px;
+        margin-left: auto;
+    }
+
+    .reply-btn-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .fab-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .fab-icon {
+        font-size: 28px;
+        color: #FFFFFF;
+    }
+</style>

@@ -1,0 +1,178 @@
+<template>
+    <view class="route-card" @click="onClick">
+        <view class="card-main">
+            <view class="route-points">
+                <view class="point">
+                    <view class="point-dot start-dot"></view>
+                    <text class="point-text">{{ route.origin }}</text>
+                </view>
+                <view class="route-line"></view>
+                <view class="point">
+                    <view class="point-dot end-dot"></view>
+                    <text class="point-text">{{ route.destination }}</text>
+                </view>
+            </view>
+            <view class="meta-row" v-if="route.distance > 0">
+                <text class="meta">📏 {{ route.distance }}km</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">⏱️ {{ route.duration }}分钟</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">使用{{ route.use_count }}次</text>
+            </view>
+            <view class="bottom-row">
+                <view class="fav-btn" @click.stop="onToggleFav">
+                    <text class="fav-icon">{{ route.is_faved ? '★' : '☆' }}</text>
+                    <text class="fav-text">{{ route.is_faved ? '已收藏' : '收藏' }}</text>
+                </view>
+                <view class="publish-btn" @click.stop="onQuickPublish">
+                    <text class="publish-text">快速发布</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Route = {
+        id: number
+        origin: string
+        destination: string
+        distance: number
+        duration: number
+        use_count: number
+        is_faved: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        route: Route
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'toggleFav', id: number): void
+        (e: 'quickPublish', id: number): void
+    }>()
+
+    const onClick = () => {
+        emit('click', props.route.id)
+    }
+
+    const onToggleFav = () => {
+        emit('toggleFav', props.route.id)
+    }
+
+    const onQuickPublish = () => {
+        emit('quickPublish', props.route.id)
+    }
+</script>
+
+<style>
+    .route-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-main {
+        flex: 1;
+    }
+
+    .route-points {
+        flex-direction: column;
+    }
+
+    .point {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .point-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+
+    .start-dot {
+        background-color: #07C160;
+    }
+
+    .end-dot {
+        background-color: #FF6B35;
+    }
+
+    .point-text {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .route-line {
+        width: 1px;
+        height: 16px;
+        background-color: #DDD;
+        margin-left: 3px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .fav-btn {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .fav-icon {
+        font-size: 16px;
+        color: #FF6B35;
+        margin-right: 4px;
+    }
+
+    .fav-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .publish-btn {
+        background-color: #FF6B35;
+        border-radius: 14px;
+        padding: 4px 12px;
+    }
+
+    .publish-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+</style>

@@ -1,0 +1,468 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">基础信息</text>
+                <view class="form-row">
+                    <text class="label">昵称<text class="required">*</text></text>
+                    <input class="input" v-model="form.nickname" placeholder="请输入昵称" />
+                </view>
+                <view class="form-row">
+                    <text class="label">性别<text class="required">*</text></text>
+                    <view class="radio-group">
+                        <text class="radio-item" :class="{ active: form.gender == 'male' }" @click="form.gender = 'male'">男</text>
+                        <text class="radio-item" :class="{ active: form.gender == 'female' }" @click="form.gender = 'female'">女</text>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="label">年龄<text class="required">*</text></text>
+                    <input class="input" type="number" v-model="form.ageText" placeholder="请输入年龄" />
+                </view>
+                <view class="form-row">
+                    <text class="label">城市<text class="required">*</text></text>
+                    <input class="input" v-model="form.city" placeholder="请输入城市" />
+                </view>
+                <view class="form-row">
+                    <text class="label">身高(cm)</text>
+                    <input class="input" type="number" v-model="form.heightText" placeholder="请输入身高" />
+                </view>
+                <view class="form-row">
+                    <text class="label">体重(kg)</text>
+                    <input class="input" type="number" v-model="form.weightText" placeholder="请输入体重" />
+                </view>
+                <view class="form-row">
+                    <text class="label">职业</text>
+                    <input class="input" v-model="form.occupation" placeholder="请输入职业" />
+                </view>
+                <view class="form-row">
+                    <text class="label">学历</text>
+                    <input class="input" v-model="form.education" placeholder="例如：本科" />
+                </view>
+                <view class="form-row">
+                    <text class="label">收入</text>
+                    <input class="input" v-model="form.income" placeholder="例如：10-20万" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">详细资料</text>
+                <view class="form-row column">
+                    <text class="label">关于我</text>
+                    <textarea class="textarea" v-model="form.about" placeholder="介绍一下自己" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">期待的你</text>
+                    <textarea class="textarea" v-model="form.requirement" placeholder="描述你期待的对象" />
+                </view>
+                <view class="form-row">
+                    <text class="label">个性签名</text>
+                    <input class="input" v-model="form.signature" placeholder="一句话介绍自己" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">个人标签</text>
+                <view class="tag-wrap">
+                    <view class="tag" v-for="(t, idx) in form.tags" :key="idx">
+                        <text class="tag-text">{{ t }}</text>
+                        <text class="tag-del" @click="removeTag(idx)">✕</text>
+                    </view>
+                    <view class="tag-add" @click="onAddTag" v-if="form.tags.length < 10">
+                        <text class="tag-add-text">+ 添加</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">照片墙</text>
+                <view class="album-wrap">
+                    <view class="album-item" v-for="(img, idx) in form.albums" :key="idx">
+                        <image class="album-img" :src="img" mode="aspectFill" />
+                        <text class="album-del" @click="removeAlbum(idx)">✕</text>
+                    </view>
+                    <view class="album-add" @click="onAddAlbum" v-if="form.albums.length < 9">
+                        <text class="album-add-icon">+</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save-draft" @click="onSave">
+                <text class="btn-text">保存</text>
+            </view>
+            <view class="btn-publish" @click="onSave">
+                <text class="btn-text-white">保存并发布</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getMyLoveProfile, updateLoveProfile, createLoveProfile, updateLoveProfileByLoveId } from '@/api/business/love.uts'
+
+    type Form = {
+        id: number
+        love_id: number
+        nickname: string
+        gender: string
+        ageText: string
+        city: string
+        heightText: string
+        weightText: string
+        occupation: string
+        education: string
+        income: string
+        signature: string
+        about: string
+        requirement: string
+        tags: string[]
+        albums: string[]
+    }
+
+    const form = ref({
+        id: 0,
+        love_id: 0,
+        nickname: '',
+        gender: 'male',
+        ageText: '',
+        city: '',
+        heightText: '',
+        weightText: '',
+        occupation: '',
+        education: '',
+        income: '',
+        signature: '',
+        about: '',
+        requirement: '',
+        tags: [] as string[],
+        albums: [] as string[]
+    } as Form)
+
+    const onAddTag = () => {
+        uni.showModal({
+            title: '添加标签',
+            editable: true,
+            placeholderText: '请输入标签（最多10字）',
+            success: (res) => {
+                if (res.confirm && res.content.length > 0) {
+                    form.value.tags.push(res.content)
+                }
+            }
+        })
+    }
+
+    const removeTag = (idx: number) => {
+        form.value.tags.splice(idx, 1)
+    }
+
+    const onAddAlbum = () => {
+        uni.chooseImage({
+            count: 9 - form.value.albums.length,
+            success: (res) => {
+                const paths = res.tempFilePaths
+                for (let i = 0; i < paths.length; i++) {
+                    form.value.albums.push(paths[i])
+                }
+            }
+        })
+    }
+
+    const removeAlbum = (idx: number) => {
+        form.value.albums.splice(idx, 1)
+    }
+
+    const loadProfile = () => {
+        getMyLoveProfile().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value.id = (d['id'] as number) ?? 0
+                form.value.love_id = (d['love_id'] as number) ?? 0
+                form.value.nickname = (d['nickname'] as string) ?? ''
+                form.value.gender = (d['gender'] as string) ?? 'male'
+                form.value.ageText = (((d['age'] as number) ?? 0)).toString()
+                form.value.city = (d['city'] as string) ?? ''
+                form.value.heightText = (((d['height'] as number) ?? 0)).toString()
+                form.value.weightText = (((d['weight'] as number) ?? 0)).toString()
+                form.value.occupation = (d['occupation'] as string) ?? ''
+                form.value.education = (d['education'] as string) ?? ''
+                form.value.income = (d['income'] as string) ?? ''
+                form.value.signature = (d['signature'] as string) ?? ''
+                form.value.about = (d['about'] as string) ?? ''
+                form.value.requirement = (d['requirement'] as string) ?? ''
+                form.value.tags = (d['tags'] as string[]) ?? ([] as string[])
+                form.value.albums = (d['albums'] as string[]) ?? ([] as string[])
+            }
+        })
+    }
+
+    const onSave = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.nickname.length == 0) {
+            uni.showToast({ title: '请输入昵称', icon: 'none' })
+            return
+        }
+        if (form.value.city.length == 0) {
+            uni.showToast({ title: '请输入城市', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            nickname: form.value.nickname,
+            gender: form.value.gender,
+            age: parseInt(form.value.ageText) || 0,
+            city: form.value.city,
+            height: parseInt(form.value.heightText) || 0,
+            weight: parseInt(form.value.weightText) || 0,
+            occupation: form.value.occupation,
+            education: form.value.education,
+            income: form.value.income,
+            signature: form.value.signature,
+            about: form.value.about,
+            requirement: form.value.requirement,
+            tags: form.value.tags,
+            albums: form.value.albums
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '保存中...' })
+        const reqFn = form.value.id > 0 ? updateLoveProfile(form.value.id, data) : createLoveProfile(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '保存成功', icon: 'success' })
+                setTimeout(() => { uni.navigateBack() }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadProfile()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 100px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .radio-group {
+        flex: 1;
+        flex-direction: row;
+    }
+
+    .radio-item {
+        font-size: 13px;
+        color: #666;
+        padding: 4px 16px;
+        border-width: 1px;
+        border-color: #E5E5E5;
+        margin-right: 8px;
+        border-radius: 16px;
+    }
+
+    .radio-item.active {
+        color: #FF6B35;
+        border-color: #FF6B35;
+        background-color: #FFF5F0;
+    }
+
+    .tag-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        background-color: #FFF5F0;
+        border-radius: 14px;
+        padding: 4px 10px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .tag-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .tag-del {
+        font-size: 10px;
+        color: #CCC;
+        margin-left: 4px;
+    }
+
+    .tag-add {
+        border-width: 1px;
+        border-color: #FF6B35;
+        border-style: dashed;
+        border-radius: 14px;
+        padding: 4px 10px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+
+    .tag-add-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .album-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .album-item {
+        width: 100px;
+        height: 100px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        position: relative;
+    }
+
+    .album-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 6px;
+    }
+
+    .album-del {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background-color: rgba(0,0,0,0.5);
+        color: #FFFFFF;
+        font-size: 10px;
+        text-align: center;
+        line-height: 18px;
+    }
+
+    .album-add {
+        width: 100px;
+        height: 100px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        border-style: dashed;
+        border-radius: 6px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .album-add-icon {
+        font-size: 32px;
+        color: #CCC;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save-draft {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        border-width: 1px;
+        border-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .btn-publish {
+        flex: 2;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

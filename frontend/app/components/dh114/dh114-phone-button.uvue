@@ -1,0 +1,68 @@
+<template>
+    <view class="phone-btn" :class="{ disabled: disabled }" @click="onCall">
+        <text class="phone-icon">📞</text>
+        <text class="phone-text">{{ text }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        phone: string
+        text?: string
+        dh114Id?: number
+        disabled?: boolean
+    }>(), {
+        text: '一键拨打',
+        dh114Id: 0,
+        disabled: false
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'call', phone: string): void
+    }>()
+
+    const onCall = () => {
+        if (props.disabled) return
+        if (props.phone.length == 0) {
+            uni.showToast({ title: '暂无联系电话', icon: 'none' })
+            return
+        }
+        uni.makePhoneCall({
+            phoneNumber: props.phone,
+            success: () => {
+                emit('call', props.phone)
+            },
+            fail: () => {
+                uni.showToast({ title: '拨号取消', icon: 'none' })
+            }
+        })
+    }
+</script>
+
+<style>
+    .phone-btn {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        padding: 0 20px;
+        height: 44px;
+    }
+
+    .phone-btn.disabled {
+        background-color: #CCC;
+    }
+
+    .phone-icon {
+        font-size: 16px;
+        color: #FFFFFF;
+        margin-right: 6px;
+    }
+
+    .phone-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

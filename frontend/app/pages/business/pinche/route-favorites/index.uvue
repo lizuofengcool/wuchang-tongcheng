@@ -1,0 +1,355 @@
+<template>
+    <view class="page">
+    <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+        <view class="section">
+            <view class="section-header">
+                <text class="section-title">我的收藏</text>
+                <text class="add-btn" @click="showAddForm = !showAddForm">+ 添加</text>
+            </view>
+            <view class="add-form" v-if="showAddForm">
+                <view class="form-row">
+                    <input class="input" v-model="newRoute.origin" placeholder="出发地" />
+                </view>
+                <view class="form-row">
+                    <input class="input" v-model="newRoute.destination" placeholder="目的地" />
+                </view>
+                <view class="form-row">
+                    <input class="input" v-model="newRoute.waypoints" placeholder="途经点（可选）" />
+                </view>
+                <view class="form-btn-row">
+                    <view class="form-btn cancel" @click="showAddForm = false">
+                        <text class="form-btn-text">取消</text>
+                    </view>
+                    <view class="form-btn confirm" @click="onAddRoute">
+                        <text class="form-btn-text-white">保存</text>
+                    </view>
+                </view>
+            </view>
+            <view class="empty-tip" v-if="favList.length == 0 && !loading">
+                <text class="empty-tip-text">暂无收藏路线</text>
+            </view>
+            <view class="route-list">
+                <pinche-route-card v-for="item in favList" :key="item.id" :route="transformRoute(item)" @click="goRouteDetail" @toggle-fav="onToggleFav" @quick-publish="onQuickPublish" />
+            </view>
+        </view>
+
+        <view class="section">
+            <text class="section-title">常用路线推荐</text>
+            <view class="empty-tip" v-if="commonList.length == 0 && !commonLoading">
+                <text class="empty-tip-text">暂无常用路线</text>
+            </view>
+            <view class="route-list">
+                <pinche-route-card v-for="item in commonList" :key="item.id" :route="transformRoute(item)" @click="goRouteDetail" @toggle-fav="onToggleFav" @quick-publish="onQuickPublish" />
+            </view>
+        </view>
+
+        <view class="load-more" v-if="loading || commonLoading">
+            <text class="load-text">加载中...</text>
+        </view>
+    </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listRouteFavs, listCommonRoutes, createRoute, favRoute } from '@/api/business/pinche.uts'
+
+    type Route = {
+        id: number
+        origin: string
+        destination: string
+        distance: number
+        duration: number
+        use_count: number
+        is_faved: boolean
+    }
+    type RouteCardData = {
+        id: number
+        origin: string
+        destination: string
+        distance: number
+        duration: number
+        use_count: number
+        is_faved: boolean
+    }
+    type NewRoute = {
+        origin: string
+        destination: string
+        waypoints: string
+    }
+
+    const favList = ref([] as Route[])
+    const commonList = ref([] as Route[])
+    const loading = ref(false)
+    const commonLoading = ref(false)
+    const showAddForm = ref(false)
+    const newRoute = ref({ origin: '', destination: '', waypoints: '' } as NewRoute)
+
+    const transformRoute = (item: Route) : RouteCardData => {
+        return {
+            id: item.id,
+            origin: item.origin,
+            destination: item.destination,
+            distance: item.distance,
+            duration: item.duration,
+            use_count: item.use_count,
+            is_faved: item.is_faved
+        } as RouteCardData
+    }
+
+    const loadFavList = () => {
+        loading.value = true
+        listRouteFavs().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                favList.value = (d['list'] as Route[]) ?? ([] as Route[])
+                for (let i = 0; i < favList.value.length; i++) {
+                    favList.value[i].is_faved = true
+                }
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadCommonList = () => {
+        commonLoading.value = true
+        listCommonRoutes().then((res: ApiResult) => {
+            commonLoading.value = false
+            if (res.code == 200 && res.data) {
+                commonList.value = (res.data as Route[]) ?? ([] as Route[])
+            }
+        }).catch(() => {
+            commonLoading.value = false
+        })
+    }
+
+    const loadMore = () => {
+        // 当前接口为单页，无分页加载
+    }
+
+    const onAddRoute = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (newRoute.value.origin.length == 0) {
+            uni.showToast({ title: '请输入出发地', icon: 'none' })
+            return
+        }
+        if (newRoute.value.destination.length == 0) {
+            uni.showToast({ title: '请输入目的地', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = {
+            origin: newRoute.value.origin,
+            destination: newRoute.value.destination,
+            waypoints: newRoute.value.waypoints
+        } as UTSJSONObject
+        uni.showLoading({ title: '保存中...' })
+        createRoute(data).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                const d = res.data as UTSJSONObject
+                const rid = (d['id'] as number) ?? 0
+                if (rid > 0) {
+                    favRoute(rid).then(() => {
+                        uni.showToast({ title: '已添加并收藏', icon: 'success' })
+                        newRoute.value = { origin: '', destination: '', waypoints: '' } as NewRoute
+                        showAddForm.value = false
+                        loadFavList()
+                    })
+                } else {
+                    uni.showToast({ title: '已添加', icon: 'success' })
+                    newRoute.value = { origin: '', destination: '', waypoints: '' } as NewRoute
+                    showAddForm.value = false
+                    loadFavList()
+                }
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const onToggleFav = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提示',
+            content: '取消收藏该路线？',
+            success: (res) => {
+                if (res.confirm) {
+                    favRoute(id).then(() => {
+                        uni.showToast({ title: '已取消收藏', icon: 'none' })
+                        loadFavList()
+                    })
+                }
+            }
+        })
+    }
+
+    const onQuickPublish = (id: number) => {
+        for (let i = 0; i < favList.value.length; i++) {
+            if (favList.value[i].id == id) {
+                uni.setStorageSync('pinche_route_' + id, {
+                    origin: favList.value[i].origin,
+                    destination: favList.value[i].destination
+                } as UTSJSONObject)
+                break
+            }
+        }
+        for (let i = 0; i < commonList.value.length; i++) {
+            if (commonList.value[i].id == id) {
+                uni.setStorageSync('pinche_route_' + id, {
+                    origin: commonList.value[i].origin,
+                    destination: commonList.value[i].destination
+                } as UTSJSONObject)
+                break
+            }
+        }
+        uni.navigateTo({ url: '/pages/business/pinche/publish/index?route_id=' + id })
+    }
+
+    const goRouteDetail = (id: number) => {
+        // 路线详情可复用搜索结果
+        uni.navigateTo({ url: '/pages/business/pinche/search/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadFavList()
+        loadCommonList()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadFavList()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadFavList()
+        loadCommonList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .add-btn {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .add-form {
+        background-color: #F9F9F9;
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        padding: 6px 0;
+    }
+
+    .input {
+        background-color: #FFFFFF;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .form-btn-row {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .form-btn {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 0;
+        border-radius: 18px;
+        margin-right: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .form-btn.confirm {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .form-btn-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .form-btn-text-white {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .empty-tip {
+        padding: 24px 0;
+        align-items: center;
+    }
+
+    .empty-tip-text {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .route-list {
+        margin-top: 4px;
+    }
+
+    .load-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

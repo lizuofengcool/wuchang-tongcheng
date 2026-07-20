@@ -1,0 +1,221 @@
+<template>
+    <view class="application-card" @click="onClick">
+        <view class="header-row">
+            <text class="position">{{ application.linggong_title }}</text>
+            <view class="status-tag" :class="application.status">
+                <text class="status-text">{{ getStatusText(application.status) }}</text>
+            </view>
+        </view>
+        <view class="company-row">
+            <text class="company">{{ application.employer_name }}</text>
+        </view>
+        <view class="info-row">
+            <text class="info-text">薪资：{{ application.salary_range }}</text>
+            <text class="info-text">报名：{{ application.created_at }}</text>
+        </view>
+        <view class="action-row" v-if="showActions">
+            <view class="action-btn outline" v-if="canCancel" @click.stop="onCancel">
+                <text class="action-text outline-text">取消报名</text>
+            </view>
+            <view class="action-btn primary" v-if="canContact" @click.stop="onContact">
+                <text class="action-text primary-text">联系雇主</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Application = {
+        id: number
+        linggong_id: number
+        linggong_title: string
+        employer_name: string
+        salary_range: string
+        status: string
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        application: Application
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'cancel', id: number): void
+        (e: 'contact', id: number): void
+    }>()
+
+    const showActions = computed(() : boolean => {
+        return canCancel.value || canContact.value
+    })
+
+    const canCancel = computed(() : boolean => {
+        return props.application.status == 'pending' || props.application.status == 'approved'
+    })
+
+    const canContact = computed(() : boolean => {
+        return props.application.status == 'approved' || props.application.status == 'in_progress'
+    })
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'pending') return '待审核'
+        if (status == 'approved') return '已通过'
+        if (status == 'rejected') return '已拒绝'
+        if (status == 'in_progress') return '进行中'
+        if (status == 'completed') return '已完成'
+        if (status == 'cancelled') return '已取消'
+        return status
+    }
+
+    const onClick = () => {
+        emit('click', props.application.id)
+    }
+
+    const onCancel = () => {
+        emit('cancel', props.application.id)
+    }
+
+    const onContact = () => {
+        emit('contact', props.application.id)
+    }
+</script>
+
+<style>
+    .application-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .position {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .status-tag.pending {
+        background-color: #FFF8E5;
+    }
+
+    .status-tag.approved {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.in_progress {
+        background-color: #FFF5F0;
+    }
+
+    .status-tag.completed {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.cancelled {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pending .status-text {
+        color: #FF976A;
+    }
+
+    .status-tag.approved .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.rejected .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.in_progress .status-text {
+        color: #FF6B35;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .status-tag.cancelled .status-text {
+        color: #999;
+    }
+
+    .company-row {
+        margin-top: 4px;
+    }
+
+    .company {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .info-text {
+        font-size: 12px;
+        color: #999;
+        margin-right: 16px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .action-btn {
+        border-radius: 14px;
+        padding: 4px 14px;
+        margin-left: 8px;
+    }
+
+    .action-btn.outline {
+        border-width: 1px;
+        border-color: #CCC;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 12px;
+    }
+
+    .outline-text {
+        color: #666;
+    }
+
+    .primary-text {
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

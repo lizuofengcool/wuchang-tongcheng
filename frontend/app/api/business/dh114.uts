@@ -1,0 +1,327 @@
+// 同城114模块 API 封装
+// 对应后端 backend/internal/modules/dh114/plugin.go 路由清单（100+ API）
+// 路由前缀：/dh114（由 request.uts 中 BASE_URL 拼接为 /api/v1/dh114）
+// 按场景分组：商户/商户详情/营业时间/菜单/分类/优惠券/团购/评价/收藏/电话本/认证/推荐
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+// 对标大众点评/美团/58同城
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 商户主表（dh114s）=====
+// 商户列表（公开）
+export const listDh114s = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114', params)
+}
+
+// 商户详情（公开）
+export const getDh114Detail = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id)
+}
+
+// 搜索商户（公开）
+export const searchDh114s = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/search', params)
+}
+
+// 高级搜索（公开）
+export const advancedSearchDh114s = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/advanced-search', params)
+}
+
+// 附近商户（公开）
+export const listNearbyDh114s = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/nearby', params)
+}
+
+// 我的发布（需登录）
+export const listMyDh114s = () : Promise<ApiResult> => {
+    return get('/dh114/mine')
+}
+
+// 发布商户（需登录）
+export const createDh114 = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114', data)
+}
+
+// 更新商户（需登录）
+export const updateDh114 = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/dh114/' + id, data)
+}
+
+// 删除商户（需登录）
+export const deleteDh114 = (id: number) : Promise<ApiResult> => {
+    return del('/dh114/' + id)
+}
+
+// 分享数 +1（公开）
+export const incrDh114Share = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/' + id + '/share', null)
+}
+
+// 联系数 +1（公开）
+export const incrDh114Contact = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/' + id + '/contact', null)
+}
+
+// 记录浏览（公开）
+export const recordDh114View = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/views', data)
+}
+
+// 记录拨号（公开）
+export const recordDh114Call = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/' + id + '/calls', null)
+}
+
+// ===== 商户收藏快捷操作 =====
+// 收藏（需登录）
+export const favDh114 = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/' + id + '/fav', null)
+}
+
+// 取消收藏（需登录）
+export const unfavDh114 = (id: number) : Promise<ApiResult> => {
+    return del('/dh114/' + id + '/fav')
+}
+
+// 收藏状态（需登录）
+export const favStatusDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/fav-status')
+}
+
+// 我的收藏列表（需登录）
+export const listFavDh114s = () : Promise<ApiResult> => {
+    return get('/dh114/favs')
+}
+
+// ===== 商户详情（businesses）=====
+// 商户详情列表（公开）
+export const listBusinesses = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/businesses', params)
+}
+
+// 商户详情（公开）
+export const getBusinessDetail = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/businesses/' + id)
+}
+
+// 按商户ID查询商户详情（公开）
+export const getBusinessByDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/business')
+}
+
+// 创建商户详情（需登录）
+export const createBusiness = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/businesses', data)
+}
+
+// 更新商户详情（需登录）
+export const updateBusiness = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/dh114/businesses/' + id, data)
+}
+
+// 删除商户详情（需登录）
+export const deleteBusiness = (id: number) : Promise<ApiResult> => {
+    return del('/dh114/businesses/' + id)
+}
+
+// ===== 营业时间（business-hours）=====
+// 营业时间列表（公开）
+export const listBusinessHours = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/business-hours')
+}
+
+// 替换营业时间（需登录）
+export const replaceBusinessHours = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/dh114/' + id + '/business-hours', data)
+}
+
+// ===== 菜单/服务（menus）=====
+// 菜单列表（公开）
+export const listMenus = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/menus', params)
+}
+
+// 按商户查询菜单（公开）
+export const listMenusByDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/menus')
+}
+
+// 招牌菜单（公开）
+export const listSignatureMenus = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/menus/signature')
+}
+
+// 创建菜单（需登录）
+export const createMenu = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/menus', data)
+}
+
+// 更新菜单（需登录）
+export const updateMenu = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/dh114/menus/' + id, data)
+}
+
+// 删除菜单（需登录）
+export const deleteMenu = (id: number) : Promise<ApiResult> => {
+    return del('/dh114/menus/' + id)
+}
+
+// ===== 分类（categories）=====
+// 分类列表（公开）
+export const listCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/categories', params)
+}
+
+// 按父分类查询（公开）
+export const listCategoriesByParent = (parentId: number) : Promise<ApiResult> => {
+    return get('/dh114/categories/by-parent', { parent_id: parentId } as UTSJSONObject)
+}
+
+// 按层级查询（公开）
+export const listCategoriesByLevel = (level: number) : Promise<ApiResult> => {
+    return get('/dh114/categories/by-level', { level: level } as UTSJSONObject)
+}
+
+// ===== 优惠券（coupons）=====
+// 优惠券列表（公开）
+export const listCoupons = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/coupons', params)
+}
+
+// 热门优惠券（公开）
+export const listHotCoupons = () : Promise<ApiResult> => {
+    return get('/dh114/coupons/hot')
+}
+
+// 按商户查询优惠券（公开）
+export const listCouponsByDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/coupons')
+}
+
+// 领取优惠券（需登录）
+export const receiveCoupon = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/coupons/' + id + '/receive', null)
+}
+
+// 使用优惠券（需登录）
+export const useCoupon = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/coupons/' + id + '/use', null)
+}
+
+// ===== 团购（groupbuys）=====
+// 团购列表（公开）
+export const listGroupbuys = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/groupbuys', params)
+}
+
+// 热门团购（公开）
+export const listHotGroupbuys = () : Promise<ApiResult> => {
+    return get('/dh114/groupbuys/hot')
+}
+
+// 按商户查询团购（公开）
+export const listGroupbuysByDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/groupbuys')
+}
+
+// ===== 评价（reviews）=====
+// 评价列表（公开）
+export const listReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/reviews', params)
+}
+
+// 按商户查询评价（公开）
+export const listReviewsByDh114 = (id: number) : Promise<ApiResult> => {
+    return get('/dh114/' + id + '/reviews')
+}
+
+// 评价统计（公开）
+export const getReviewStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/reviews/stats', params)
+}
+
+// 创建评价（需登录）
+export const createReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/reviews', data)
+}
+
+// 回复评价（需登录）
+export const replyReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/reviews/' + id + '/replies', data)
+}
+
+// 点赞评价（需登录）
+export const likeReview = (id: number) : Promise<ApiResult> => {
+    return post('/dh114/reviews/' + id + '/like', null)
+}
+
+// 我的评价（需登录）
+export const listMyReviews = () : Promise<ApiResult> => {
+    return get('/dh114/reviews/mine')
+}
+
+// ===== 收藏（favorites，独立收藏表）=====
+// 创建收藏（需登录）
+export const createFavorite = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/favorites', data)
+}
+
+// 删除收藏（需登录）
+export const deleteFavorite = (id: number) : Promise<ApiResult> => {
+    return del('/dh114/favorites/' + id)
+}
+
+// 收藏列表（需登录）
+export const listFavorites = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/favorites', params)
+}
+
+// 按类型查询收藏（需登录）
+export const listFavoritesByType = (type: string) : Promise<ApiResult> => {
+    return get('/dh114/favorites/by-type', { type: type } as UTSJSONObject)
+}
+
+// 是否已收藏（需登录）
+export const hasFaved = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/favorites/has-faved', params)
+}
+
+// ===== 电话本（phone-calls）=====
+// 记录拨号（需登录）
+export const recordPhoneCall = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/phone-calls', data)
+}
+
+// 我的拨号记录（需登录）
+export const listMyPhoneCalls = () : Promise<ApiResult> => {
+    return get('/dh114/phone-calls/mine')
+}
+
+// ===== 认证（verifications）=====
+// 提交认证申请（需登录）
+export const createVerification = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/dh114/verifications', data)
+}
+
+// 我的认证（需登录）
+export const getMyVerification = () : Promise<ApiResult> => {
+    return get('/dh114/verifications/mine')
+}
+
+// 最新认证（需登录）
+export const getLatestVerification = () : Promise<ApiResult> => {
+    return get('/dh114/verifications/latest')
+}
+
+// ===== 推荐（recommendations）=====
+// 推荐列表（公开）
+export const listRecommendations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/dh114/recommendations', params)
+}

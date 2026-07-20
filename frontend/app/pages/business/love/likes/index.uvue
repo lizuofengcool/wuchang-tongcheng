@@ -1,0 +1,230 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap" v-if="list.length > 0">
+                <love-like-item v-for="item in list" :key="item.id"
+                    :item="item"
+                    :show-action="currentTab != 2"
+                    :action-text="currentTab == 0 ? '回喜欢' : '打招呼'"
+                    @click="goDetail"
+                    @action="onAction" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <love-empty v-if="list.length == 0 && !loading" :icon="emptyIcon" :text="emptyText" btn-text="去发现" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveLikes, listLoveLikesMatched, likeLoveUser } from '@/api/business/love.uts'
+
+    type Tab = { key: string, name: string }
+    type ListItem = {
+        id: number
+        love_id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        occupation: string
+        time_text: string
+        status: string
+        is_matched: boolean
+    }
+
+    const tabs = ref([
+        { key: 'liked_me', name: '喜欢我' },
+        { key: 'i_liked', name: '我喜欢' },
+        { key: 'matched', name: '互相喜欢' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const emptyIcon = computed(() : string => {
+        if (currentTab.value == 0) return '💕'
+        if (currentTab.value == 1) return '♥'
+        return '✨'
+    })
+
+    const emptyText = computed(() : string => {
+        if (currentTab.value == 0) return '还没有人喜欢你'
+        if (currentTab.value == 1) return '你还没有喜欢过别人'
+        return '还没有互相喜欢'
+    })
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const tabKey = tabs.value[currentTab.value].key
+        if (tabKey == 'i_liked') params['direction'] = 'out'
+        else if (tabKey == 'liked_me') params['direction'] = 'in'
+
+        const reqFn = tabKey == 'matched' ? listLoveLikesMatched(params) : listLoveLikes(params)
+        reqFn.then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadList(true)
+    }
+
+    const onAction = (id: number) => {
+        const tabKey = tabs.value[currentTab.value].key
+        if (tabKey == 'liked_me') {
+            // 回喜欢
+            const data: UTSJSONObject = { love_id: id, action: 'like' } as UTSJSONObject
+            likeLoveUser(data).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    uni.showToast({ title: '喜欢成功', icon: 'success' })
+                    loadList(true)
+                }
+            })
+        } else {
+            // 打招呼
+            goChat(id)
+        }
+    }
+
+    const goDetail = (loveId: number) => {
+        uni.navigateTo({ url: '/pages/business/love/detail/index?id=' + loveId })
+    }
+
+    const goChat = (loveId: number) => {
+        const item = list.value.find((it: ListItem) : boolean => it.love_id == loveId)
+        const peerName = item != null ? item.nickname : ''
+        uni.navigateTo({ url: '/pages/business/love/messages/chat?love_id=' + loveId + '&peer_name=' + encodeURIComponent(peerName) })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/love/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom-width: 1px;
+        border-bottom-color: #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        background-color: #FFFFFF;
+        margin-top: 8px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

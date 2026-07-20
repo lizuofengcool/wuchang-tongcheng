@@ -1,0 +1,606 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="route-card">
+                <view class="route-points">
+                    <view class="point">
+                        <view class="point-dot start-dot"></view>
+                        <text class="point-text">{{ detail.origin }}</text>
+                    </view>
+                    <view class="route-line"></view>
+                    <view class="point">
+                        <view class="point-dot end-dot"></view>
+                        <text class="point-text">{{ detail.destination }}</text>
+                    </view>
+                </view>
+                <view class="price-row">
+                    <text class="price">¥{{ detail.price }}</text>
+                    <text class="price-unit">/座</text>
+                    <view class="status-tag" :class="detail.status" v-if="detail.status.length > 0">
+                        <text class="status-text">{{ statusText }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section">
+                <text class="section-title">行程信息</text>
+                <view class="info-row">
+                    <text class="info-label">出发时间</text>
+                    <text class="info-value">{{ detail.departure_time }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">可预订座位</text>
+                    <text class="info-value">{{ detail.seats_available }} / {{ detail.seats_total }} 座</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">车型</text>
+                    <text class="info-value">{{ detail.vehicle_model }}</text>
+                </view>
+                <view class="info-row" v-if="detail.estimated_duration.length > 0">
+                    <text class="info-label">预计时长</text>
+                    <text class="info-value">{{ detail.estimated_duration }}</text>
+                </view>
+                <view class="info-row" v-if="detail.estimated_distance.length > 0">
+                    <text class="info-label">预计里程</text>
+                    <text class="info-value">{{ detail.estimated_distance }}</text>
+                </view>
+            </view>
+
+            <view class="section" v-if="detail.description.length > 0">
+                <text class="section-title">行程说明</text>
+                <text class="section-content">{{ detail.description }}</text>
+            </view>
+
+            <view class="section" v-if="detail.waypoints.length > 0">
+                <text class="section-title">途经点</text>
+                <text class="section-content">{{ detail.waypoints }}</text>
+            </view>
+
+            <view class="section" v-if="detail.driver_id > 0">
+                <text class="section-title">车主信息</text>
+                <view class="driver-row" @click="goDriver">
+                    <image class="avatar" :src="detail.driver_avatar" mode="aspectFill" lazy-load="true" v-if="detail.driver_avatar.length > 0" />
+                    <view class="avatar-placeholder" v-else>
+                        <text class="avatar-text">{{ detail.driver_name.length > 0 ? detail.driver_name.charAt(0) : 'D' }}</text>
+                    </view>
+                    <view class="driver-info">
+                        <view class="driver-name-row">
+                            <text class="driver-name">{{ detail.driver_name }}</text>
+                            <view class="verify-tag" v-if="detail.driver_verified">
+                                <text class="verify-text">✓ 认证</text>
+                            </view>
+                        </view>
+                        <view class="rating-row">
+                            <text class="rating">★ {{ detail.driver_rating }}</text>
+                            <text class="rating-dot">·</text>
+                            <text class="trip-count">{{ detail.driver_trip_count }}次行程</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="detail.vehicle_id > 0">
+                <text class="section-title">车辆信息</text>
+                <view class="info-row">
+                    <text class="info-label">车型</text>
+                    <text class="info-value">{{ detail.vehicle_model }}</text>
+                </view>
+                <view class="info-row" v-if="detail.vehicle_plate.length > 0">
+                    <text class="info-label">车牌</text>
+                    <text class="info-value">{{ detail.vehicle_plate }}</text>
+                </view>
+                <view class="info-row" v-if="detail.vehicle_color.length > 0">
+                    <text class="info-label">颜色</text>
+                    <text class="info-value">{{ detail.vehicle_color }}</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <text class="section-title">浏览统计</text>
+                <view class="stats-row">
+                    <text class="stat">{{ detail.view_count }} 浏览</text>
+                    <text class="stat">{{ detail.contact_count }} 联系</text>
+                    <text class="stat">{{ detail.share_count }} 分享</text>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="toggleFav">
+                <text class="bottom-icon">{{ detail.is_faved ? '★' : '☆' }}</text>
+                <text class="bottom-icon-text">{{ detail.is_faved ? '已收藏' : '收藏' }}</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="goChat">
+                <text class="bottom-icon">💬</text>
+                <text class="bottom-icon-text">沟通</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="onContact">
+                <text class="bottom-icon">📞</text>
+                <text class="bottom-icon-text">联系</text>
+            </view>
+            <view class="bottom-btn primary-btn" @click="onBook">
+                <text class="primary-btn-text">立即预订</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getPincheDetail, incrPincheContact, incrPincheShare, createBooking } from '@/api/business/pinche.uts'
+
+    type Detail = {
+        id: number
+        origin: string
+        destination: string
+        departure_time: string
+        price: number
+        seats_available: number
+        seats_total: number
+        vehicle_model: string
+        vehicle_plate: string
+        vehicle_color: string
+        vehicle_id: number
+        description: string
+        waypoints: string
+        estimated_duration: string
+        estimated_distance: string
+        status: string
+        driver_id: number
+        driver_name: string
+        driver_avatar: string
+        driver_rating: number
+        driver_trip_count: number
+        driver_verified: boolean
+        view_count: number
+        contact_count: number
+        share_count: number
+        is_faved: boolean
+    }
+
+    const pincheId = ref(0)
+    const detail = ref({
+        id: 0, origin: '', destination: '', departure_time: '', price: 0,
+        seats_available: 0, seats_total: 0, vehicle_model: '', vehicle_plate: '', vehicle_color: '', vehicle_id: 0,
+        description: '', waypoints: '', estimated_duration: '', estimated_distance: '', status: '',
+        driver_id: 0, driver_name: '', driver_avatar: '', driver_rating: 0, driver_trip_count: 0, driver_verified: false,
+        view_count: 0, contact_count: 0, share_count: 0, is_faved: false
+    } as Detail)
+
+    const statusText = computed(() : string => {
+        const s = detail.value.status
+        if (s == 'active') return '可预订'
+        if (s == 'full') return '已满座'
+        if (s == 'departed') return '已出发'
+        if (s == 'completed') return '已完成'
+        if (s == 'cancelled') return '已取消'
+        return s
+    })
+
+    const loadDetail = () => {
+        getPincheDetail(pincheId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = mapDetail(d)
+            }
+        })
+    }
+
+    const mapDetail = (d: UTSJSONObject) : Detail => {
+        return {
+            id: (d['id'] as number) ?? 0,
+            origin: (d['origin'] as string) ?? '',
+            destination: (d['destination'] as string) ?? '',
+            departure_time: (d['departure_time'] as string) ?? '',
+            price: (d['price'] as number) ?? 0,
+            seats_available: (d['seats_available'] as number) ?? 0,
+            seats_total: (d['seats_total'] as number) ?? 0,
+            vehicle_model: (d['vehicle_model'] as string) ?? '',
+            vehicle_plate: (d['vehicle_plate'] as string) ?? '',
+            vehicle_color: (d['vehicle_color'] as string) ?? '',
+            vehicle_id: (d['vehicle_id'] as number) ?? 0,
+            description: (d['description'] as string) ?? '',
+            waypoints: (d['waypoints'] as string) ?? '',
+            estimated_duration: (d['estimated_duration'] as string) ?? '',
+            estimated_distance: (d['estimated_distance'] as string) ?? '',
+            status: (d['status'] as string) ?? '',
+            driver_id: (d['driver_id'] as number) ?? 0,
+            driver_name: (d['driver_name'] as string) ?? '',
+            driver_avatar: (d['driver_avatar'] as string) ?? '',
+            driver_rating: (d['driver_rating'] as number) ?? 0,
+            driver_trip_count: (d['driver_trip_count'] as number) ?? 0,
+            driver_verified: (d['driver_verified'] as boolean) ?? false,
+            view_count: (d['view_count'] as number) ?? 0,
+            contact_count: (d['contact_count'] as number) ?? 0,
+            share_count: (d['share_count'] as number) ?? 0,
+            is_faved: detail.value.is_faved
+        } as Detail
+    }
+
+    const toggleFav = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        detail.value.is_faved = !detail.value.is_faved
+        uni.showToast({ title: detail.value.is_faved ? '已收藏' : '已取消收藏', icon: 'none' })
+    }
+
+    const goChat = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/pinche/messages/chat?pinche_id=' + pincheId.value + '&peer_id=' + detail.value.driver_id + '&peer_name=' + encodeURIComponent(detail.value.driver_name) })
+    }
+
+    const onContact = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        incrPincheContact(pincheId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const phone = (d['phone'] as string) ?? ''
+                if (phone.length > 0) {
+                    uni.makePhoneCall({ phoneNumber: phone })
+                } else {
+                    uni.showToast({ title: '暂无联系方式', icon: 'none' })
+                }
+            }
+        })
+    }
+
+    const onBook = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (detail.value.seats_available <= 0) {
+            uni.showToast({ title: '已满座', icon: 'none' })
+            return
+        }
+        uni.showActionSheet({
+            itemList: ['1座', '2座', '3座', '4座'],
+            success: (r) => {
+                const seats = r.tapIndex + 1
+                if (seats > detail.value.seats_available) {
+                    uni.showToast({ title: '剩余座位不足', icon: 'none' })
+                    return
+                }
+                uni.showModal({
+                    title: '确认预订',
+                    content: '预订 ' + seats + ' 座，合计 ¥' + (seats * detail.value.price) + ' ？',
+                    success: (m) => {
+                        if (m.confirm) {
+                            const data: UTSJSONObject = {
+                                pinche_id: pincheId.value,
+                                seats: seats,
+                                price: detail.value.price
+                            } as UTSJSONObject
+                            uni.showLoading({ title: '提交中...' })
+                            createBooking(data).then((res: ApiResult) => {
+                                uni.hideLoading()
+                                if (res.code == 200) {
+                                    uni.showToast({ title: '预订成功', icon: 'success' })
+                                    setTimeout(() => {
+                                        uni.navigateTo({ url: '/pages/business/pinche/bookings/index' })
+                                    }, 1000)
+                                } else {
+                                    uni.showToast({ title: res.message || '预订失败', icon: 'none' })
+                                }
+                            }).catch(() => {
+                                uni.hideLoading()
+                            })
+                        }
+                    }
+                })
+            }
+        })
+    }
+
+    const goDriver = () => {
+        if (detail.value.driver_id > 0) {
+            uni.navigateTo({ url: '/pages/business/pinche/drivers/index?id=' + detail.value.driver_id })
+        }
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            pincheId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+
+    onShareAppMessage(() : ShareAppMessageOptions => {
+        incrPincheShare(pincheId.value)
+        return {
+            title: detail.value.origin + ' → ' + detail.value.destination + ' ¥' + detail.value.price,
+            path: '/pages/business/pinche/detail/index?id=' + pincheId.value
+        } as ShareAppMessageOptions
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .route-card {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .route-points {
+        flex-direction: column;
+    }
+
+    .point {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .point-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        margin-right: 10px;
+    }
+
+    .start-dot {
+        background-color: #07C160;
+    }
+
+    .end-dot {
+        background-color: #FF6B35;
+    }
+
+    .point-text {
+        font-size: 17px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .route-line {
+        width: 1px;
+        height: 20px;
+        background-color: #DDD;
+        margin-left: 4px;
+        margin-top: 4px;
+        margin-bottom: 4px;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .price {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .price-unit {
+        font-size: 13px;
+        color: #999;
+        margin-left: 4px;
+    }
+
+    .status-tag {
+        margin-left: auto;
+        border-radius: 3px;
+        padding: 2px 8px;
+        background-color: #FFF5E5;
+    }
+
+    .status-tag.full {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.departed, .status-tag.completed {
+        background-color: #F0F0F0;
+    }
+
+    .status-tag.cancelled {
+        background-color: #FFE5E5;
+    }
+
+    .status-text {
+        font-size: 11px;
+        color: #FF9900;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .info-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 100px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .driver-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .driver-info {
+        flex: 1;
+    }
+
+    .driver-name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .driver-name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .verify-tag {
+        background-color: #E5F8FF;
+        border-radius: 3px;
+        padding: 1px 5px;
+    }
+
+    .verify-text {
+        font-size: 10px;
+        color: #1989FA;
+    }
+
+    .rating-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .rating {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .rating-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .trip-count {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .stat {
+        flex: 1;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .primary-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 22px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-left: 12px;
+    }
+
+    .primary-btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

@@ -1,0 +1,323 @@
+// 同城零工兼职模块 API 封装
+// 对应后端 backend/internal/modules/linggong/plugin.go 路由清单
+// 路由前缀：/linggong（由 request.uts 中 BASE_URL 拼接为 /api/v1/linggong）
+// 按场景分组：岗位/任务包/报名/雇主/求职者/合同/支付/评价/技能/证书/信用/审核规则
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 岗位主表（linggongs） =====
+// 岗位列表（公开）
+export const listLinggongs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong', params)
+}
+
+// 岗位详情（公开）
+export const getLinggongDetail = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/' + id)
+}
+
+// 搜索岗位（公开）
+export const searchLinggongs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/search', params)
+}
+
+// 附近岗位（公开）
+export const listNearbyLinggongs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/nearby', params)
+}
+
+// 我的发布（需登录）
+export const listMyLinggongs = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/mine', params)
+}
+
+// 发布岗位（需登录）
+export const createLinggong = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong', data)
+}
+
+// 更新岗位（需登录）
+export const updateLinggong = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/linggong/' + id, data)
+}
+
+// 删除岗位（需登录）
+export const deleteLinggong = (id: number) : Promise<ApiResult> => {
+    return del('/linggong/' + id)
+}
+
+// 增加浏览数（公开）
+export const incrLinggongView = (id: number) : Promise<ApiResult> => {
+    return post('/linggong/' + id + '/view', null)
+}
+
+// 增加联系数（公开）
+export const incrLinggongContact = (id: number) : Promise<ApiResult> => {
+    return post('/linggong/' + id + '/contact', null)
+}
+
+// 增加分享数（公开）
+export const incrLinggongShare = (id: number) : Promise<ApiResult> => {
+    return post('/linggong/' + id + '/share', null)
+}
+
+// ===== 任务包（tasks） =====
+// 任务包列表（公开）
+export const listLinggongTasks = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/tasks', params)
+}
+
+// 创建任务包（需登录）
+export const createLinggongTask = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/tasks', data)
+}
+
+// 领取任务（需登录）
+export const claimLinggongTask = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/tasks/' + id + '/claim', data)
+}
+
+// 提交任务（需登录）
+export const submitLinggongTask = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/tasks/' + id + '/submit', data)
+}
+
+// 验收任务（需登录）
+export const verifyLinggongTask = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/tasks/' + id + '/verify', data)
+}
+
+// ===== 报名申请（applications） =====
+// 报名列表（公开）
+export const listApplications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/applications', params)
+}
+
+// 创建报名（需登录）
+export const createApplication = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/applications', data)
+}
+
+// 取消报名（需登录）
+export const cancelApplication = (id: number) : Promise<ApiResult> => {
+    return post('/linggong/applications/' + id + '/cancel', null)
+}
+
+// 我的报名（需登录）
+export const listMyApplications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/applications/mine', params)
+}
+
+// 雇主收到的报名（需登录）
+export const listEmployerApplications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/applications/employer', params)
+}
+
+// 审核报名（需登录）
+export const auditApplication = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/linggong/applications/' + id + '/audit', data)
+}
+
+// ===== 雇主（employers） =====
+// 雇主列表（公开）
+export const listEmployers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/employers', params)
+}
+
+// 雇主详情（公开）
+export const getEmployerDetail = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/employers/' + id)
+}
+
+// 创建雇主认证（需登录）
+export const createEmployer = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/employers', data)
+}
+
+// 更新雇主（需登录）
+export const updateEmployer = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/linggong/employers/' + id, data)
+}
+
+// 我的雇主信息（需登录）
+export const getMyEmployer = () : Promise<ApiResult> => {
+    return get('/linggong/employers/me')
+}
+
+// ===== 求职者档案（workers） =====
+// 求职者列表（公开）
+export const listWorkers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/workers', params)
+}
+
+// 求职者详情（公开）
+export const getWorkerDetail = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/workers/' + id)
+}
+
+// 创建求职者档案（需登录）
+export const createWorker = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/workers', data)
+}
+
+// 更新求职者档案（需登录）
+export const updateWorker = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/linggong/workers/' + id, data)
+}
+
+// 我的求职者档案（需登录）
+export const getMyWorker = () : Promise<ApiResult> => {
+    return get('/linggong/workers/me')
+}
+
+// ===== 合同（contracts） =====
+// 合同列表（公开）
+export const listContracts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/contracts', params)
+}
+
+// 合同详情（公开）
+export const getContractDetail = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/contracts/' + id)
+}
+
+// 创建合同（需登录）
+export const createContract = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/contracts', data)
+}
+
+// 签署合同（需登录）
+export const signContract = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/contracts/' + id + '/sign', data)
+}
+
+// 更新合同状态（需登录）
+export const updateContractStatus = (id: number, status: string) : Promise<ApiResult> => {
+    const data: UTSJSONObject = { status: status } as UTSJSONObject
+    return put('/linggong/contracts/' + id + '/status', data)
+}
+
+// 雇主合同列表（需登录）
+export const listMyContractByEmployer = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/contracts/employer/' + id)
+}
+
+// 工人合同列表（需登录）
+export const listMyContractByWorker = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/contracts/worker/' + id)
+}
+
+// ===== 支付（payments） =====
+// 创建支付（需登录）
+export const createPayment = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/payments', data)
+}
+
+// 更新支付状态（需登录）
+export const updatePaymentStatus = (id: number, status: string) : Promise<ApiResult> => {
+    const data: UTSJSONObject = { status: status } as UTSJSONObject
+    return put('/linggong/payments/' + id + '/status', data)
+}
+
+// 结算支付（需登录）
+export const settlePayment = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/payments/' + id + '/settle', data)
+}
+
+// ===== 评价（ratings） =====
+// 创建评价（需登录）
+export const createRating = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/ratings', data)
+}
+
+// 回复评价（需登录）
+export const replyRating = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/ratings/' + id + '/reply', data)
+}
+
+// 追加评价（需登录）
+export const appendRating = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/ratings/' + id + '/append', data)
+}
+
+// 点赞评价（需登录）
+export const likeRating = (id: number) : Promise<ApiResult> => {
+    return post('/linggong/ratings/' + id + '/like', null)
+}
+
+// 某岗位的评价列表（公开）
+export const listRatingsByLinggong = (id: number) : Promise<ApiResult> => {
+    return get('/linggong/' + id + '/ratings')
+}
+
+// 评价统计（公开）
+export const getRatingStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/ratings/stats', params)
+}
+
+// ===== 技能标签（skills） =====
+// 技能列表（公开）
+export const listSkills = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/skills', params)
+}
+
+// 热门技能（公开）
+export const listHotSkills = () : Promise<ApiResult> => {
+    return get('/linggong/skills/hot')
+}
+
+// ===== 资质证书（certifications） =====
+// 证书列表（公开）
+export const listCertifications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/linggong/certifications', params)
+}
+
+// 提交证书申请（需登录）
+export const createCertification = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/linggong/certifications', data)
+}
+
+// 我的证书（需登录）
+export const listMyCertifications = () : Promise<ApiResult> => {
+    return get('/linggong/certifications/mine')
+}
+
+// ===== 信用分（credits） =====
+// 我的信用分（需登录）
+export const getMyCreditScore = () : Promise<ApiResult> => {
+    return get('/linggong/credits/score')
+}
+
+// ===== 审核规则（audit-rules） =====
+// 启用的审核规则列表（公开）
+export const listLinggongAuditRules = () : Promise<ApiResult> => {
+    return get('/linggong/audit-rules/enabled')
+}
+
+// ===== 搜索历史（本地存储） =====
+export const getSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('linggong_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+export const clearSearchHistory = () => {
+    uni.removeStorageSync('linggong_search_history')
+}
+
+export const addSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('linggong_search_history', list)
+}

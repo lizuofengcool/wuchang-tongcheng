@@ -1,0 +1,134 @@
+<template>
+    <view class="biz-card" @click="onClick">
+        <view class="header-row">
+            <text class="biz-name">{{ business.name }}</text>
+            <view class="status-badge" v-if="business.is_open">
+                <text class="status-text open">营业中</text>
+            </view>
+            <view class="status-badge" v-else>
+                <text class="status-text closed">休息中</text>
+            </view>
+        </view>
+        <view class="verify-row" v-if="business.is_verified">
+            <text class="verify-icon">✓</text>
+            <text class="verify-text">商户认证</text>
+        </view>
+        <view class="info-row" v-if="business.phone.length > 0">
+            <text class="info-icon">📞</text>
+            <text class="info-text">{{ business.phone }}</text>
+        </view>
+        <view class="info-row" v-if="business.address.length > 0">
+            <text class="info-icon">📍</text>
+            <text class="info-text">{{ business.address }}</text>
+        </view>
+        <view class="info-row" v-if="businessHoursText.length > 0">
+            <text class="info-icon">🕒</text>
+            <text class="info-text">{{ businessHoursText }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Business = {
+        id: number
+        name: string
+        is_verified: boolean
+        is_open: boolean
+        phone: string
+        address: string
+        open_time: string
+        close_time: string
+    }
+
+    const props = withDefaults(defineProps<{
+        business: Business
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const businessHoursText = computed(() : string => {
+        if (props.business.open_time.length > 0 && props.business.close_time.length > 0) {
+            return props.business.open_time + ' - ' + props.business.close_time
+        }
+        return ''
+    })
+
+    const onClick = () => {
+        emit('click', props.business.id)
+    }
+</script>
+
+<style>
+    .biz-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .biz-name {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .status-badge {
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-text.open {
+        color: #07C160;
+    }
+
+    .status-text.closed {
+        color: #999;
+    }
+
+    .verify-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .verify-icon {
+        font-size: 12px;
+        color: #1989FA;
+        margin-right: 4px;
+    }
+
+    .verify-text {
+        font-size: 12px;
+        color: #1989FA;
+    }
+
+    .info-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .info-icon {
+        font-size: 13px;
+        margin-right: 6px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #666;
+        flex: 1;
+    }
+</style>

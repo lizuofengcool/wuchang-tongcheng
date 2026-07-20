@@ -1,0 +1,240 @@
+<template>
+    <view class="page">
+        <scroll-view class="msg-list" scroll-y :scroll-top="scrollTop" :scroll-into-view="scrollToId">
+            <view class="msg-item" v-for="(msg, idx) in messageList" :key="idx" :id="'msg-' + idx">
+                <view class="msg-bubble" :class="{ mine: msg.is_mine, other: !msg.is_mine }">
+                    <text class="msg-sender" v-if="!msg.is_mine">{{ msg.sender_name }}</text>
+                    <text class="msg-content">{{ msg.content }}</text>
+                    <text class="msg-time">{{ msg.created_at }}</text>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && messageList.length > 0">
+                <text class="no-more-text">没有更多消息了</text>
+            </view>
+            <dh114-empty v-if="messageList.length == 0 && !loading" icon="💬" text="开始聊天吧" />
+        </scroll-view>
+        <view class="input-bar">
+            <input class="msg-input" type="text" v-model="inputText" placeholder="请输入消息" :confirm-type="'send'" @confirm="onSend" />
+            <view class="send-btn" @click="onSend">
+                <text class="send-text">发送</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+
+    type Message = {
+        id: number
+        session_id: number
+        sender_id: number
+        content: string
+        type: string
+        is_mine: boolean
+        sender_name: string
+        created_at: string
+    }
+
+    const sessionId = ref(0)
+    const dh114Id = ref(0)
+    const peerId = ref(0)
+    const peerName = ref('')
+    const messageList = ref([] as Message[])
+    const inputText = ref('')
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 50
+    const scrollTop = ref(0)
+    const scrollToId = ref('')
+
+    const loadMessages = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const key = 'dh114_messages_' + sessionId.value
+        const data = uni.getStorageSync(key)
+        loading.value = false
+        if (data instanceof Array) {
+            messageList.value = data as Message[]
+            if (reset && messageList.value.length > 0) {
+                nextTick(() => {
+                    scrollToBottom()
+                })
+            }
+        }
+    }
+
+    const scrollToBottom = () => {
+        if (messageList.value.length == 0) return
+        scrollToId.value = 'msg-' + (messageList.value.length - 1)
+    }
+
+    const onSend = () => {
+        const text = inputText.value.trim()
+        if (text.length == 0) {
+            uni.showToast({ title: '请输入消息', icon: 'none' })
+            return
+        }
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+
+        const msg: Message = {
+            id: Date.now(),
+            session_id: sessionId.value,
+            sender_id: 0,
+            content: text,
+            type: 'text',
+            is_mine: true,
+            sender_name: '我',
+            created_at: new Date().toLocaleTimeString()
+        } as Message
+        messageList.value.push(msg)
+        inputText.value = ''
+        const key = 'dh114_messages_' + sessionId.value
+        uni.setStorageSync(key, messageList.value)
+        nextTick(() => {
+            scrollToBottom()
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        const sid = options['session_id']
+        const did = options['dh114_id']
+        const pid = options['peer_id']
+        const pn = options['peer_name']
+        if (sid != null) {
+            sessionId.value = parseInt(sid as string)
+        }
+        if (did != null) {
+            dh114Id.value = parseInt(did as string)
+        }
+        if (pid != null) {
+            peerId.value = parseInt(pid as string)
+        }
+        if (pn != null) {
+            peerName.value = decodeURIComponent(pn as string)
+        }
+        loadMessages(true)
+    })
+
+    onShow(() => {
+        if (sessionId.value > 0) {
+            loadMessages(true)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .msg-list {
+        flex: 1;
+    }
+
+    .msg-item {
+        padding: 8px 12px;
+    }
+
+    .msg-bubble {
+        max-width: 75%;
+        padding: 10px 12px;
+        border-radius: 12px;
+    }
+
+    .msg-bubble.mine {
+        background-color: #FF6B35;
+        align-self: flex-end;
+    }
+
+    .msg-bubble.other {
+        background-color: #FFFFFF;
+        align-self: flex-start;
+    }
+
+    .msg-sender {
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 4px;
+    }
+
+    .msg-bubble.mine .msg-content {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .msg-bubble.other .msg-content {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .msg-time {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 4px;
+    }
+
+    .msg-bubble.other .msg-time {
+        color: #CCC;
+    }
+
+    .input-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .msg-input {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 18px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .send-btn {
+        background-color: #FF6B35;
+        border-radius: 18px;
+        padding: 8px 16px;
+        margin-left: 8px;
+    }
+
+    .send-text {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .load-more, .no-more {
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

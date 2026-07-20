@@ -1,0 +1,190 @@
+<template>
+    <view class="review-card">
+        <view class="user-row">
+            <image class="avatar" :src="review.user_avatar" mode="aspectFill" lazy-load="true" v-if="review.user_avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ review.user_name.length > 0 ? review.user_name.charAt(0) : 'U' }}</text>
+            </view>
+            <view class="user-info">
+                <text class="user-name">{{ review.user_name }}</text>
+                <view class="rating-row">
+                    <text class="star-text">{{ starText }}</text>
+                    <text class="time-text">{{ review.created_at }}</text>
+                </view>
+            </view>
+        </view>
+        <text class="review-content" v-if="review.content.length > 0">{{ review.content }}</text>
+        <view class="image-row" v-if="review.images.length > 0">
+            <image class="review-img" v-for="(img, idx) in review.images" :key="idx" :src="img" mode="aspectFill" lazy-load="true" @click="previewImage(idx)" />
+        </view>
+        <view class="reply-box" v-if="review.reply_content.length > 0">
+            <text class="reply-label">商家回复：</text>
+            <text class="reply-content">{{ review.reply_content }}</text>
+        </view>
+        <view class="action-row">
+            <text class="action-text" @click="onLike">{{ review.like_count > 0 ? '👍 ' + review.like_count : '👍' }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Review = {
+        id: number
+        user_name: string
+        user_avatar: string
+        rating: number
+        content: string
+        images: string[]
+        reply_content: string
+        like_count: number
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        review: Review
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'like', id: number): void
+    }>()
+
+    const starText = computed(() : string => {
+        const rating = props.review.rating
+        let s = ''
+        for (let i = 0; i < 5; i++) {
+            s += i < rating ? '★' : '☆'
+        }
+        return s
+    })
+
+    const previewImage = (idx: number) => {
+        uni.previewImage({
+            urls: props.review.images,
+            current: props.review.images[idx]
+        })
+    }
+
+    const onLike = () => {
+        emit('like', props.review.id)
+    }
+</script>
+
+<style>
+    .review-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .user-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        margin-right: 8px;
+    }
+
+    .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .avatar-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .rating-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 2px;
+    }
+
+    .star-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .time-text {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .review-content {
+        font-size: 13px;
+        color: #333;
+        line-height: 1.6;
+        margin-top: 8px;
+    }
+
+    .image-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .review-img {
+        width: 80px;
+        height: 80px;
+        border-radius: 6px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+
+    .reply-box {
+        background-color: #F9F9F9;
+        border-radius: 8px;
+        padding: 8px;
+        margin-top: 8px;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .reply-label {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .reply-content {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+</style>

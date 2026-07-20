@@ -1,0 +1,381 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">路线信息</text>
+                <view class="form-row">
+                    <text class="label">出发地<text class="required">*</text></text>
+                    <input class="input" v-model="form.origin" placeholder="请输入出发地" />
+                </view>
+                <view class="form-row">
+                    <text class="label">目的地<text class="required">*</text></text>
+                    <input class="input" v-model="form.destination" placeholder="请输入目的地" />
+                </view>
+                <view class="form-row">
+                    <text class="label">途经点</text>
+                    <input class="input" v-model="form.waypoints" placeholder="可选，多个用逗号分隔" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">出发时间</text>
+                <view class="form-row" @click="pickDepartureDate">
+                    <text class="label">日期<text class="required">*</text></text>
+                    <text class="value-text" :class="{ placeholder: form.departure_date.length == 0 }">{{ form.departure_date.length > 0 ? form.departure_date : '请选择日期' }}</text>
+                    <text class="arrow">›</text>
+                </view>
+                <view class="form-row" @click="pickDepartureTime">
+                    <text class="label">时间<text class="required">*</text></text>
+                    <text class="value-text" :class="{ placeholder: form.departure_time.length == 0 }">{{ form.departure_time.length > 0 ? form.departure_time : '请选择时间' }}</text>
+                    <text class="arrow">›</text>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">座位与价格</text>
+                <view class="form-row">
+                    <text class="label">总座位<text class="required">*</text></text>
+                    <input class="input" type="number" v-model="form.seats_total" placeholder="如 4" />
+                </view>
+                <view class="form-row">
+                    <text class="label">每座价格<text class="required">*</text></text>
+                    <input class="input" type="number" v-model="form.price" placeholder="如 50" />
+                </view>
+                <view class="form-row">
+                    <text class="label">车型</text>
+                    <input class="input" v-model="form.vehicle_model" placeholder="如 大众朗逸" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">车辆信息</text>
+                <view class="form-row">
+                    <text class="label">车牌号</text>
+                    <input class="input" v-model="form.vehicle_plate" placeholder="如 鄂A12345" />
+                </view>
+                <view class="form-row">
+                    <text class="label">车辆颜色</text>
+                    <input class="input" v-model="form.vehicle_color" placeholder="如 白色" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">行程说明</text>
+                <view class="form-row column">
+                    <text class="label">备注说明</text>
+                    <textarea class="textarea" v-model="form.description" placeholder="请输入行程说明，如行李限制、吸烟要求等" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">联系方式</text>
+                <view class="form-row">
+                    <text class="label">联系电话<text class="required">*</text></text>
+                    <input class="input" v-model="form.contact_phone" placeholder="请输入手机号" />
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save-draft" @click="onSave('draft')">
+                <text class="btn-text">存草稿</text>
+            </view>
+            <view class="btn-publish" @click="onSave('active')">
+                <text class="btn-text-white">发布</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createPinche, updatePinche, getPincheDetail } from '@/api/business/pinche.uts'
+
+    type Form = {
+        id: number
+        origin: string
+        destination: string
+        waypoints: string
+        departure_date: string
+        departure_time: string
+        seats_total: string
+        price: string
+        vehicle_model: string
+        vehicle_plate: string
+        vehicle_color: string
+        description: string
+        contact_phone: string
+    }
+
+    const form = ref({
+        id: 0,
+        origin: '',
+        destination: '',
+        waypoints: '',
+        departure_date: '',
+        departure_time: '',
+        seats_total: '',
+        price: '',
+        vehicle_model: '',
+        vehicle_plate: '',
+        vehicle_color: '',
+        description: '',
+        contact_phone: ''
+    } as Form)
+
+    const editId = ref(0)
+
+    const pickDepartureDate = () => {
+        uni.showModal({
+            title: '选择日期',
+            editable: false,
+            showCancel: true,
+            success: (res) => {
+                if (res.confirm) {
+                    const today = new Date()
+                    const y = today.getFullYear()
+                    const m = (today.getMonth() + 1).toString().padStart(2, '0')
+                    const d = today.getDate().toString().padStart(2, '0')
+                    form.value.departure_date = y + '-' + m + '-' + d
+                }
+            }
+        })
+    }
+
+    const pickDepartureTime = () => {
+        uni.showActionSheet({
+            itemList: ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
+            success: (res) => {
+                const times = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00']
+                form.value.departure_time = times[res.tapIndex]
+            }
+        })
+    }
+
+    const onSave = (status: string) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.origin.length == 0) {
+            uni.showToast({ title: '请输入出发地', icon: 'none' })
+            return
+        }
+        if (form.value.destination.length == 0) {
+            uni.showToast({ title: '请输入目的地', icon: 'none' })
+            return
+        }
+        if (form.value.departure_date.length == 0 || form.value.departure_time.length == 0) {
+            uni.showToast({ title: '请选择出发时间', icon: 'none' })
+            return
+        }
+        if (form.value.seats_total.length == 0) {
+            uni.showToast({ title: '请输入总座位', icon: 'none' })
+            return
+        }
+        if (form.value.price.length == 0) {
+            uni.showToast({ title: '请输入每座价格', icon: 'none' })
+            return
+        }
+        if (form.value.contact_phone.length == 0) {
+            uni.showToast({ title: '请输入联系电话', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            origin: form.value.origin,
+            destination: form.value.destination,
+            waypoints: form.value.waypoints,
+            departure_time: form.value.departure_date + ' ' + form.value.departure_time,
+            seats_total: parseInt(form.value.seats_total),
+            seats_available: parseInt(form.value.seats_total),
+            price: parseFloat(form.value.price),
+            vehicle_model: form.value.vehicle_model,
+            vehicle_plate: form.value.vehicle_plate,
+            vehicle_color: form.value.vehicle_color,
+            description: form.value.description,
+            contact_phone: form.value.contact_phone,
+            status: status
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '提交中...' })
+        const reqFn = form.value.id > 0 ? updatePinche(form.value.id, data) : createPinche(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({
+                    title: status == 'draft' ? '已保存草稿' : '发布成功',
+                    icon: 'success'
+                })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getPincheDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    origin: (d['origin'] as string) ?? '',
+                    destination: (d['destination'] as string) ?? '',
+                    waypoints: (d['waypoints'] as string) ?? '',
+                    departure_date: '',
+                    departure_time: '',
+                    seats_total: ((d['seats_total'] as number) ?? 0).toString(),
+                    price: ((d['price'] as number) ?? 0).toString(),
+                    vehicle_model: (d['vehicle_model'] as string) ?? '',
+                    vehicle_plate: (d['vehicle_plate'] as string) ?? '',
+                    vehicle_color: (d['vehicle_color'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    contact_phone: (d['contact_phone'] as string) ?? ''
+                } as Form
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            editId.value = parseInt(id as string)
+            form.value.id = editId.value
+            loadEdit(editId.value)
+        }
+        const rid = options['route_id']
+        if (rid != null) {
+            const routeId = parseInt(rid as string)
+            const routeData = uni.getStorageSync('pinche_route_' + routeId) as UTSJSONObject
+            if (routeData != null) {
+                form.value.origin = (routeData['origin'] as string) ?? ''
+                form.value.destination = (routeData['destination'] as string) ?? ''
+                form.value.waypoints = (routeData['waypoints'] as string) ?? ''
+            }
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 100px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .value-text {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .value-text.placeholder {
+        color: #CCC;
+    }
+
+    .arrow {
+        font-size: 18px;
+        color: #CCC;
+        margin-left: 8px;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save-draft {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        border-width: 1px;
+        border-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .btn-publish {
+        flex: 2;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

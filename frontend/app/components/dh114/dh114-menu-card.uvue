@@ -1,0 +1,134 @@
+<template>
+    <view class="menu-card" @click="onClick">
+        <image class="menu-img" :src="menu.image" mode="aspectFill" lazy-load="true" v-if="menu.image.length > 0" />
+        <view class="menu-img-placeholder" v-else>
+            <text class="menu-img-text">{{ menu.name.length > 0 ? menu.name.charAt(0) : '菜' }}</text>
+        </view>
+        <view class="menu-info">
+            <view class="name-row">
+                <text class="menu-name">{{ menu.name }}</text>
+                <view class="signature-tag" v-if="menu.is_signature">
+                    <text class="signature-text">招牌</text>
+                </view>
+            </view>
+            <text class="menu-desc" v-if="menu.description.length > 0">{{ menu.description }}</text>
+            <view class="bottom-row">
+                <text class="menu-price">¥{{ menu.price }}</text>
+                <text class="order-count" v-if="menu.order_count > 0">{{ menu.order_count }}人已点</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Menu = {
+        id: number
+        name: string
+        image: string
+        description: string
+        price: number
+        is_signature: boolean
+        order_count: number
+    }
+
+    const props = withDefaults(defineProps<{
+        menu: Menu
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const onClick = () => {
+        emit('click', props.menu.id)
+    }
+</script>
+
+<style>
+    .menu-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        flex-direction: row;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .menu-img {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        margin-right: 12px;
+    }
+
+    .menu-img-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .menu-img-text {
+        font-size: 28px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .menu-info {
+        flex: 1;
+        justify-content: space-between;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .menu-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .signature-tag {
+        background-color: #FF6B35;
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-left: 6px;
+    }
+
+    .signature-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .menu-desc {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 8px;
+    }
+
+    .menu-price {
+        font-size: 15px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .order-count {
+        font-size: 11px;
+        color: #BBB;
+    }
+</style>

@@ -1,0 +1,288 @@
+<template>
+    <view class="page">
+        <view class="search-bar" @click="goSearch">
+            <text class="search-icon">🔍</text>
+            <text class="search-placeholder">搜索昵称/城市/职业</text>
+        </view>
+        <love-filter :items="filterItems" :active-key="activeFilterKey" :panel-visible="showFilterPanel" :selected="selectedFilters" @tap="onTapFilter" />
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <view class="sort-bar">
+                <text class="sort-text" :class="{ active: currentSort == 'popular' }" @click="changeSort('popular')">综合</text>
+                <text class="sort-text" :class="{ active: currentSort == 'latest' }" @click="changeSort('latest')">最新</text>
+                <text class="sort-text" :class="{ active: currentSort == 'nearby' }" @click="changeSort('nearby')">附近</text>
+                <text class="sort-text" :class="{ active: currentSort == 'online' }" @click="changeSort('online')">在线</text>
+            </view>
+            <view class="list-wrap">
+                <love-card v-for="item in list" :key="item.id" :love="transformLove(item)" @click="goDetail" @like="onLike" @dislike="onDislike" @superlike="onSuperLike" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <love-empty v-if="list.length == 0 && !loading" icon="💕" text="暂无匹配对象" btn-text="去匹配" @click="goMatching" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listLoves, listNearbyLoves, likeLoveUser } from '@/api/business/love.uts'
+
+    type ListItem = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        tags: string[]
+        is_verified: boolean
+        is_vip: boolean
+    }
+    type LoveCardData = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        tags: string[]
+        is_verified: boolean
+        is_vip: boolean
+    }
+    type FilterItem = { key: string, label: string, options: string[] }
+
+    const filterItems = [
+        { key: 'gender', label: '性别', options: [] as string[] },
+        { key: 'age', label: '年龄', options: [] as string[] },
+        { key: 'city', label: '城市', options: [] as string[] },
+        { key: 'height', label: '身高', options: [] as string[] }
+    ] as FilterItem[]
+
+    const activeFilterKey = ref('')
+    const showFilterPanel = ref(false)
+    const selectedFilters = ref({} as UTSJSONObject)
+    const currentSort = ref('popular')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformLove = (item: ListItem) : LoveCardData => {
+        return {
+            id: item.id,
+            nickname: item.nickname,
+            avatar: item.avatar,
+            gender: item.gender,
+            age: item.age,
+            city: item.city,
+            height: item.height,
+            occupation: item.occupation,
+            signature: item.signature,
+            tags: item.tags,
+            is_verified: item.is_verified,
+            is_vip: item.is_vip
+        } as LoveCardData
+    }
+
+    const onTapFilter = (key: string) => {
+        if (activeFilterKey.value == key && showFilterPanel.value) {
+            showFilterPanel.value = false
+            activeFilterKey.value = ''
+        } else {
+            activeFilterKey.value = key
+            showFilterPanel.value = true
+            let options: string[] = [] as string[]
+            if (key == 'gender') options = ['全部', '男', '女'] as string[]
+            else if (key == 'age') options = ['全部', '18-25', '26-30', '31-35', '36-40', '40+'] as string[]
+            else if (key == 'city') options = ['全部', '北京', '上海', '广州', '深圳'] as string[]
+            else if (key == 'height') options = ['全部', '150-160', '160-170', '170-180', '180+'] as string[]
+            uni.showActionSheet({
+                itemList: options,
+                success: (res) => {
+                    selectedFilters.value[key] = options[res.tapIndex]
+                    if (selectedFilters.value[key] == '全部') selectedFilters.value[key] = ''
+                    showFilterPanel.value = false
+                    activeFilterKey.value = ''
+                    loadList(true)
+                }
+            })
+        }
+    }
+
+    const changeSort = (s: string) => {
+        if (currentSort.value == s) return
+        currentSort.value = s
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            sort: currentSort.value
+        } as UTSJSONObject
+        const keys = Object.keys(selectedFilters.value)
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i]
+            const v = (selectedFilters.value[k] as string) ?? ''
+            if (v.length > 0) params[k] = v
+        }
+
+        const useNearby = currentSort.value == 'nearby'
+        const reqFn = useNearby ? listNearbyLoves(params) : listLoves(params)
+        reqFn.then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onLike = (id: number) => {
+        const data: UTSJSONObject = { love_id: id, action: 'like' } as UTSJSONObject
+        likeLoveUser(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已喜欢', icon: 'success' })
+            }
+        })
+    }
+
+    const onDislike = (id: number) => {
+        const data: UTSJSONObject = { love_id: id, action: 'pass' } as UTSJSONObject
+        likeLoveUser(data).then((_res: ApiResult) => {})
+    }
+
+    const onSuperLike = (id: number) => {
+        const data: UTSJSONObject = { love_id: id, action: 'super_like' } as UTSJSONObject
+        likeLoveUser(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '超级喜欢已发送', icon: 'success' })
+            }
+        })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/love/detail/index?id=' + id })
+    }
+
+    const goSearch = () => {
+        uni.navigateTo({ url: '/pages/business/love/search/index' })
+    }
+
+    const goMatching = () => {
+        uni.navigateTo({ url: '/pages/business/love/matching/index' })
+    }
+
+    onLoad(() => {
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        margin: 8px 12px;
+        padding: 8px 12px;
+        border-radius: 20px;
+        background-color: #F5F5F5;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-placeholder {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .sort-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+
+    .sort-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+    }
+
+    .sort-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

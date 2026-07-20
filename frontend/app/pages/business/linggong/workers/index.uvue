@@ -1,0 +1,386 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="worker-header">
+                <image class="avatar" :src="worker.avatar" mode="aspectFill" lazy-load="true" v-if="worker.avatar.length > 0" />
+                <view class="avatar-placeholder" v-else>
+                    <text class="avatar-text">{{ worker.name.length > 0 ? worker.name.charAt(0) : 'W' }}</text>
+                </view>
+                <view class="info">
+                    <text class="name">{{ worker.name }}</text>
+                    <view class="meta-row" v-if="metaText.length > 0">
+                        <text class="meta">{{ metaText }}</text>
+                    </view>
+                    <view class="credit-row" v-if="worker.credit_score > 0">
+                        <text class="credit-label">信用分：</text>
+                        <text class="credit-value">{{ worker.credit_score }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="section" v-if="worker.skills.length > 0">
+                <text class="section-title">技能标签</text>
+                <view class="skill-wrap">
+                    <linggong-skill-tag v-for="(s, idx) in worker.skills" :key="idx" :skill="s" />
+                </view>
+            </view>
+
+            <view class="section" v-if="worker.description.length > 0">
+                <text class="section-title">个人简介</text>
+                <text class="section-content">{{ worker.description }}</text>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">资质证书</text>
+                    <text class="count-text">共 {{ certList.length }} 个</text>
+                </view>
+                <view class="cert-card" v-for="item in certList" :key="item.id">
+                    <view class="cert-header">
+                        <text class="cert-name">{{ item.name }}</text>
+                        <view class="cert-status" :class="item.status">
+                            <text class="cert-status-text">{{ getStatusText(item.status) }}</text>
+                        </view>
+                    </view>
+                    <text class="cert-issuer">颁发：{{ item.issuer }}</text>
+                    <text class="cert-time">获得：{{ item.acquired_at }}</text>
+                </view>
+                <linggong-empty v-if="certList.length == 0 && !loading" icon="📜" text="暂无证书" />
+            </view>
+
+            <view class="section" v-if="ratingList.length > 0">
+                <text class="section-title">雇主评价</text>
+                <view class="rating-card" v-for="item in ratingList" :key="item.id">
+                    <view class="rating-header">
+                        <text class="rating-user">{{ item.rater_name }}</text>
+                        <text class="rating-score">{{ item.score }}分</text>
+                    </view>
+                    <text class="rating-content">{{ item.content }}</text>
+                    <text class="rating-time">{{ item.created_at }}</text>
+                </view>
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getWorkerDetail, listCertifications, listRatingsByLinggong } from '@/api/business/linggong.uts'
+
+    type Worker = {
+        id: number
+        name: string
+        avatar: string
+        age: number
+        gender: string
+        city: string
+        credit_score: number
+        skills: string[]
+        description: string
+    }
+    type Cert = {
+        id: number
+        name: string
+        issuer: string
+        acquired_at: string
+        status: string
+    }
+    type Rating = {
+        id: number
+        rater_name: string
+        score: number
+        content: string
+        created_at: string
+    }
+
+    const workerId = ref(0)
+    const worker = ref({
+        id: 0, name: '', avatar: '', age: 0, gender: '', city: '',
+        credit_score: 0, skills: [] as string[], description: ''
+    } as Worker)
+    const certList = ref([] as Cert[])
+    const ratingList = ref([] as Rating[])
+    const loading = ref(false)
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (worker.value.age > 0) parts.push(worker.value.age + '岁')
+        if (worker.value.gender.length > 0) parts.push(worker.value.gender)
+        if (worker.value.city.length > 0) parts.push(worker.value.city)
+        return parts.join(' · ')
+    })
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'verified') return '已认证'
+        if (status == 'pending') return '待审核'
+        if (status == 'rejected') return '未通过'
+        return status
+    }
+
+    const loadWorker = () => {
+        getWorkerDetail(workerId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                worker.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    avatar: (d['avatar'] as string) ?? '',
+                    age: (d['age'] as number) ?? 0,
+                    gender: (d['gender'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    credit_score: (d['credit_score'] as number) ?? 0,
+                    skills: (d['skills'] as string[]) ?? ([] as string[]),
+                    description: (d['description'] as string) ?? ''
+                } as Worker
+            }
+        })
+        loadCerts()
+    }
+
+    const loadCerts = () => {
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: 1,
+            page_size: 50,
+            worker_id: workerId.value
+        } as UTSJSONObject
+        listCertifications(params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                certList.value = (d['list'] as Cert[]) ?? ([] as Cert[])
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            workerId.value = parseInt(id as string)
+            loadWorker()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadWorker()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .worker-header {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin-bottom: 8px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 32px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 32px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .credit-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .credit-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .credit-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .count-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .skill-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .cert-card {
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .cert-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .cert-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .cert-status {
+        border-radius: 10px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .cert-status.verified {
+        background-color: #F0FFF8;
+    }
+
+    .cert-status.pending {
+        background-color: #FFF8E5;
+    }
+
+    .cert-status.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .cert-status-text {
+        font-size: 11px;
+    }
+
+    .cert-status.verified .cert-status-text {
+        color: #07C160;
+    }
+
+    .cert-status.pending .cert-status-text {
+        color: #FF976A;
+    }
+
+    .cert-status.rejected .cert-status-text {
+        color: #EE0A24;
+    }
+
+    .cert-issuer {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+    }
+
+    .cert-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 4px;
+    }
+
+    .rating-card {
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .rating-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rating-user {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .rating-score {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .rating-content {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+
+    .rating-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 6px;
+    }
+</style>

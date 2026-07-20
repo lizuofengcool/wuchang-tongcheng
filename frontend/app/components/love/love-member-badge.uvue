@@ -1,0 +1,121 @@
+<template>
+    <view class="badge" :class="[levelClass, sizeClass]" v-if="showBadge">
+        <text class="icon">{{ iconText }}</text>
+        <text class="label" v-if="size != 'small'">{{ labelText }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        level?: string
+        size?: string
+    }>(), {
+        level: '',
+        size: 'normal'
+    } as any)
+
+    const showBadge = computed(() : boolean => {
+        return props.level.length > 0 && props.level != 'none'
+    })
+
+    const levelClass = computed(() : string => {
+        if (props.level == 'diamond') return 'diamond'
+        if (props.level == 'gold') return 'gold'
+        if (props.level == 'silver') return 'silver'
+        if (props.level == 'bronze') return 'bronze'
+        return 'bronze'
+    })
+
+    const sizeClass = computed(() : string => {
+        return props.size == 'small' ? 'small' : 'normal'
+    })
+
+    const iconText = computed(() : string => {
+        if (props.level == 'diamond') return '◆'
+        if (props.level == 'gold') return '★'
+        if (props.level == 'silver') return '☆'
+        return '●'
+    })
+
+    const labelText = computed(() : string => {
+        if (props.level == 'diamond') return '钻石会员'
+        if (props.level == 'gold') return '黄金会员'
+        if (props.level == 'silver') return '白银会员'
+        return '普通会员'
+    })
+</script>
+
+<style>
+    .badge {
+        flex-direction: row;
+        align-items: center;
+        border-radius: 10px;
+        padding: 1px 6px;
+        margin-left: 4px;
+    }
+
+    .badge.diamond {
+        background-color: #E5F8FF;
+    }
+
+    .badge.gold {
+        background-color: #FFF5E5;
+    }
+
+    .badge.silver {
+        background-color: #F5F5F5;
+    }
+
+    .badge.bronze {
+        background-color: #FFF5F0;
+    }
+
+    .badge.small {
+        padding: 1px 4px;
+    }
+
+    .icon {
+        font-size: 11px;
+    }
+
+    .badge.small .icon {
+        font-size: 10px;
+    }
+
+    .badge.diamond .icon {
+        color: #1989FA;
+    }
+
+    .badge.gold .icon {
+        color: #FFB400;
+    }
+
+    .badge.silver .icon {
+        color: #999;
+    }
+
+    .badge.bronze .icon {
+        color: #FF6B35;
+    }
+
+    .label {
+        font-size: 10px;
+        margin-left: 2px;
+    }
+
+    .badge.diamond .label {
+        color: #1989FA;
+    }
+
+    .badge.gold .label {
+        color: #FFB400;
+    }
+
+    .badge.silver .label {
+        color: #999;
+    }
+
+    .badge.bronze .label {
+        color: #FF6B35;
+    }
+</style>

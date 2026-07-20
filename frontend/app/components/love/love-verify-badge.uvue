@@ -1,0 +1,106 @@
+<template>
+    <view class="badge" :class="[statusClass, sizeClass]" v-if="showBadge">
+        <text class="icon">{{ iconText }}</text>
+        <text class="label" v-if="size != 'small'">{{ labelText }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        status?: string
+        size?: string
+    }>(), {
+        status: '',
+        size: 'normal'
+    } as any)
+
+    const showBadge = computed(() : boolean => {
+        return props.status.length > 0 && props.status != 'none'
+    })
+
+    const statusClass = computed(() : string => {
+        if (props.status == 'approved') return 'approved'
+        if (props.status == 'pending') return 'pending'
+        if (props.status == 'rejected') return 'rejected'
+        return 'pending'
+    })
+
+    const sizeClass = computed(() : string => {
+        return props.size == 'small' ? 'small' : 'normal'
+    })
+
+    const iconText = computed(() : string => {
+        if (props.status == 'approved') return '✓'
+        if (props.status == 'pending') return '⏱'
+        return '✕'
+    })
+
+    const labelText = computed(() : string => {
+        if (props.status == 'approved') return '已认证'
+        if (props.status == 'pending') return '认证中'
+        return '未通过'
+    })
+</script>
+
+<style>
+    .badge {
+        flex-direction: row;
+        align-items: center;
+        border-radius: 10px;
+        padding: 1px 6px;
+        margin-left: 4px;
+    }
+
+    .badge.approved {
+        background-color: #E5F8FF;
+    }
+
+    .badge.pending {
+        background-color: #FFF5E5;
+    }
+
+    .badge.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .badge.small {
+        padding: 1px 4px;
+    }
+
+    .icon {
+        font-size: 11px;
+    }
+
+    .badge.small .icon {
+        font-size: 10px;
+    }
+
+    .badge.approved .icon {
+        color: #1989FA;
+    }
+
+    .badge.pending .icon {
+        color: #FFB400;
+    }
+
+    .badge.rejected .icon {
+        color: #EE0A24;
+    }
+
+    .label {
+        font-size: 10px;
+        margin-left: 2px;
+    }
+
+    .badge.approved .label {
+        color: #1989FA;
+    }
+
+    .badge.pending .label {
+        color: #FFB400;
+    }
+
+    .badge.rejected .label {
+        color: #EE0A24;
+    }
+</style>

@@ -1,0 +1,297 @@
+<template>
+    <view class="page">
+        <view class="top-bar">
+            <text class="back-arrow" @click="goBack">‹</text>
+            <text class="title">灵魂匹配</text>
+            <text class="reset" @click="loadList(true)">换一批</text>
+        </view>
+        <view class="match-zone">
+            <view class="empty-wrap" v-if="list.length == 0 && !loading">
+                <love-empty icon="💕" text="暂无推荐" sub-text="试试调整筛选条件" btn-text="刷新" @click="loadList(true)" />
+            </view>
+            <view class="card-stack" v-else>
+                <love-match-card v-for="(item, idx) in visibleCards" :key="item.id"
+                    :profile="transformProfile(item)"
+                    :style="getCardStyle(idx)"
+                    @click="goDetail"
+                    @pass="onPass"
+                    @like="onLike"
+                    @super="onSuper" />
+            </view>
+            <love-loading v-if="loading" text="为你匹配中..." />
+        </view>
+        <view class="action-bar" v-if="list.length > 0">
+            <view class="action-btn pass" @click="onPass(current.id)">
+                <text class="action-icon">✕</text>
+                <text class="action-text">跳过</text>
+            </view>
+            <view class="action-btn super" @click="onSuper(current.id)">
+                <text class="action-icon">★</text>
+                <text class="action-text">超级喜欢</text>
+            </view>
+            <view class="action-btn like" @click="onLike(current.id)">
+                <text class="action-icon">♥</text>
+                <text class="action-text">喜欢</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveRecommendations, likeLoveUser, generateLoveRecommendations } from '@/api/business/love.uts'
+
+    type ListItem = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        tags: string[]
+    }
+    type ProfileData = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        tags: string[]
+    }
+
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const currentIndex = ref(0)
+    const STACK_SIZE = 3
+
+    const current = computed(() : ListItem => {
+        if (currentIndex.value < list.value.length) return list.value[currentIndex.value]
+        return { id: 0, nickname: '', avatar: '', gender: '', age: 0, city: '', height: 0, occupation: '', signature: '', tags: [] as string[] } as ListItem
+    })
+
+    const visibleCards = computed(() : ListItem[] => {
+        const start = currentIndex.value
+        const end = Math.min(start + STACK_SIZE, list.value.length)
+        const result = [] as ListItem[]
+        for (let i = start; i < end; i++) {
+            result.push(list.value[i])
+        }
+        return result
+    })
+
+    const transformProfile = (item: ListItem) : ProfileData => {
+        return {
+            id: item.id,
+            nickname: item.nickname,
+            avatar: item.avatar,
+            gender: item.gender,
+            age: item.age,
+            city: item.city,
+            height: item.height,
+            occupation: item.occupation,
+            signature: item.signature,
+            tags: item.tags
+        } as ProfileData
+    }
+
+    const getCardStyle = (idx: number) : string => {
+        const scale = 1 - idx * 0.05
+        const translateY = idx * 12
+        return `transform: scale(${scale}) translateY(${translateY}px); z-index: ${STACK_SIZE - idx};`
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            currentIndex.value = 0
+            list.value = [] as ListItem[]
+        }
+        loading.value = true
+        const params: UTSJSONObject = { page: 1, page_size: 20 } as UTSJSONObject
+        listLoveRecommendations(params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const moveNext = () => {
+        currentIndex.value++
+        if (currentIndex.value >= list.value.length - 3) {
+            loadList(false)
+        }
+    }
+
+    const onPass = (id: number) => {
+        const data: UTSJSONObject = { love_id: id, action: 'pass' } as UTSJSONObject
+        likeLoveUser(data).then((_r: ApiResult) => {})
+        moveNext()
+    }
+
+    const onLike = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = { love_id: id, action: 'like' } as UTSJSONObject
+        likeLoveUser(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '喜欢成功', icon: 'success' })
+                if (res.data) {
+                    const d = res.data as UTSJSONObject
+                    const matched = (d['matched'] as boolean) ?? false
+                    if (matched) {
+                        setTimeout(() => {
+                            uni.showToast({ title: '互相喜欢，可以开始聊天了', icon: 'none' })
+                        }, 1500)
+                    }
+                }
+            }
+        })
+        moveNext()
+    }
+
+    const onSuper = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = { love_id: id, action: 'super_like' } as UTSJSONObject
+        likeLoveUser(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '超级喜欢已发送', icon: 'success' })
+            }
+        })
+        moveNext()
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/love/detail/index?id=' + id })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .top-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .back-arrow {
+        font-size: 24px;
+        color: #333;
+        padding: 0 8px;
+    }
+
+    .title {
+        flex: 1;
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .reset {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .match-zone {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .empty-wrap {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-stack {
+        width: 100%;
+        position: relative;
+        align-items: center;
+    }
+
+    .action-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .action-btn {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 0;
+    }
+
+    .action-icon {
+        font-size: 28px;
+    }
+
+    .action-text {
+        font-size: 11px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .action-btn.pass .action-icon {
+        color: #999;
+    }
+
+    .action-btn.like .action-icon {
+        color: #EE0A24;
+    }
+
+    .action-btn.super .action-icon {
+        color: #FF6B35;
+    }
+</style>

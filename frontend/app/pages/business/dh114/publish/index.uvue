@@ -1,0 +1,326 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">基本信息</text>
+                <view class="form-row">
+                    <text class="label">商家名称<text class="required">*</text></text>
+                    <input class="input" v-model="form.name" placeholder="请输入商家名称" />
+                </view>
+                <view class="form-row">
+                    <text class="label">联系电话<text class="required">*</text></text>
+                    <input class="input" v-model="form.phone" placeholder="请输入联系电话" />
+                </view>
+                <view class="form-row">
+                    <text class="label">分类<text class="required">*</text></text>
+                    <view class="picker" @click="pickCategory">
+                        <text class="picker-text" :class="{ placeholder: form.category_name.length == 0 }">{{ form.category_name.length > 0 ? form.category_name : '请选择分类' }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-row">
+                    <text class="label">人均消费</text>
+                    <input class="input" type="number" v-model="form.avg_price" placeholder="例如：80" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">地址信息</text>
+                <view class="form-row">
+                    <text class="label">所在地区</text>
+                    <input class="input" v-model="form.region" placeholder="例如：武汉市武昌区" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">详细地址</text>
+                    <input class="input" v-model="form.address" placeholder="请输入详细地址" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">营业时间</text>
+                <view class="form-row">
+                    <text class="label">营业开始</text>
+                    <input class="input" v-model="form.open_time" placeholder="例如：09:00" />
+                </view>
+                <view class="form-row">
+                    <text class="label">营业结束</text>
+                    <input class="input" v-model="form.close_time" placeholder="例如：22:00" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">图片信息</text>
+                <view class="form-row column">
+                    <text class="label">封面图</text>
+                    <input class="input" v-model="form.cover_image" placeholder="请输入图片URL或上传" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">商家简介</text>
+                    <textarea class="textarea" v-model="form.description" placeholder="请输入商家简介" />
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save-draft" @click="onSave('draft')">
+                <text class="btn-text">存草稿</text>
+            </view>
+            <view class="btn-publish" @click="onSave('published')">
+                <text class="btn-text-white">发布</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createDh114, updateDh114, getDh114Detail } from '@/api/business/dh114.uts'
+
+    type Form = {
+        id: number
+        name: string
+        phone: string
+        category_id: number
+        category_name: string
+        avg_price: number
+        region: string
+        address: string
+        open_time: string
+        close_time: string
+        cover_image: string
+        description: string
+    }
+
+    const form = ref({
+        id: 0,
+        name: '',
+        phone: '',
+        category_id: 0,
+        category_name: '',
+        avg_price: 0,
+        region: '',
+        address: '',
+        open_time: '',
+        close_time: '',
+        cover_image: '',
+        description: ''
+    } as Form)
+
+    const pickCategory = () => {
+        uni.showActionSheet({
+            itemList: ['美食', '酒店', '休闲娱乐', '购物', '生活服务', '教育培训', '医疗健康', '其他'],
+            success: (res) => {
+                const cats = ['美食', '酒店', '休闲娱乐', '购物', '生活服务', '教育培训', '医疗健康', '其他']
+                form.value.category_name = cats[res.tapIndex]
+                form.value.category_id = res.tapIndex + 1
+            }
+        })
+    }
+
+    const onSave = (status: string) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.name.length == 0) {
+            uni.showToast({ title: '请输入商家名称', icon: 'none' })
+            return
+        }
+        if (form.value.phone.length == 0) {
+            uni.showToast({ title: '请输入联系电话', icon: 'none' })
+            return
+        }
+        if (form.value.category_name.length == 0) {
+            uni.showToast({ title: '请选择分类', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            name: form.value.name,
+            phone: form.value.phone,
+            category_id: form.value.category_id,
+            category_name: form.value.category_name,
+            avg_price: form.value.avg_price,
+            region: form.value.region,
+            address: form.value.address,
+            open_time: form.value.open_time,
+            close_time: form.value.close_time,
+            cover_image: form.value.cover_image,
+            description: form.value.description,
+            status: status
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '提交中...' })
+        const reqFn = form.value.id > 0 ? updateDh114(form.value.id, data) : createDh114(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({
+                    title: status == 'draft' ? '已保存草稿' : '发布成功',
+                    icon: 'success'
+                })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getDh114Detail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    phone: (d['phone'] as string) ?? '',
+                    category_id: (d['category_id'] as number) ?? 0,
+                    category_name: (d['category_name'] as string) ?? '',
+                    avg_price: (d['avg_price'] as number) ?? 0,
+                    region: (d['region'] as string) ?? '',
+                    address: (d['address'] as string) ?? '',
+                    open_time: (d['open_time'] as string) ?? '',
+                    close_time: (d['close_time'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    description: (d['description'] as string) ?? ''
+                } as Form
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            form.value.id = parseInt(id as string)
+            loadEdit(form.value.id)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 100px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-text.placeholder {
+        color: #CCC;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCC;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save-draft {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        border-width: 1px;
+        border-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .btn-publish {
+        flex: 2;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FF6B35;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

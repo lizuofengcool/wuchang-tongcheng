@@ -1,0 +1,442 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="header-card">
+                <view class="header-bg"></view>
+                <view class="header-info">
+                    <text class="header-title">Love VIP 会员</text>
+                    <text class="header-sub">解锁全部特权，遇见对的TA</text>
+                </view>
+            </view>
+
+            <view class="current-card" v-if="currentMembership != null">
+                <text class="current-title">当前会员</text>
+                <view class="current-info">
+                    <text class="current-level">{{ levelText(currentMembership.level_code) }}</text>
+                    <text class="current-expire">有效期至 {{ currentMembership.expire_at }}</text>
+                </view>
+            </view>
+
+            <view class="levels-wrap">
+                <view class="level-card" v-for="level in levels" :key="level.id"
+                    :class="[level.code, { active: selectedLevel == level.code }]"
+                    @click="selectedLevel = level.code">
+                    <view class="level-header">
+                        <text class="level-icon">{{ levelIcon(level.code) }}</text>
+                        <text class="level-name">{{ level.name }}</text>
+                    </view>
+                    <text class="level-price">¥{{ level.price }}</text>
+                    <text class="level-period">{{ level.period }}</text>
+                    <view class="level-features">
+                        <view class="feature-item" v-for="(f, idx) in level.features" :key="idx">
+                            <text class="feature-icon">✓</text>
+                            <text class="feature-text">{{ f }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="compare-card">
+                <text class="compare-title">特权对比</text>
+                <view class="compare-table">
+                    <view class="compare-row header-row">
+                        <text class="compare-cell first">特权</text>
+                        <text class="compare-cell">普通</text>
+                        <text class="compare-cell">白银</text>
+                        <text class="compare-cell">黄金</text>
+                        <text class="compare-cell">钻石</text>
+                    </view>
+                    <view class="compare-row" v-for="(row, idx) in compareTable" :key="idx">
+                        <text class="compare-cell first">{{ row.feature }}</text>
+                        <text class="compare-cell" v-for="(v, vidx) in row.values" :key="vidx">{{ v }}</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="price-info">
+                <text class="price-label">支付金额</text>
+                <text class="price-value">¥{{ selectedPrice }}</text>
+            </view>
+            <view class="buy-btn" @click="onBuy">
+                <text class="buy-text">立即开通</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveMemberLevels, getMyLoveMembership, buyLoveMembership } from '@/api/business/love.uts'
+
+    type Level = {
+        id: number
+        code: string
+        name: string
+        price: number
+        period: string
+        features: string[]
+    }
+    type Membership = {
+        id: number
+        level_code: string
+        level_name: string
+        expire_at: string
+        is_active: boolean
+    }
+    type CompareRow = {
+        feature: string
+        values: string[]
+    }
+
+    const levels = ref([] as Level[])
+    const selectedLevel = ref('silver')
+    const currentMembership = ref(null as Membership | null)
+    const compareTable = ref([
+        { feature: '每日喜欢次数', values: ['10', '30', '100', '无限'] as string[] },
+        { feature: '超级喜欢', values: ['1', '3', '10', '无限'] as string[] },
+        { feature: '查看访客', values: ['✕', '✓', '✓', '✓'] as string[] },
+        { feature: '谁喜欢我', values: ['✕', '✓', '✓', '✓'] as string[] },
+        { feature: '高级筛选', values: ['✕', '✕', '✓', '✓'] as string[] },
+        { feature: '隐身访问', values: ['✕', '✕', '✓', '✓'] as string[] },
+        { feature: '专属徽章', values: ['✕', '✓', '✓', '✓'] as string[] },
+        { feature: '优先推荐', values: ['✕', '✕', '✓', '✓'] as string[] }
+    ] as CompareRow[])
+
+    const selectedPrice = computed(() : number => {
+        const lvl = levels.value.find((it: Level) : boolean => it.code == selectedLevel.value)
+        return lvl != null ? lvl.price : 0
+    })
+
+    const levelText = (code: string) : string => {
+        if (code == 'diamond') return '钻石会员'
+        if (code == 'gold') return '黄金会员'
+        if (code == 'silver') return '白银会员'
+        return '普通会员'
+    }
+
+    const levelIcon = (code: string) : string => {
+        if (code == 'diamond') return '◆'
+        if (code == 'gold') return '★'
+        if (code == 'silver') return '☆'
+        return '●'
+    }
+
+    const loadLevels = () => {
+        listLoveMemberLevels().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                levels.value = (res.data as Level[]) ?? ([] as Level[])
+                if (levels.value.length > 0) {
+                    selectedLevel.value = levels.value[0].code
+                }
+            }
+        })
+    }
+
+    const loadMyMembership = () => {
+        if (!state.checkLogin()) return
+        getMyLoveMembership().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                currentMembership.value = {
+                    id: (d['id'] as number) ?? 0,
+                    level_code: (d['level_code'] as string) ?? '',
+                    level_name: (d['level_name'] as string) ?? '',
+                    expire_at: (d['expire_at'] as string) ?? '',
+                    is_active: (d['is_active'] as boolean) ?? false
+                } as Membership
+            }
+        })
+    }
+
+    const onBuy = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '确认开通',
+            content: '确认以 ¥' + selectedPrice.value + ' 开通 ' + levelText(selectedLevel.value) + '？',
+            success: (res) => {
+                if (res.confirm) {
+                    const data: UTSJSONObject = {
+                        level_code: selectedLevel.value,
+                        payment_method: 'wechat'
+                    } as UTSJSONObject
+                    uni.showLoading({ title: '支付中...' })
+                    buyLoveMembership(data).then((r: ApiResult) => {
+                        uni.hideLoading()
+                        if (r.code == 200) {
+                            uni.showToast({ title: '开通成功', icon: 'success' })
+                            loadMyMembership()
+                        } else {
+                            uni.showToast({ title: r.message || '开通失败', icon: 'none' })
+                        }
+                    }).catch(() => {
+                        uni.hideLoading()
+                    })
+                }
+            }
+        })
+    }
+
+    onLoad(() => {
+        loadLevels()
+        loadMyMembership()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .header-card {
+        background-color: #FF6B35;
+        padding: 32px 20px;
+        position: relative;
+    }
+
+    .header-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #FF6B35, #EE0A24);
+    }
+
+    .header-info {
+        position: relative;
+        align-items: center;
+    }
+
+    .header-title {
+        font-size: 22px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .header-sub {
+        font-size: 13px;
+        color: #FFE5E5;
+        margin-top: 6px;
+    }
+
+    .current-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px 16px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .current-title {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .current-info {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .current-level {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .current-expire {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .levels-wrap {
+        padding: 0 12px;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .level-card {
+        width: 47%;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px 12px;
+        margin-right: 6%;
+        margin-bottom: 12px;
+        border-width: 2px;
+        border-color: transparent;
+    }
+
+    .level-card:nth-child(2n) {
+        margin-right: 0;
+    }
+
+    .level-card.active {
+        border-color: #FF6B35;
+        background-color: #FFF9F5;
+    }
+
+    .level-card.diamond {
+        background-color: #F0F8FF;
+    }
+
+    .level-card.gold {
+        background-color: #FFFBF0;
+    }
+
+    .level-header {
+        flex-direction: row;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .level-icon {
+        font-size: 20px;
+        margin-right: 6px;
+    }
+
+    .level-card.diamond .level-icon {
+        color: #1989FA;
+    }
+
+    .level-card.gold .level-icon {
+        color: #FFB400;
+    }
+
+    .level-card.silver .level-icon {
+        color: #999;
+    }
+
+    .level-card.bronze .level-icon {
+        color: #FF6B35;
+    }
+
+    .level-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .level-price {
+        font-size: 24px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .level-period {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .level-features {
+        margin-top: 10px;
+    }
+
+    .feature-item {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .feature-icon {
+        font-size: 10px;
+        color: #FF6B35;
+        margin-right: 4px;
+    }
+
+    .feature-text {
+        font-size: 11px;
+        color: #666;
+        flex: 1;
+    }
+
+    .compare-card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .compare-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .compare-table {
+        flex-direction: column;
+    }
+
+    .compare-row {
+        flex-direction: row;
+        padding: 8px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .compare-row.header-row {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+    .compare-cell {
+        flex: 1;
+        font-size: 11px;
+        color: #666;
+        text-align: center;
+    }
+
+    .compare-cell.first {
+        flex: 1.4;
+        text-align: left;
+        color: #333;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 16px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        align-items: center;
+    }
+
+    .price-info {
+        flex: 1;
+    }
+
+    .price-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .price-value {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .buy-btn {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 12px 32px;
+    }
+
+    .buy-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

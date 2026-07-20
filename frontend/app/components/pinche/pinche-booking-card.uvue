@@ -1,0 +1,323 @@
+<template>
+    <view class="booking-card" @click="onClick">
+        <view class="card-main">
+            <view class="route-row">
+                <view class="route-points">
+                    <view class="point">
+                        <view class="point-dot start-dot"></view>
+                        <text class="point-text">{{ booking.origin }}</text>
+                    </view>
+                    <view class="route-line"></view>
+                    <view class="point">
+                        <view class="point-dot end-dot"></view>
+                        <text class="point-text">{{ booking.destination }}</text>
+                    </view>
+                </view>
+                <view class="status-tag" :class="booking.status">
+                    <text class="status-text">{{ statusText }}</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="meta">🕒 {{ booking.departure_time }}</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ booking.seats }}座</text>
+                <text class="meta-dot">·</text>
+                <text class="meta price">¥{{ booking.price }}</text>
+            </view>
+            <view class="user-row">
+                <image class="avatar" :src="booking.peer_avatar" mode="aspectFill" lazy-load="true" v-if="booking.peer_avatar.length > 0" />
+                <view class="avatar-placeholder" v-else>
+                    <text class="avatar-text">{{ booking.peer_name.length > 0 ? booking.peer_name.charAt(0) : 'U' }}</text>
+                </view>
+                <text class="user-name">{{ booking.peer_name }}</text>
+                <text class="user-phone" v-if="booking.peer_phone.length > 0">{{ booking.peer_phone }}</text>
+                <text class="create-time">{{ booking.created_at }}</text>
+            </view>
+            <view class="action-row" v-if="actions.length > 0">
+                <view class="action-btn" v-for="(act, idx) in actions" :key="idx" :class="act.type" @click.stop="onAction(act.key)">
+                    <text class="action-text" :class="act.type">{{ act.label }}</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Action = { key: string, label: string, type: string }
+
+    type Booking = {
+        id: number
+        origin: string
+        destination: string
+        departure_time: string
+        seats: number
+        price: number
+        status: string
+        peer_name: string
+        peer_avatar: string
+        peer_phone: string
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        booking: Booking
+        actions?: Action[]
+    }>(), {
+        actions: [] as Action[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', id: number, key: string): void
+    }>()
+
+    const statusText = computed(() : string => {
+        const s = props.booking.status
+        if (s == 'pending') return '待确认'
+        if (s == 'confirmed') return '已确认'
+        if (s == 'boarding') return '已上车'
+        if (s == 'completed') return '已完成'
+        if (s == 'cancelled') return '已取消'
+        if (s == 'expired') return '已过期'
+        return s
+    })
+
+    const onClick = () => {
+        emit('click', props.booking.id)
+    }
+
+    const onAction = (key: string) => {
+        emit('action', props.booking.id, key)
+    }
+</script>
+
+<style>
+    .booking-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-main {
+        flex: 1;
+    }
+
+    .route-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .route-points {
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .point {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .point-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+
+    .start-dot {
+        background-color: #07C160;
+    }
+
+    .end-dot {
+        background-color: #FF6B35;
+    }
+
+    .point-text {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .route-line {
+        width: 1px;
+        height: 14px;
+        background-color: #DDD;
+        margin-left: 3px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+    .status-tag {
+        border-radius: 3px;
+        padding: 2px 6px;
+        margin-left: 8px;
+    }
+
+    .status-tag.pending {
+        background-color: #FFF5E5;
+    }
+
+    .status-tag.confirmed {
+        background-color: #E5F8FF;
+    }
+
+    .status-tag.boarding {
+        background-color: #E5F8FF;
+    }
+
+    .status-tag.completed {
+        background-color: #F0F0F0;
+    }
+
+    .status-tag.cancelled {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.expired {
+        background-color: #F0F0F0;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.pending .status-text {
+        color: #FF9900;
+    }
+
+    .status-tag.confirmed .status-text {
+        color: #1989FA;
+    }
+
+    .status-tag.boarding .status-text {
+        color: #1989FA;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .status-tag.cancelled .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.expired .status-text {
+        color: #999;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta.price {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .user-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .avatar {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        margin-right: 6px;
+    }
+
+    .avatar-placeholder {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 6px;
+    }
+
+    .avatar-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .user-name {
+        font-size: 12px;
+        color: #333;
+        margin-right: 8px;
+    }
+
+    .user-phone {
+        font-size: 12px;
+        color: #666;
+        flex: 1;
+    }
+
+    .create-time {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        justify-content: flex-end;
+    }
+
+    .action-btn {
+        padding: 4px 12px;
+        border-radius: 14px;
+        margin-left: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-btn.danger {
+        border-color: #EE0A24;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+
+    .action-text.danger {
+        color: #EE0A24;
+    }
+</style>

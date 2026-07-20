@@ -1,0 +1,442 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="image-banner" v-if="detail.cover_image.length > 0">
+                <image class="banner-img" :src="detail.cover_image" mode="aspectFill" lazy-load="true" />
+            </view>
+            <view class="header-section">
+                <text class="biz-name">{{ detail.name }}</text>
+                <view class="rating-row" v-if="detail.rating > 0">
+                    <text class="rating-text">★ {{ detail.rating }}</text>
+                    <text class="meta-dot">·</text>
+                    <text class="meta-text">{{ detail.category_name }}</text>
+                    <text class="meta-dot" v-if="detail.avg_price > 0">·</text>
+                    <text class="meta-text" v-if="detail.avg_price > 0">¥{{ detail.avg_price }}/人</text>
+                </view>
+                <view class="addr-row" v-if="detail.address.length > 0">
+                    <text class="addr-text">📍 {{ detail.address }}</text>
+                </view>
+            </view>
+            <view class="section" v-if="businessInfo.phone.length > 0">
+                <text class="section-title">商户信息</text>
+                <dh114-business-card :business="businessInfo" />
+            </view>
+            <view class="section" v-if="menuList.length > 0">
+                <view class="section-header">
+                    <text class="section-title">招牌菜单</text>
+                    <text class="more-text" @click="goMenus">查看全部 ></text>
+                </view>
+                <dh114-menu-card v-for="item in menuList" :key="item.id" :menu="item" @click="goMenus" />
+            </view>
+            <view class="section" v-if="couponList.length > 0">
+                <view class="section-header">
+                    <text class="section-title">优惠券</text>
+                    <text class="more-text" @click="goCoupons">查看全部 ></text>
+                </view>
+                <dh114-coupon-card v-for="item in couponList" :key="item.id" :coupon="item" :show-receive-btn="true" @receive="onReceiveCoupon" />
+            </view>
+            <view class="section" v-if="groupbuyList.length > 0">
+                <view class="section-header">
+                    <text class="section-title">团购套餐</text>
+                    <text class="more-text" @click="goGroupbuys">查看全部 ></text>
+                </view>
+                <dh114-groupbuy-card v-for="item in groupbuyList" :key="item.id" :groupbuy="item" @click="goGroupbuys" @buy="goGroupbuys" />
+            </view>
+            <view class="section" v-if="reviewList.length > 0">
+                <view class="section-header">
+                    <text class="section-title">用户评价</text>
+                    <text class="more-text" @click="goReviews">查看全部 ></text>
+                </view>
+                <dh114-review-card v-for="item in reviewList" :key="item.id" :review="item" @like="onLikeReview" />
+            </view>
+            <view class="section" v-if="detail.description.length > 0">
+                <text class="section-title">商家简介</text>
+                <text class="section-content">{{ detail.description }}</text>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="toggleFav">
+                <text class="bottom-icon">{{ detail.is_faved ? '★' : '☆' }}</text>
+                <text class="bottom-icon-text">{{ detail.is_faved ? '已收藏' : '收藏' }}</text>
+            </view>
+            <view class="bottom-btn icon-btn" @click="goReviews">
+                <text class="bottom-icon">✍</text>
+                <text class="bottom-icon-text">评价</text>
+            </view>
+            <view class="phone-btn-wrap">
+                <dh114-phone-button :phone="detail.phone" :dh114-id="detail.id" text="拨打电话" @call="onPhoneCall" />
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import {
+        getDh114Detail, favDh114, unfavDh114, favStatusDh114, recordDh114View,
+        listSignatureMenus, listCouponsByDh114, listGroupbuysByDh114, listReviewsByDh114,
+        receiveCoupon, likeReview, recordDh114Call
+    } from '@/api/business/dh114.uts'
+
+    type Detail = {
+        id: number
+        name: string
+        cover_image: string
+        category_name: string
+        rating: number
+        avg_price: number
+        address: string
+        phone: string
+        description: string
+        is_faved: boolean
+    }
+    type BusinessInfo = {
+        id: number
+        name: string
+        is_verified: boolean
+        is_open: boolean
+        phone: string
+        address: string
+        open_time: string
+        close_time: string
+    }
+    type MenuItem = {
+        id: number
+        name: string
+        image: string
+        description: string
+        price: number
+        is_signature: boolean
+        order_count: number
+    }
+    type CouponItem = {
+        id: number
+        name: string
+        amount: number
+        threshold: number
+        start_date: string
+        end_date: string
+        status: string
+    }
+    type GroupbuyItem = {
+        id: number
+        title: string
+        description: string
+        original_price: number
+        groupbuy_price: number
+        sold_count: number
+        validity: string
+    }
+    type ReviewItem = {
+        id: number
+        user_name: string
+        user_avatar: string
+        rating: number
+        content: string
+        images: string[]
+        reply_content: string
+        like_count: number
+        created_at: string
+    }
+
+    const dh114Id = ref(0)
+    const detail = ref({
+        id: 0, name: '', cover_image: '', category_name: '', rating: 0, avg_price: 0,
+        address: '', phone: '', description: '', is_faved: false
+    } as Detail)
+    const businessInfo = ref({
+        id: 0, name: '', is_verified: false, is_open: false, phone: '', address: '', open_time: '', close_time: ''
+    } as BusinessInfo)
+    const menuList = ref([] as MenuItem[])
+    const couponList = ref([] as CouponItem[])
+    const groupbuyList = ref([] as GroupbuyItem[])
+    const reviewList = ref([] as ReviewItem[])
+
+    const loadDetail = () => {
+        getDh114Detail(dh114Id.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    category_name: (d['category_name'] as string) ?? '',
+                    rating: (d['rating'] as number) ?? 0,
+                    avg_price: (d['avg_price'] as number) ?? 0,
+                    address: (d['address'] as string) ?? '',
+                    phone: (d['phone'] as string) ?? '',
+                    description: (d['description'] as string) ?? '',
+                    is_faved: detail.value.is_faved
+                } as Detail
+                businessInfo.value = {
+                    id: detail.value.id,
+                    name: detail.value.name,
+                    is_verified: (d['is_verified'] as boolean) ?? false,
+                    is_open: (d['is_open'] as boolean) ?? false,
+                    phone: detail.value.phone,
+                    address: detail.value.address,
+                    open_time: (d['open_time'] as string) ?? '',
+                    close_time: (d['close_time'] as string) ?? ''
+                } as BusinessInfo
+            }
+        })
+        favStatusDh114(dh114Id.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value.is_faved = ((d['is_faved'] as boolean) ?? false)
+            }
+        })
+        loadMenus()
+        loadCoupons()
+        loadGroupbuys()
+        loadReviews()
+        const viewData: UTSJSONObject = { dh114_id: dh114Id.value } as UTSJSONObject
+        recordDh114View(viewData)
+    }
+
+    const loadMenus = () => {
+        listSignatureMenus(dh114Id.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                menuList.value = (res.data as MenuItem[]) ?? ([] as MenuItem[])
+            }
+        })
+    }
+
+    const loadCoupons = () => {
+        listCouponsByDh114(dh114Id.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                couponList.value = (res.data as CouponItem[]) ?? ([] as CouponItem[])
+            }
+        })
+    }
+
+    const loadGroupbuys = () => {
+        listGroupbuysByDh114(dh114Id.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                groupbuyList.value = (res.data as GroupbuyItem[]) ?? ([] as GroupbuyItem[])
+            }
+        })
+    }
+
+    const loadReviews = () => {
+        listReviewsByDh114(dh114Id.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                reviewList.value = (d['list'] as ReviewItem[]) ?? ([] as ReviewItem[])
+            }
+        })
+    }
+
+    const toggleFav = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (detail.value.is_faved) {
+            unfavDh114(dh114Id.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = false
+                    uni.showToast({ title: '已取消收藏', icon: 'none' })
+                }
+            })
+        } else {
+            favDh114(dh114Id.value).then((res: ApiResult) => {
+                if (res.code == 200) {
+                    detail.value.is_faved = true
+                    uni.showToast({ title: '收藏成功', icon: 'success' })
+                }
+            })
+        }
+    }
+
+    const onReceiveCoupon = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        receiveCoupon(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '领取成功', icon: 'success' })
+            } else {
+                uni.showToast({ title: res.message || '领取失败', icon: 'none' })
+            }
+        })
+    }
+
+    const onLikeReview = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        likeReview(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '点赞成功', icon: 'success' })
+            }
+        })
+    }
+
+    const onPhoneCall = (phone: string) => {
+        const callData: UTSJSONObject = { dh114_id: dh114Id.value, phone: phone } as UTSJSONObject
+        recordDh114Call(dh114Id.value)
+    }
+
+    const goMenus = () => {
+        uni.navigateTo({ url: '/pages/business/dh114/menus/index?id=' + dh114Id.value })
+    }
+
+    const goCoupons = () => {
+        uni.navigateTo({ url: '/pages/business/dh114/coupons/index?id=' + dh114Id.value })
+    }
+
+    const goGroupbuys = () => {
+        uni.navigateTo({ url: '/pages/business/dh114/groupbuys/index?id=' + dh114Id.value })
+    }
+
+    const goReviews = () => {
+        uni.navigateTo({ url: '/pages/business/dh114/reviews/index?id=' + dh114Id.value })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            dh114Id.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .image-banner {
+        width: 100%;
+        height: 200px;
+        background-color: #F5F5F5;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .header-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .biz-name {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .rating-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .rating-text {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .meta-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .addr-row {
+        margin-top: 8px;
+    }
+
+    .addr-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .more-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        align-items: center;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .phone-btn-wrap {
+        flex: 1;
+        margin-left: 12px;
+    }
+</style>

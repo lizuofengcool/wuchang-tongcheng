@@ -1,0 +1,82 @@
+<template>
+    <view class="sos-fab" @click="onSOS" :style="{ bottom: bottom + 'px', right: right + 'px' }">
+        <view class="sos-inner" :class="{ pulsing: pulsing }">
+            <text class="sos-text">SOS</text>
+            <text class="sos-sub" v-if="showSubText">紧急求助</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        bottom?: number
+        right?: number
+        showSubText?: boolean
+        pulsing?: boolean
+    }>(), {
+        bottom: 100,
+        right: 16,
+        showSubText: false,
+        pulsing: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click'): void
+    }>()
+
+    const onSOS = () => {
+        emit('click')
+    }
+</script>
+
+<style>
+    .sos-fab {
+        position: absolute;
+        width: 64px;
+        height: 64px;
+    }
+
+    .sos-inner {
+        width: 64px;
+        height: 64px;
+        border-radius: 32px;
+        background-color: #EE0A24;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(238, 10, 36, 0.4);
+    }
+
+    .sos-inner.pulsing {
+        animation-name: pulse;
+        animation-duration: 1.5s;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.85;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .sos-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .sos-sub {
+        font-size: 10px;
+        color: #FFFFFF;
+        margin-top: 2px;
+    }
+</style>

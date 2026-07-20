@@ -1,0 +1,161 @@
+<template>
+    <view class="groupbuy-card" @click="onClick">
+        <view class="card-top">
+            <view class="info-area">
+                <text class="gb-title">{{ groupbuy.title }}</text>
+                <text class="gb-desc" v-if="groupbuy.description.length > 0">{{ groupbuy.description }}</text>
+                <view class="price-row">
+                    <text class="gb-price">¥{{ groupbuy.groupbuy_price }}</text>
+                    <text class="gb-original" v-if="groupbuy.original_price > 0">¥{{ groupbuy.original_price }}</text>
+                    <view class="discount-tag" v-if="discountText.length > 0">
+                        <text class="discount-text">{{ discountText }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="buy-btn" @click.stop="onBuy">
+                <text class="buy-text">抢购</text>
+            </view>
+        </view>
+        <view class="card-bottom">
+            <text class="sold-text" v-if="groupbuy.sold_count > 0">已售{{ groupbuy.sold_count }}</text>
+            <text class="validity-text" v-if="groupbuy.validity.length > 0">有效期：{{ groupbuy.validity }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Groupbuy = {
+        id: number
+        title: string
+        description: string
+        original_price: number
+        groupbuy_price: number
+        sold_count: number
+        validity: string
+    }
+
+    const props = withDefaults(defineProps<{
+        groupbuy: Groupbuy
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'buy', id: number): void
+    }>()
+
+    const discountText = computed(() : string => {
+        if (props.groupbuy.original_price <= 0) return ''
+        const discount = Math.round((props.groupbuy.groupbuy_price / props.groupbuy.original_price) * 10 * 10) / 10
+        return discount + '折'
+    })
+
+    const onClick = () => {
+        emit('click', props.groupbuy.id)
+    }
+
+    const onBuy = () => {
+        emit('buy', props.groupbuy.id)
+    }
+</script>
+
+<style>
+    .groupbuy-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-top {
+        flex-direction: row;
+    }
+
+    .info-area {
+        flex: 1;
+    }
+
+    .gb-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .gb-desc {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .gb-price {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .gb-original {
+        font-size: 12px;
+        color: #BBB;
+        text-decoration: line-through;
+        margin-left: 8px;
+    }
+
+    .discount-tag {
+        background-color: #FFF0E5;
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-left: 8px;
+    }
+
+    .discount-text {
+        font-size: 10px;
+        color: #FF6B35;
+    }
+
+    .buy-btn {
+        background-color: #FF6B35;
+        border-radius: 18px;
+        padding: 6px 16px;
+        align-items: center;
+        justify-content: center;
+        margin-left: 12px;
+        align-self: center;
+    }
+
+    .buy-text {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .card-bottom {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .sold-text {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .validity-text {
+        font-size: 11px;
+        color: #BBB;
+    }
+</style>

@@ -1,0 +1,196 @@
+<template>
+    <view class="like-item" @click="onClick">
+        <image class="avatar" :src="item.avatar" mode="aspectFill" lazy-load="true" v-if="item.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ item.nickname.length > 0 ? item.nickname.charAt(0) : 'U' }}</text>
+        </view>
+        <view class="info">
+            <view class="header-row">
+                <text class="nickname">{{ item.nickname }}</text>
+                <view class="age-badge" :class="{ male: item.gender == 'male', female: item.gender == 'female' }">
+                    <text class="age-text">{{ item.age }}岁</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="meta">{{ item.city }}</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ item.occupation.length > 0 ? item.occupation : '未填' }}</text>
+            </view>
+            <view class="time-row">
+                <text class="time">{{ item.time_text }}</text>
+                <text class="status" :class="item.status">{{ statusText }}</text>
+            </view>
+        </view>
+        <view class="action" v-if="showAction" @click.stop="onAction">
+            <text class="action-text">{{ actionText }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type LikeItem = {
+        id: number
+        love_id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        occupation: string
+        time_text: string
+        status: string
+        is_matched: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        item: LikeItem
+        showAction?: boolean
+        actionText?: string
+    }>(), {
+        showAction: true,
+        actionText: '打招呼'
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', id: number): void
+    }>()
+
+    const statusText = computed(() : string => {
+        if (props.item.is_matched) return '已匹配'
+        if (props.item.status == 'liked') return '已喜欢'
+        if (props.item.status == 'pending') return '待回应'
+        return ''
+    })
+
+    const onClick = () => {
+        emit('click', props.item.love_id)
+    }
+
+    const onAction = () => {
+        emit('action', props.item.id)
+    }
+</script>
+
+<style>
+    .like-item {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .nickname {
+        font-size: 15px;
+        color: #333;
+        font-weight: 500;
+        margin-right: 8px;
+    }
+
+    .age-badge {
+        background-color: #FF6B35;
+        border-radius: 10px;
+        padding: 1px 6px;
+    }
+
+    .age-badge.male {
+        background-color: #1989FA;
+    }
+
+    .age-badge.female {
+        background-color: #FF6B35;
+    }
+
+    .age-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 4px;
+    }
+
+    .time-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #BBB;
+        flex: 1;
+    }
+
+    .status {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .status.liked {
+        color: #FF6B35;
+    }
+
+    .status.matched {
+        color: #EE0A24;
+    }
+
+    .action {
+        background-color: #FF6B35;
+        border-radius: 16px;
+        padding: 6px 14px;
+        margin-left: 8px;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+</style>

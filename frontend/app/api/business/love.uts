@@ -1,0 +1,621 @@
+// 同城相亲交友模块 API 封装
+// 对应后端 backend/internal/modules/love/plugin.go 路由清单（130+ API）
+// 路由前缀：/love（由 request.uts 中 BASE_URL 拼接为 /api/v1/love）
+// 按场景分组：资料/匹配/喜欢/拉黑/访客/印象/故事/认证/会员/礼物/通知/隐私
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 档案（Love 主表） =====
+// 交友档案列表（公开）
+export const listLoves = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love', params)
+}
+
+// 档案详情（公开）
+export const getLoveDetail = (id: number) : Promise<ApiResult> => {
+    return get('/love/' + id)
+}
+
+// 搜索档案（公开）
+export const searchLoves = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/search', params)
+}
+
+// 附近档案（公开）
+export const listNearbyLoves = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/nearby', params)
+}
+
+// 我的档案列表（需登录）
+export const listMyLoves = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/me', params)
+}
+
+// 创建档案（需登录）
+export const createLove = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love', data)
+}
+
+// 更新档案（需登录）
+export const updateLove = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/' + id, data)
+}
+
+// 删除档案（需登录）
+export const deleteLove = (id: number) : Promise<ApiResult> => {
+    return del('/love/' + id)
+}
+
+// 增加档案浏览量（公开）
+export const incrLoveView = (id: number) : Promise<ApiResult> => {
+    return post('/love/' + id + '/view', null)
+}
+
+// 增加档案联系次数（需登录）
+export const incrLoveContact = (id: number) : Promise<ApiResult> => {
+    return post('/love/' + id + '/contact', null)
+}
+
+// 更新档案位置（需登录）
+export const updateLoveLocation = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/' + id + '/location', data)
+}
+
+// 更新语音介绍（需登录）
+export const updateLoveVoiceIntro = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/' + id + '/voice-intro', data)
+}
+
+// 匹配度（需登录）
+export const getLoveMatchScore = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/match-score', params)
+}
+
+// ===== 资料（Profile） =====
+// 资料列表（公开）
+export const listLoveProfiles = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/profiles', params)
+}
+
+// 资料详情（公开）
+export const getLoveProfile = (id: number) : Promise<ApiResult> => {
+    return get('/love/profiles/' + id)
+}
+
+// 按 love_id 查资料（公开）
+export const getLoveProfileByLoveId = (loveId: number) : Promise<ApiResult> => {
+    return get('/love/profiles/by-love/' + loveId)
+}
+
+// 按 user_id 查资料（公开）
+export const getLoveProfileByUserId = (userId: number) : Promise<ApiResult> => {
+    return get('/love/profiles/by-user/' + userId)
+}
+
+// 我的资料（需登录，复用 by-user）
+export const getMyLoveProfile = () : Promise<ApiResult> => {
+    return get('/love/profiles/me')
+}
+
+// 更新资料（需登录）
+export const updateLoveProfile = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/profiles/' + id, data)
+}
+
+// 按 love_id 更新资料（需登录）
+export const updateLoveProfileByLoveId = (loveId: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/profiles/by-love/' + loveId, data)
+}
+
+// 分步更新资料（需登录）
+export const updateLoveProfileStep = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/profiles/' + id + '/step', data)
+}
+
+// 创建资料（需登录）
+export const createLoveProfile = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/profiles', data)
+}
+
+// ===== 匹配（Match） =====
+// 匹配列表（需登录）
+export const listLoveMatches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/matches', params)
+}
+
+// 匹配详情（需登录）
+export const getLoveMatch = (id: number) : Promise<ApiResult> => {
+    return get('/love/matches/' + id)
+}
+
+// 创建匹配（需登录，由 like 触发自动匹配）
+export const createLoveMatch = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/matches', data)
+}
+
+// 解除匹配（需登录）
+export const dissolveLoveMatch = (id: number) : Promise<ApiResult> => {
+    return post('/love/matches/' + id + '/dissolve', null)
+}
+
+// 匹配数统计（需登录）
+export const countLoveMatches = () : Promise<ApiResult> => {
+    return get('/love/matches/count')
+}
+
+// 今日匹配数（需登录）
+export const countLoveMatchesToday = () : Promise<ApiResult> => {
+    return get('/love/matches/today')
+}
+
+// ===== 喜欢（Like） =====
+// 喜欢/不喜欢/心动（需登录）
+export const likeLoveUser = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/likes', data)
+}
+
+// 撤销喜欢（需登录）
+export const undoLoveLike = (id: number) : Promise<ApiResult> => {
+    return del('/love/likes/' + id)
+}
+
+// 喜欢详情（需登录）
+export const getLoveLike = (id: number) : Promise<ApiResult> => {
+    return get('/love/likes/' + id)
+}
+
+// 喜欢列表（需登录）
+export const listLoveLikes = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/likes', params)
+}
+
+// 互相喜欢列表（需登录）
+export const listLoveLikesMatched = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/likes/matched', params)
+}
+
+// 是否已喜欢（需登录）
+export const hasLoveLiked = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/likes/has-liked', params)
+}
+
+// 今日喜欢统计（需登录）
+export const loveLikeTodayStats = () : Promise<ApiResult> => {
+    return get('/love/likes/today-stats')
+}
+
+// ===== 拉黑（Block） =====
+// 列表（需登录）
+export const listLoveBlocks = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/blocks', params)
+}
+
+// 详情（需登录）
+export const getLoveBlock = (id: number) : Promise<ApiResult> => {
+    return get('/love/blocks/' + id)
+}
+
+// 拉黑（需登录）
+export const createLoveBlock = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/blocks', data)
+}
+
+// 取消拉黑（需登录）
+export const deleteLoveBlock = (id: number) : Promise<ApiResult> => {
+    return del('/love/blocks/' + id)
+}
+
+// 是否已拉黑（需登录）
+export const hasLoveBlocked = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/blocks/has-blocked', params)
+}
+
+// ===== 访客（Visit） =====
+// 访客列表（需登录）
+export const listLoveVisits = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/visits', params)
+}
+
+// 访客详情（需登录）
+export const getLoveVisit = (id: number) : Promise<ApiResult> => {
+    return get('/love/visits/' + id)
+}
+
+// 我访问过的人（需登录）
+export const listLoveVisitsByVisitor = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/visits/by-visitor', params)
+}
+
+// 未读访客（需登录）
+export const listLoveVisitsUnread = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/visits/unread', params)
+}
+
+// 访问（需登录）
+export const createLoveVisit = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/visits', data)
+}
+
+// 标记已读（需登录）
+export const markLoveVisitRead = (id: number) : Promise<ApiResult> => {
+    return post('/love/visits/' + id + '/read', null)
+}
+
+// 全部已读（需登录）
+export const markLoveVisitsAllRead = () : Promise<ApiResult> => {
+    return post('/love/visits/read-all', null)
+}
+
+// 访客统计（需登录）
+export const loveVisitStats = () : Promise<ApiResult> => {
+    return get('/love/visits/stats')
+}
+
+// ===== 印象标签（Impression） =====
+// 印象列表（公开）
+export const listLoveImpressions = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/impressions', params)
+}
+
+// 印象详情（公开）
+export const getLoveImpression = (id: number) : Promise<ApiResult> => {
+    return get('/love/impressions/' + id)
+}
+
+// 按 love_id 查印象（公开）
+export const listLoveImpressionsByLoveId = (loveId: number) : Promise<ApiResult> => {
+    return get('/love/impressions/by-love/' + loveId)
+}
+
+// 印象统计（公开）
+export const loveImpressionStats = () : Promise<ApiResult> => {
+    return get('/love/impressions/stats')
+}
+
+// 创建印象（需登录）
+export const createLoveImpression = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/impressions', data)
+}
+
+// 删除印象（需登录）
+export const deleteLoveImpression = (id: number) : Promise<ApiResult> => {
+    return del('/love/impressions/' + id)
+}
+
+// ===== 故事/动态（Story） =====
+// 动态列表（公开）
+export const listLoveStories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/stories', params)
+}
+
+// 精选动态（公开）
+export const listLoveStoriesFeatured = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/stories/featured', params)
+}
+
+// 按话题查动态（公开）
+export const listLoveStoriesByTopic = (topic: string, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/stories/topic/' + topic, params)
+}
+
+// 按 love_id 查动态（公开）
+export const listLoveStoriesByLoveId = (loveId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/stories/by-love/' + loveId, params)
+}
+
+// 按 user_id 查动态（公开）
+export const listLoveStoriesByUser = (userId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/stories/by-user/' + userId, params)
+}
+
+// 动态详情（公开）
+export const getLoveStory = (id: number) : Promise<ApiResult> => {
+    return get('/love/stories/' + id)
+}
+
+// 发布动态（需登录）
+export const createLoveStory = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/stories', data)
+}
+
+// 更新动态（需登录）
+export const updateLoveStory = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/stories/' + id, data)
+}
+
+// 删除动态（需登录）
+export const deleteLoveStory = (id: number) : Promise<ApiResult> => {
+    return del('/love/stories/' + id)
+}
+
+// 增加浏览量（公开）
+export const incrLoveStoryView = (id: number) : Promise<ApiResult> => {
+    return post('/love/stories/' + id + '/view', null)
+}
+
+// 点赞动态（需登录）
+export const likeLoveStory = (id: number) : Promise<ApiResult> => {
+    return post('/love/stories/' + id + '/like', null)
+}
+
+// 取消点赞（需登录）
+export const unlikeLoveStory = (id: number) : Promise<ApiResult> => {
+    return post('/love/stories/' + id + '/unlike', null)
+}
+
+// 评论动态（需登录）
+export const commentLoveStory = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/stories/' + id + '/comment', data)
+}
+
+// 分享动态（公开）
+export const shareLoveStory = (id: number) : Promise<ApiResult> => {
+    return post('/love/stories/' + id + '/share', null)
+}
+
+// ===== 会员等级（MemberLevel，公开） =====
+// 会员等级列表
+export const listLoveMemberLevels = () : Promise<ApiResult> => {
+    return get('/love/member-levels')
+}
+
+// ===== 会员订阅（Membership） =====
+// 开通会员（需登录）
+export const buyLoveMembership = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/memberships', data)
+}
+
+// 会员订阅详情（需登录）
+export const getLoveMembership = (id: number) : Promise<ApiResult> => {
+    return get('/love/memberships/' + id)
+}
+
+// 我的会员（需登录）
+export const getMyLoveMembership = () : Promise<ApiResult> => {
+    return get('/love/memberships/me')
+}
+
+// 订阅列表（需登录）
+export const listLoveMemberships = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/memberships', params)
+}
+
+// 取消订阅（需登录）
+export const cancelLoveMembership = (id: number) : Promise<ApiResult> => {
+    return post('/love/memberships/' + id + '/cancel', null)
+}
+
+// 更新自动续费（需登录）
+export const updateLoveMembershipAutoRenew = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/memberships/' + id + '/auto-renew', data)
+}
+
+// ===== 认证（Verification） =====
+// 提交认证（需登录）
+export const createLoveVerification = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/verifications', data)
+}
+
+// 认证详情（需登录）
+export const getLoveVerification = (id: number) : Promise<ApiResult> => {
+    return get('/love/verifications/' + id)
+}
+
+// 按 love_id 查认证（需登录）
+export const getLoveVerificationByLoveId = (loveId: number) : Promise<ApiResult> => {
+    return get('/love/verifications/by-love/' + loveId)
+}
+
+// 按 user_id 查认证（需登录）
+export const getLoveVerificationByUserId = (userId: number) : Promise<ApiResult> => {
+    return get('/love/verifications/by-user/' + userId)
+}
+
+// 认证列表（需登录）
+export const listLoveVerifications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/verifications', params)
+}
+
+// 我的认证（需登录，复用 by-user）
+export const getMyLoveVerification = () : Promise<ApiResult> => {
+    return get('/love/verifications/me')
+}
+
+// ===== 礼物（Gift） =====
+// 礼物列表（公开）
+export const listLoveGifts = () : Promise<ApiResult> => {
+    return get('/love/gifts')
+}
+
+// 可用礼物列表（公开）
+export const listLoveGiftsAvailable = () : Promise<ApiResult> => {
+    return get('/love/gifts/available')
+}
+
+// 送礼物（需登录）
+export const sendLoveGift = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/gifts/send', data)
+}
+
+// ===== 推荐（Recommendation） =====
+// 生成推荐（需登录）
+export const generateLoveRecommendations = () : Promise<ApiResult> => {
+    return post('/love/recommendations/generate', null)
+}
+
+// 推荐详情（需登录）
+export const getLoveRecommendation = (id: number) : Promise<ApiResult> => {
+    return get('/love/recommendations/' + id)
+}
+
+// 推荐列表（需登录）
+export const listLoveRecommendations = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/recommendations', params)
+}
+
+// 按类型查推荐（需登录）
+export const listLoveRecommendationsByType = (type: string, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/recommendations/by-type/' + type, params)
+}
+
+// 推荐操作（需登录）
+export const loveRecommendationAction = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/recommendations/' + id + '/action', data)
+}
+
+// 推荐统计（需登录）
+export const loveRecommendationStats = () : Promise<ApiResult> => {
+    return get('/love/recommendations/stats')
+}
+
+// ===== 举报（Report） =====
+// 创建举报（需登录）
+export const createLoveReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/reports', data)
+}
+
+// 举报详情（需登录）
+export const getLoveReport = (id: number) : Promise<ApiResult> => {
+    return get('/love/reports/' + id)
+}
+
+// 我的举报（需登录）
+export const listMyLoveReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/reports/mine', params)
+}
+
+// 申诉举报（需登录）
+export const appealLoveReport = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/reports/' + id + '/appeal', data)
+}
+
+// ===== 通知（Notification） =====
+// 通知列表（需登录）
+export const listLoveNotifications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/notifications', params)
+}
+
+// 未读通知（需登录）
+export const listLoveNotificationsUnread = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/notifications/unread', params)
+}
+
+// 通知详情（需登录）
+export const getLoveNotification = (id: number) : Promise<ApiResult> => {
+    return get('/love/notifications/' + id)
+}
+
+// 标记已读（需登录）
+export const markLoveNotificationRead = (id: number) : Promise<ApiResult> => {
+    return post('/love/notifications/' + id + '/read', null)
+}
+
+// 全部已读（需登录）
+export const markLoveNotificationsAllRead = () : Promise<ApiResult> => {
+    return post('/love/notifications/read-all', null)
+}
+
+// 批量已读（需登录）
+export const batchReadLoveNotifications = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/notifications/batch-read', data)
+}
+
+// 删除通知（需登录）
+export const deleteLoveNotification = (id: number) : Promise<ApiResult> => {
+    return del('/love/notifications/' + id)
+}
+
+// 未读数（需登录）
+export const countLoveNotificationsUnread = () : Promise<ApiResult> => {
+    return get('/love/notifications/unread-count')
+}
+
+// 通知统计（需登录）
+export const loveNotificationStats = () : Promise<ApiResult> => {
+    return get('/love/notifications/stats')
+}
+
+// ===== 隐私（Privacy） =====
+// 获取我的隐私设置（需登录）
+export const getLovePrivacy = () : Promise<ApiResult> => {
+    return get('/love/privacy')
+}
+
+// 按 love_id 查隐私（公开）
+export const getLovePrivacyByLoveId = (loveId: number) : Promise<ApiResult> => {
+    return get('/love/privacy/by-love/' + loveId)
+}
+
+// 更新隐私（需登录）
+export const updateLovePrivacy = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/love/privacy', data)
+}
+
+// 重置隐私（需登录）
+export const resetLovePrivacy = () : Promise<ApiResult> => {
+    return post('/love/privacy/reset', null)
+}
+
+// 是否可见（需登录）
+export const lovePrivacyIsVisible = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/privacy/is-visible', params)
+}
+
+// ===== 会话（ChatSession） =====
+// 会话列表（需登录）
+export const listLoveChatSessions = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/love/chat-sessions', params)
+}
+
+// 会话详情（需登录）
+export const getLoveChatSession = (id: number) : Promise<ApiResult> => {
+    return get('/love/chat-sessions/' + id)
+}
+
+// 按 match_id 查会话（需登录）
+export const getLoveChatSessionByMatchId = (matchId: number) : Promise<ApiResult> => {
+    return get('/love/chat-sessions/by-match/' + matchId)
+}
+
+// 会话操作（需登录）
+export const loveChatSessionAction = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/love/chat-sessions/' + id + '/action', data)
+}
+
+// 标记已读（需登录）
+export const markLoveChatSessionRead = (id: number) : Promise<ApiResult> => {
+    return post('/love/chat-sessions/' + id + '/read', null)
+}
+
+// 活跃会话数（需登录）
+export const countLoveChatSessionsActive = () : Promise<ApiResult> => {
+    return get('/love/chat-sessions/active-count')
+}
+
+// ===== 搜索历史（本地存储） =====
+export const getLoveSearchHistory = () : string[] => {
+    const data = uni.getStorageSync('love_search_history')
+    if (data instanceof Array) return data as string[]
+    return [] as string[]
+}
+
+export const clearLoveSearchHistory = () => {
+    uni.removeStorageSync('love_search_history')
+}
+
+export const addLoveSearchHistory = (keyword: string) => {
+    if (keyword.length == 0) return
+    const list = getLoveSearchHistory()
+    const idx = list.indexOf(keyword)
+    if (idx >= 0) list.splice(idx, 1)
+    list.unshift(keyword)
+    if (list.length > 20) list.splice(20)
+    uni.setStorageSync('love_search_history', list)
+}

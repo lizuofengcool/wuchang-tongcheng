@@ -1,0 +1,138 @@
+<template>
+    <view class="worker-card" @click="onClick">
+        <image class="avatar" :src="worker.avatar" mode="aspectFill" lazy-load="true" v-if="worker.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ worker.name.length > 0 ? worker.name.charAt(0) : 'W' }}</text>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ worker.name }}</text>
+                <view class="credit-badge" v-if="worker.credit_score > 0">
+                    <text class="credit-text">信用 {{ worker.credit_score }}</text>
+                </view>
+            </view>
+            <view class="meta-row" v-if="metaText.length > 0">
+                <text class="meta">{{ metaText }}</text>
+            </view>
+            <view class="skill-row" v-if="worker.skills.length > 0">
+                <linggong-skill-tag v-for="(s, idx) in displaySkills" :key="idx" :skill="s" />
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Worker = {
+        id: number
+        name: string
+        avatar: string
+        age: number
+        gender: string
+        city: string
+        credit_score: number
+        skills: string[]
+    }
+
+    const props = withDefaults(defineProps<{
+        worker: Worker
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const displaySkills = computed(() : string[] => {
+        const list = props.worker.skills
+        if (list.length <= 3) return list
+        return list.slice(0, 3)
+    })
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.worker.age > 0) parts.push(props.worker.age + '岁')
+        if (props.worker.gender.length > 0) parts.push(props.worker.gender)
+        if (props.worker.city.length > 0) parts.push(props.worker.city)
+        return parts.join(' · ')
+    })
+
+    const onClick = () => {
+        emit('click', props.worker.id)
+    }
+</script>
+
+<style>
+    .worker-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 22px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .credit-badge {
+        background-color: #FFF5F0;
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+
+    .credit-text {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .skill-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+</style>

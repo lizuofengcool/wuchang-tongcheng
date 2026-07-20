@@ -1,0 +1,241 @@
+<template>
+    <view class="page">
+        <view class="header-section">
+            <view class="stats-row" v-if="stats.total > 0">
+                <view class="stat-cell">
+                    <text class="stat-value">{{ stats.avg_rating }}</text>
+                    <text class="stat-label">综合评分</text>
+                </view>
+                <view class="stat-cell">
+                    <text class="stat-value">{{ stats.total }}</text>
+                    <text class="stat-label">评价数</text>
+                </view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap">
+                <dh114-review-card v-for="item in reviewList" :key="item.id" :review="item" @like="onLike" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && reviewList.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <dh114-empty v-if="reviewList.length == 0 && !loading" icon="✍" text="暂无评价" btn-text="写评价" @click="showReviewDialog" />
+        </scroll-view>
+        <view class="fab-btn" @click="showReviewDialog">
+            <text class="fab-text">✍ 写评价</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listReviewsByDh114, getReviewStats, createReview, likeReview } from '@/api/business/dh114.uts'
+
+    type ReviewItem = {
+        id: number
+        user_name: string
+        user_avatar: string
+        rating: number
+        content: string
+        images: string[]
+        reply_content: string
+        like_count: number
+        created_at: string
+    }
+    type Stats = {
+        avg_rating: number
+        total: number
+    }
+
+    const dh114Id = ref(0)
+    const reviewList = ref([] as ReviewItem[])
+    const stats = ref({ avg_rating: 0, total: 0 } as Stats)
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        listReviewsByDh114(dh114Id.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ReviewItem[]) ?? ([] as ReviewItem[])
+                if (reset) {
+                    reviewList.value = newList
+                } else {
+                    reviewList.value = reviewList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadStats = () => {
+        const params: UTSJSONObject = { dh114_id: dh114Id.value } as UTSJSONObject
+        getReviewStats(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                stats.value = {
+                    avg_rating: (d['avg_rating'] as number) ?? 0,
+                    total: (d['total'] as number) ?? 0
+                } as Stats
+            }
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onLike = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        likeReview(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '点赞成功', icon: 'success' })
+            }
+        })
+    }
+
+    const showReviewDialog = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showActionSheet({
+            itemList: ['5星 非常好', '4星 还不错', '3星 一般', '2星 较差', '1星 很差'],
+            success: (res) => {
+                const rating = 5 - res.tapIndex
+                uni.showModal({
+                    title: '写评价',
+                    editable: true,
+                    placeholderText: '请输入评价内容',
+                    success: (m) => {
+                        if (m.confirm) {
+                            const data: UTSJSONObject = {
+                                dh114_id: dh114Id.value,
+                                rating: rating,
+                                content: m.content
+                            } as UTSJSONObject
+                            createReview(data).then((r: ApiResult) => {
+                                if (r.code == 200) {
+                                    uni.showToast({ title: '评价成功', icon: 'success' })
+                                    loadList(true)
+                                    loadStats()
+                                } else {
+                                    uni.showToast({ title: r.message || '评价失败', icon: 'none' })
+                                }
+                            })
+                        }
+                    }
+                })
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            dh114Id.value = parseInt(id as string)
+            loadList(true)
+            loadStats()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+        loadStats()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .header-section {
+        background-color: #FFFFFF;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .stats-row {
+        flex-direction: row;
+    }
+
+    .stat-cell {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-value {
+        font-size: 22px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .fab-btn {
+        position: fixed;
+        right: 16px;
+        bottom: 80px;
+        background-color: #FF6B35;
+        border-radius: 28px;
+        padding: 12px 20px;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+    }
+
+    .fab-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

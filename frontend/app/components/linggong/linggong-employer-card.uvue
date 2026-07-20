@@ -1,0 +1,141 @@
+<template>
+    <view class="employer-card" @click="onClick">
+        <image class="logo" :src="employer.logo" mode="aspectFill" lazy-load="true" v-if="employer.logo.length > 0" />
+        <view class="logo-placeholder" v-else>
+            <text class="logo-text">{{ employer.name.length > 0 ? employer.name.charAt(0) : 'E' }}</text>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ employer.name }}</text>
+                <text class="verified" v-if="employer.is_verified">✓</text>
+            </view>
+            <view class="meta-row" v-if="metaText.length > 0">
+                <text class="meta">{{ metaText }}</text>
+            </view>
+            <view class="stats-row">
+                <text class="stat">{{ employer.job_count }}在招</text>
+                <text class="stat-dot">·</text>
+                <text class="stat">{{ employer.rating_count }}评价</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Employer = {
+        id: number
+        name: string
+        logo: string
+        industry: string
+        size: string
+        city: string
+        is_verified: boolean
+        job_count: number
+        rating_count: number
+    }
+
+    const props = withDefaults(defineProps<{
+        employer: Employer
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const metaText = computed(() : string => {
+        const parts = [] as string[]
+        if (props.employer.industry.length > 0) parts.push(props.employer.industry)
+        if (props.employer.size.length > 0) parts.push(props.employer.size)
+        if (props.employer.city.length > 0) parts.push(props.employer.city)
+        return parts.join(' · ')
+    })
+
+    const onClick = () => {
+        emit('click', props.employer.id)
+    }
+</script>
+
+<style>
+    .employer-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        margin-right: 12px;
+    }
+
+    .logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .logo-text {
+        font-size: 22px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .verified {
+        font-size: 13px;
+        color: #07C160;
+        margin-left: 4px;
+    }
+
+    .meta-row {
+        margin-top: 4px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .stat {
+        font-size: 11px;
+        color: #666;
+    }
+
+    .stat-dot {
+        font-size: 11px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+</style>

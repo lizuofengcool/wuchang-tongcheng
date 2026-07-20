@@ -1,0 +1,205 @@
+<template>
+    <view class="page">
+        <view class="tab-bar">
+            <view class="tab-item" v-for="(tab, idx) in tabs" :key="idx" @click="switchTab(idx)">
+                <text class="tab-text" :class="{ active: currentTab == idx }">{{ tab.name }}</text>
+                <view class="tab-line" v-if="currentTab == idx"></view>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y>
+            <view class="list-wrap">
+                <dh114-menu-card v-for="item in menuList" :key="item.id" :menu="item" @click="onMenuClick" />
+            </view>
+            <dh114-empty v-if="menuList.length == 0 && !loading" icon="🍽" text="暂无菜单" btn-text="去添加" @click="showAddDialog" />
+        </scroll-view>
+        <view class="fab-btn" @click="showAddDialog">
+            <text class="fab-text">+ 添加</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMenusByDh114, listSignatureMenus, createMenu, deleteMenu } from '@/api/business/dh114.uts'
+
+    type Tab = { key: string, name: string }
+    type MenuItem = {
+        id: number
+        name: string
+        image: string
+        description: string
+        price: number
+        is_signature: boolean
+        order_count: number
+    }
+
+    const tabs = ref([
+        { key: 'all', name: '全部菜单' },
+        { key: 'signature', name: '招牌菜' }
+    ] as Tab[])
+    const currentTab = ref(0)
+    const menuList = ref([] as MenuItem[])
+    const loading = ref(false)
+    const dh114Id = ref(0)
+
+    const loadList = () => {
+        loading.value = true
+        const tabKey = tabs.value[currentTab.value].key
+        const reqFn = tabKey == 'signature' ? listSignatureMenus(dh114Id.value) : listMenusByDh114(dh114Id.value)
+        reqFn.then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                menuList.value = (res.data as MenuItem[]) ?? ([] as MenuItem[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const switchTab = (idx: number) => {
+        if (currentTab.value == idx) return
+        currentTab.value = idx
+        loadList()
+    }
+
+    const onMenuClick = (id: number) => {
+        uni.showActionSheet({
+            itemList: ['设为招牌', '删除'],
+            success: (res) => {
+                if (res.tapIndex == 0) {
+                    const data: UTSJSONObject = { is_signature: true } as UTSJSONObject
+                    createMenu(data).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '设置成功', icon: 'success' })
+                            loadList()
+                        }
+                    })
+                } else if (res.tapIndex == 1) {
+                    uni.showModal({
+                        title: '提示',
+                        content: '确认删除该菜单？',
+                        success: (m) => {
+                            if (m.confirm) {
+                                deleteMenu(id).then((r: ApiResult) => {
+                                    if (r.code == 200) {
+                                        uni.showToast({ title: '删除成功', icon: 'success' })
+                                        loadList()
+                                    }
+                                })
+                            }
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const showAddDialog = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '添加菜单',
+            editable: true,
+            placeholderText: '请输入菜单名称',
+            success: (res) => {
+                if (res.confirm && res.content.length > 0) {
+                    const data: UTSJSONObject = {
+                        dh114_id: dh114Id.value,
+                        name: res.content,
+                        price: 0,
+                        is_signature: false
+                    } as UTSJSONObject
+                    createMenu(data).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '添加成功', icon: 'success' })
+                            loadList()
+                        } else {
+                            uni.showToast({ title: r.message || '添加失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            dh114Id.value = parseInt(id as string)
+            loadList()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tab-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        height: 44px;
+        align-items: center;
+        border-bottom-width: 1px;
+        border-bottom-color: #E5E5E5;
+    }
+
+    .tab-item {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        width: 20px;
+        height: 2px;
+        background-color: #FF6B35;
+        margin-top: 4px;
+        border-radius: 1px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .fab-btn {
+        position: fixed;
+        right: 16px;
+        bottom: 80px;
+        background-color: #FF6B35;
+        border-radius: 28px;
+        padding: 12px 20px;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+    }
+
+    .fab-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

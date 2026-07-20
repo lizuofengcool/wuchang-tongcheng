@@ -7,7 +7,11 @@
             "^er-(.*)": "@/components/ershou/er-$1.uvue",
             "^job-(.*)": "@/components/job/job-$1.uvue",
             "^house-(.*)": "@/components/fang/house-$1.uvue",
-            "^car-(.*)": "@/components/car/car-$1.uvue"
+            "^car-(.*)": "@/components/car/car-$1.uvue",
+            "^love-(.*)": "@/components/love/love-$1.uvue",
+            "^pinche-(.*)": "@/components/pinche/pinche-$1.uvue",
+            "^linggong-(.*)": "@/components/linggong/linggong-$1.uvue",
+            "^dh114-(.*)": "@/components/dh114/dh114-$1.uvue"
         }
     },
     "pages": [
@@ -433,6 +437,322 @@
             "path": "pages/business/car/evaluation/index",
             "style": {
                 "navigationBarTitleText": "车辆评估"
+            }
+        },
+        {
+            "path": "pages/business/love/list/index",
+            "style": {
+                "navigationBarTitleText": "交友档案",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/detail/index",
+            "style": {
+                "navigationBarTitleText": "档案详情"
+            }
+        },
+        {
+            "path": "pages/business/love/profile/edit",
+            "style": {
+                "navigationBarTitleText": "编辑资料"
+            }
+        },
+        {
+            "path": "pages/business/love/matching/index",
+            "style": {
+                "navigationBarTitleText": "灵魂匹配"
+            }
+        },
+        {
+            "path": "pages/business/love/likes/index",
+            "style": {
+                "navigationBarTitleText": "互相喜欢",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/blocks/index",
+            "style": {
+                "navigationBarTitleText": "黑名单",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/visits/index",
+            "style": {
+                "navigationBarTitleText": "谁看过我",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/stories/index",
+            "style": {
+                "navigationBarTitleText": "动态广场",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/membership/index",
+            "style": {
+                "navigationBarTitleText": "会员中心"
+            }
+        },
+        {
+            "path": "pages/business/love/verifications/index",
+            "style": {
+                "navigationBarTitleText": "实名认证"
+            }
+        },
+        {
+            "path": "pages/business/love/messages/index",
+            "style": {
+                "navigationBarTitleText": "匹配消息",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/love/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/pinche/list/index",
+            "style": {
+                "navigationBarTitleText": "拼车行程",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/pinche/detail/index",
+            "style": {
+                "navigationBarTitleText": "行程详情"
+            }
+        },
+        {
+            "path": "pages/business/pinche/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布行程"
+            }
+        },
+        {
+            "path": "pages/business/pinche/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索行程"
+            }
+        },
+        {
+            "path": "pages/business/pinche/bookings/index",
+            "style": {
+                "navigationBarTitleText": "我的预订",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/pinche/drivers/index",
+            "style": {
+                "navigationBarTitleText": "车主认证"
+            }
+        },
+        {
+            "path": "pages/business/pinche/trips/index",
+            "style": {
+                "navigationBarTitleText": "行程记录",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/pinche/route-favorites/index",
+            "style": {
+                "navigationBarTitleText": "常用路线",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/pinche/messages/index",
+            "style": {
+                "navigationBarTitleText": "行程消息",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/pinche/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/pinche/emergencies/index",
+            "style": {
+                "navigationBarTitleText": "紧急联系"
+            }
+        },
+        {
+            "path": "pages/business/pinche/ratings/index",
+            "style": {
+                "navigationBarTitleText": "评价",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/list/index",
+            "style": {
+                "navigationBarTitleText": "兼职岗位",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/detail/index",
+            "style": {
+                "navigationBarTitleText": "岗位详情"
+            }
+        },
+        {
+            "path": "pages/business/linggong/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布岗位"
+            }
+        },
+        {
+            "path": "pages/business/linggong/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索岗位"
+            }
+        },
+        {
+            "path": "pages/business/linggong/applications/index",
+            "style": {
+                "navigationBarTitleText": "我的报名",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/employers/index",
+            "style": {
+                "navigationBarTitleText": "雇主主页",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/workers/index",
+            "style": {
+                "navigationBarTitleText": "求职者档案",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/contracts/index",
+            "style": {
+                "navigationBarTitleText": "电子合同",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/linggong/favorites/index",
+            "style": {
+                "navigationBarTitleText": "我的收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/linggong/ratings/index",
+            "style": {
+                "navigationBarTitleText": "评价",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/list/index",
+            "style": {
+                "navigationBarTitleText": "同城商家",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/detail/index",
+            "style": {
+                "navigationBarTitleText": "商家详情"
+            }
+        },
+        {
+            "path": "pages/business/dh114/publish/index",
+            "style": {
+                "navigationBarTitleText": "商家入驻"
+            }
+        },
+        {
+            "path": "pages/business/dh114/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索商家"
+            }
+        },
+        {
+            "path": "pages/business/dh114/businesses/index",
+            "style": {
+                "navigationBarTitleText": "商户管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/menus/index",
+            "style": {
+                "navigationBarTitleText": "菜单服务",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/reviews/index",
+            "style": {
+                "navigationBarTitleText": "用户评价",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/coupons/index",
+            "style": {
+                "navigationBarTitleText": "优惠券",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/groupbuys/index",
+            "style": {
+                "navigationBarTitleText": "团购活动",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/favorites/index",
+            "style": {
+                "navigationBarTitleText": "我的收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息列表",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/dh114/messages/chat",
+            "style": {
+                "navigationBarTitleText": "聊天"
             }
         }
     ],

@@ -1,0 +1,490 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="status-card" v-if="verification != null">
+                <text class="status-title">当前认证状态</text>
+                <view class="status-info">
+                    <text class="status-badge" :class="verification.status">{{ statusText(verification.status) }}</text>
+                    <text class="status-time" v-if="verification.status == 'pending'">提交于 {{ verification.created_at }}</text>
+                    <text class="status-time" v-if="verification.status == 'approved'">通过于 {{ verification.audited_at }}</text>
+                    <text class="status-time" v-if="verification.status == 'rejected'">驳回于 {{ verification.audited_at }}</text>
+                </view>
+                <view class="reject-reason" v-if="verification.status == 'rejected' && verification.reject_reason.length > 0">
+                    <text class="reject-label">驳回原因：</text>
+                    <text class="reject-text">{{ verification.reject_reason }}</text>
+                </view>
+            </view>
+
+            <view class="form-card" v-if="verification == null || verification.status == 'rejected'">
+                <text class="card-title">身份证认证</text>
+                <view class="form-row">
+                    <text class="label">真实姓名<text class="required">*</text></text>
+                    <input class="input" v-model="form.real_name" placeholder="请输入真实姓名" />
+                </view>
+                <view class="form-row">
+                    <text class="label">身份证号<text class="required">*</text></text>
+                    <input class="input" v-model="form.id_card" placeholder="请输入身份证号" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">身份证照片<text class="required">*</text></text>
+                    <view class="id-card-wrap">
+                        <view class="id-card-item" @click="uploadIdCard('front')">
+                            <image class="id-card-img" :src="form.id_card_front" mode="aspectFill" v-if="form.id_card_front.length > 0" />
+                            <view class="id-card-placeholder" v-else>
+                                <text class="id-card-icon">📇</text>
+                                <text class="id-card-text">上传正面</text>
+                            </view>
+                        </view>
+                        <view class="id-card-item" @click="uploadIdCard('back')">
+                            <image class="id-card-img" :src="form.id_card_back" mode="aspectFill" v-if="form.id_card_back.length > 0" />
+                            <view class="id-card-placeholder" v-else>
+                                <text class="id-card-icon">📇</text>
+                                <text class="id-card-text">上传背面</text>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card" v-if="verification == null || verification.status == 'rejected'">
+                <text class="card-title">学历认证（选填）</text>
+                <view class="form-row">
+                    <text class="label">学历</text>
+                    <input class="input" v-model="form.education" placeholder="例如：本科" />
+                </view>
+                <view class="form-row">
+                    <text class="label">学校</text>
+                    <input class="input" v-model="form.school" placeholder="请输入学校名称" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">学历证书</text>
+                    <view class="cert-upload" @click="uploadCert">
+                        <image class="cert-img" :src="form.certificate_image" mode="aspectFill" v-if="form.certificate_image.length > 0" />
+                        <view class="cert-placeholder" v-else>
+                            <text class="cert-icon">🎓</text>
+                            <text class="cert-text">上传学历证书</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card" v-if="verification == null || verification.status == 'rejected'">
+                <text class="card-title">视频认证（选填）</text>
+                <view class="form-row column">
+                    <text class="label">真人视频</text>
+                    <view class="video-upload" @click="uploadVideo">
+                        <text class="video-icon">📹</text>
+                        <text class="video-text">{{ form.video_url.length > 0 ? '已上传' : '上传真人视频' }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <view class="tips-card">
+                <text class="tips-title">认证须知</text>
+                <text class="tips-text">1. 提交的资料仅用于身份核实，不会公开展示</text>
+                <text class="tips-text">2. 审核时间一般为 1-3 个工作日</text>
+                <text class="tips-text">3. 通过认证后，将获得认证徽章</text>
+                <text class="tips-text">4. 资料造假将永久封号</text>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar" v-if="verification == null || verification.status == 'rejected'">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-text-white">提交认证</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getMyLoveVerification, createLoveVerification } from '@/api/business/love.uts'
+
+    type Form = {
+        real_name: string
+        id_card: string
+        id_card_front: string
+        id_card_back: string
+        education: string
+        school: string
+        certificate_image: string
+        video_url: string
+    }
+    type Verification = {
+        id: number
+        status: string
+        created_at: string
+        audited_at: string
+        reject_reason: string
+    }
+
+    const form = ref({
+        real_name: '',
+        id_card: '',
+        id_card_front: '',
+        id_card_back: '',
+        education: '',
+        school: '',
+        certificate_image: '',
+        video_url: ''
+    } as Form)
+
+    const verification = ref(null as Verification | null)
+
+    const statusText = (status: string) : string => {
+        if (status == 'approved') return '已通过'
+        if (status == 'pending') return '审核中'
+        if (status == 'rejected') return '未通过'
+        return '未认证'
+    }
+
+    const loadVerification = () => {
+        if (!state.checkLogin()) return
+        getMyLoveVerification().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                verification.value = {
+                    id: (d['id'] as number) ?? 0,
+                    status: (d['status'] as string) ?? '',
+                    created_at: (d['created_at'] as string) ?? '',
+                    audited_at: (d['audited_at'] as string) ?? '',
+                    reject_reason: (d['reject_reason'] as string) ?? ''
+                } as Verification
+            }
+        })
+    }
+
+    const uploadIdCard = (side: string) => {
+        uni.chooseImage({
+            count: 1,
+            success: (res) => {
+                const path = res.tempFilePaths[0]
+                if (side == 'front') form.value.id_card_front = path
+                else form.value.id_card_back = path
+            }
+        })
+    }
+
+    const uploadCert = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res) => {
+                form.value.certificate_image = res.tempFilePaths[0]
+            }
+        })
+    }
+
+    const uploadVideo = () => {
+        uni.chooseVideo({
+            sourceType: ['album'],
+            success: (res) => {
+                form.value.video_url = res.tempFilePath
+            }
+        })
+    }
+
+    const onSubmit = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.real_name.length == 0) {
+            uni.showToast({ title: '请输入真实姓名', icon: 'none' })
+            return
+        }
+        if (form.value.id_card.length == 0) {
+            uni.showToast({ title: '请输入身份证号', icon: 'none' })
+            return
+        }
+        if (form.value.id_card_front.length == 0 || form.value.id_card_back.length == 0) {
+            uni.showToast({ title: '请上传身份证照片', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            real_name: form.value.real_name,
+            id_card: form.value.id_card,
+            id_card_front: form.value.id_card_front,
+            id_card_back: form.value.id_card_back,
+            education: form.value.education,
+            school: form.value.school,
+            certificate_image: form.value.certificate_image,
+            video_url: form.value.video_url
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '提交中...' })
+        createLoveVerification(data).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '提交成功', icon: 'success' })
+                loadVerification()
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadVerification()
+    })
+
+    onPullDownRefresh(() => {
+        loadVerification()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .status-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .status-title {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .status-info {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .status-badge {
+        font-size: 13px;
+        padding: 4px 12px;
+        border-radius: 12px;
+        margin-right: 12px;
+    }
+
+    .status-badge.pending {
+        background-color: #FFF5E5;
+        color: #FFB400;
+    }
+
+    .status-badge.approved {
+        background-color: #E5F8FF;
+        color: #1989FA;
+    }
+
+    .status-badge.rejected {
+        background-color: #FFE5E5;
+        color: #EE0A24;
+    }
+
+    .status-time {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .reject-reason {
+        margin-top: 10px;
+        padding: 8px;
+        background-color: #FFF5F5;
+        border-radius: 6px;
+    }
+
+    .reject-label {
+        font-size: 12px;
+        color: #EE0A24;
+        font-weight: 600;
+    }
+
+    .reject-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 100px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .id-card-wrap {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .id-card-item {
+        width: 140px;
+        height: 90px;
+        margin-right: 12px;
+    }
+
+    .id-card-img {
+        width: 140px;
+        height: 90px;
+        border-radius: 6px;
+    }
+
+    .id-card-placeholder {
+        width: 140px;
+        height: 90px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        border-style: dashed;
+        border-radius: 6px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .id-card-icon {
+        font-size: 24px;
+    }
+
+    .id-card-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .cert-upload {
+        margin-top: 8px;
+    }
+
+    .cert-img {
+        width: 140px;
+        height: 90px;
+        border-radius: 6px;
+    }
+
+    .cert-placeholder {
+        width: 140px;
+        height: 90px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        border-style: dashed;
+        border-radius: 6px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cert-icon {
+        font-size: 24px;
+    }
+
+    .cert-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .video-upload {
+        margin-top: 8px;
+        width: 140px;
+        height: 90px;
+        border-width: 1px;
+        border-color: #DDDDDD;
+        border-style: dashed;
+        border-radius: 6px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-icon {
+        font-size: 24px;
+    }
+
+    .video-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .tips-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 80px;
+    }
+
+    .tips-title {
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .tips-text {
+        font-size: 12px;
+        color: #999;
+        line-height: 1.8;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-submit {
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text-white {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

@@ -1,0 +1,313 @@
+<template>
+    <view class="page">
+        <view class="stats-bar">
+            <view class="stat-item">
+                <text class="stat-num">{{ stats.total_visitors }}</text>
+                <text class="stat-label">总访客</text>
+            </view>
+            <view class="stat-item">
+                <text class="stat-num">{{ stats.today_visitors }}</text>
+                <text class="stat-label">今日访客</text>
+            </view>
+            <view class="stat-item">
+                <text class="stat-num">{{ stats.unread_count }}</text>
+                <text class="stat-label">未读访客</text>
+            </view>
+            <view class="read-all-btn" @click="onReadAll" v-if="stats.unread_count > 0">
+                <text class="read-all-text">全部已读</text>
+            </view>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap" v-if="list.length > 0">
+                <view class="visit-item" v-for="item in list" :key="item.id" @click="goDetail(item)" :class="{ unread: !item.is_read }">
+                    <image class="avatar" :src="item.avatar" mode="aspectFill" lazy-load="true" v-if="item.avatar.length > 0" />
+                    <view class="avatar-placeholder" v-else>
+                        <text class="avatar-text">{{ item.nickname.length > 0 ? item.nickname.charAt(0) : 'U' }}</text>
+                    </view>
+                    <view class="info">
+                        <view class="name-row">
+                            <text class="nickname">{{ item.nickname }}</text>
+                            <view class="unread-dot" v-if="!item.is_read"></view>
+                        </view>
+                        <text class="time">{{ item.time_text }}</text>
+                    </view>
+                    <view class="visit-count" v-if="item.visit_count > 1">
+                        <text class="visit-count-text">×{{ item.visit_count }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <love-empty v-if="list.length == 0 && !loading" icon="👀" text="暂无访客" sub-text="完善资料让更多人看到你" btn-text="去发现" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveVisits, markLoveVisitsAllRead, markLoveVisitRead, loveVisitStats } from '@/api/business/love.uts'
+
+    type VisitItem = {
+        id: number
+        love_id: number
+        nickname: string
+        avatar: string
+        time_text: string
+        visit_count: number
+        is_read: boolean
+    }
+    type Stats = {
+        total_visitors: number
+        today_visitors: number
+        unread_count: number
+    }
+
+    const list = ref([] as VisitItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const stats = ref({ total_visitors: 0, today_visitors: 0, unread_count: 0 } as Stats)
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listLoveVisits(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as VisitItem[]) ?? ([] as VisitItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadStats = () => {
+        loveVisitStats().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                stats.value = {
+                    total_visitors: (d['total_visitors'] as number) ?? 0,
+                    today_visitors: (d['today_visitors'] as number) ?? 0,
+                    unread_count: (d['unread_count'] as number) ?? 0
+                } as Stats
+            }
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onReadAll = () => {
+        markLoveVisitsAllRead().then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已全部已读', icon: 'success' })
+                loadList(true)
+                loadStats()
+            }
+        })
+    }
+
+    const goDetail = (item: VisitItem) => {
+        if (!item.is_read) {
+            markLoveVisitRead(item.id).then((_r: ApiResult) => {
+                item.is_read = true
+                if (stats.value.unread_count > 0) stats.value.unread_count--
+            })
+        }
+        uni.navigateTo({ url: '/pages/business/love/detail/index?id=' + item.love_id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/love/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+        loadStats()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+            loadStats()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+        loadStats()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .stats-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 16px 12px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .stat-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-num {
+        font-size: 20px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .read-all-btn {
+        background-color: #FFF5F0;
+        border-radius: 14px;
+        padding: 6px 12px;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .read-all-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        background-color: #FFFFFF;
+        margin-top: 8px;
+    }
+
+    .visit-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .visit-item.unread {
+        background-color: #FFF9F5;
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .nickname {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .unread-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        background-color: #EE0A24;
+        margin-left: 6px;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .visit-count {
+        background-color: #FFE5E5;
+        border-radius: 10px;
+        padding: 2px 6px;
+    }
+
+    .visit-count-text {
+        font-size: 11px;
+        color: #EE0A24;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

@@ -1,0 +1,206 @@
+<template>
+    <view class="task-card" @click="onClick">
+        <view class="header-row">
+            <text class="title">{{ task.title }}</text>
+            <view class="status-tag" :class="task.status">
+                <text class="status-text">{{ getStatusText(task.status) }}</text>
+            </view>
+        </view>
+        <view class="meta-row" v-if="task.work_type.length > 0">
+            <text class="meta">{{ task.work_type }}</text>
+            <text class="meta-dot" v-if="task.duration.length > 0">·</text>
+            <text class="meta" v-if="task.duration.length > 0">{{ task.duration }}</text>
+        </view>
+        <view class="progress-row">
+            <view class="progress-bar">
+                <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+            </view>
+            <text class="progress-text">{{ task.completed_count }}/{{ task.total_count }}</text>
+        </view>
+        <view class="footer-row">
+            <text class="reward">{{ task.reward_range }}</text>
+            <text class="time">{{ task.created_at }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Task = {
+        id: number
+        title: string
+        work_type: string
+        duration: string
+        reward_range: string
+        status: string
+        completed_count: number
+        total_count: number
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        task: Task
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const progressPercent = computed(() : number => {
+        if (props.task.total_count == 0) return 0
+        const p = (props.task.completed_count * 100) / props.task.total_count
+        if (p > 100) return 100
+        if (p < 0) return 0
+        return p
+    })
+
+    const getStatusText = (status: string) : string => {
+        if (status == 'open') return '招募中'
+        if (status == 'in_progress') return '进行中'
+        if (status == 'completed') return '已完成'
+        if (status == 'closed') return '已关闭'
+        if (status == 'cancelled') return '已取消'
+        return status
+    }
+
+    const onClick = () => {
+        emit('click', props.task.id)
+    }
+</script>
+
+<style>
+    .task-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .status-tag {
+        border-radius: 12px;
+        padding: 2px 8px;
+        margin-left: 8px;
+    }
+
+    .status-tag.open {
+        background-color: #F0FFF8;
+    }
+
+    .status-tag.in_progress {
+        background-color: #FFF5F0;
+    }
+
+    .status-tag.completed {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.closed {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.cancelled {
+        background-color: #FFE5E5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.open .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.in_progress .status-text {
+        color: #FF6B35;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .status-tag.closed .status-text {
+        color: #999;
+    }
+
+    .status-tag.cancelled .status-text {
+        color: #EE0A24;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .progress-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .progress-bar {
+        flex: 1;
+        height: 6px;
+        background-color: #F0F0F0;
+        border-radius: 3px;
+        margin-right: 8px;
+    }
+
+    .progress-fill {
+        height: 6px;
+        background-color: #FF6B35;
+        border-radius: 3px;
+    }
+
+    .progress-text {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .footer-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .reward {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #BBB;
+    }
+</style>

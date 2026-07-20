@@ -1,0 +1,157 @@
+<template>
+    <view class="coupon-card">
+        <view class="coupon-left">
+            <text class="amount-symbol">¥</text>
+            <text class="amount-value">{{ coupon.amount }}</text>
+            <text class="threshold-text" v-if="coupon.threshold > 0">满{{ coupon.threshold }}可用</text>
+            <text class="threshold-text" v-else>无门槛</text>
+        </view>
+        <view class="coupon-divider"></view>
+        <view class="coupon-right">
+            <text class="coupon-name">{{ coupon.name }}</text>
+            <text class="coupon-validity">有效期：{{ coupon.start_date }} 至 {{ coupon.end_date }}</text>
+            <text class="coupon-status" v-if="coupon.status.length > 0">{{ coupon.status }}</text>
+            <view class="receive-btn" v-if="showReceiveBtn" @click="onReceive">
+                <text class="receive-btn-text">{{ received ? '已领取' : '立即领取' }}</text>
+            </view>
+            <view class="use-btn" v-if="showUseBtn" @click="onUse">
+                <text class="use-btn-text">立即使用</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Coupon = {
+        id: number
+        name: string
+        amount: number
+        threshold: number
+        start_date: string
+        end_date: string
+        status: string
+    }
+
+    const props = withDefaults(defineProps<{
+        coupon: Coupon
+        showReceiveBtn?: boolean
+        showUseBtn?: boolean
+        received?: boolean
+    }>(), {
+        showReceiveBtn: false,
+        showUseBtn: false,
+        received: false
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'receive', id: number): void
+        (e: 'use', id: number): void
+    }>()
+
+    const onReceive = () => {
+        if (props.received) return
+        emit('receive', props.coupon.id)
+    }
+
+    const onUse = () => {
+        emit('use', props.coupon.id)
+    }
+</script>
+
+<style>
+    .coupon-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        flex-direction: row;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+
+    .coupon-left {
+        width: 110px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 8px;
+    }
+
+    .amount-symbol {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .amount-value {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .threshold-text {
+        font-size: 11px;
+        color: #FFFFFF;
+        margin-top: 4px;
+    }
+
+    .coupon-divider {
+        width: 1px;
+        background-color: #F5F5F5;
+    }
+
+    .coupon-right {
+        flex: 1;
+        padding: 12px;
+        justify-content: space-between;
+    }
+
+    .coupon-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .coupon-validity {
+        font-size: 11px;
+        color: #999;
+        margin-top: 6px;
+    }
+
+    .coupon-status {
+        font-size: 11px;
+        color: #07C160;
+        margin-top: 4px;
+    }
+
+    .receive-btn {
+        background-color: #FF6B35;
+        border-radius: 14px;
+        padding: 4px 12px;
+        align-self: flex-end;
+        margin-top: 8px;
+    }
+
+    .receive-btn-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .use-btn {
+        background-color: #FFFFFF;
+        border-radius: 14px;
+        padding: 4px 12px;
+        align-self: flex-end;
+        margin-top: 8px;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .use-btn-text {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+</style>

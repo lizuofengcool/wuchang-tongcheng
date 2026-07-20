@@ -1,0 +1,212 @@
+<template>
+    <view class="story-card" @click="onClick">
+        <view class="user-row">
+            <image class="avatar" :src="story.author_avatar" mode="aspectFill" lazy-load="true" v-if="story.author_avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ story.author_name.length > 0 ? story.author_name.charAt(0) : 'U' }}</text>
+            </view>
+            <view class="user-info">
+                <text class="nickname">{{ story.author_name }}</text>
+                <text class="time">{{ story.time_text }}</text>
+            </view>
+            <view class="topic-badge" v-if="story.topic.length > 0">
+                <text class="topic-text">#{{ story.topic }}</text>
+            </view>
+        </view>
+        <view class="content-row" v-if="story.content.length > 0">
+            <text class="content">{{ story.content }}</text>
+        </view>
+        <view class="image-grid" v-if="story.images.length > 0">
+            <image class="image-item" :class="{ single: story.images.length == 1 }"
+                v-for="(img, idx) in story.images" :key="idx"
+                :src="img" mode="aspectFill" lazy-load="true" @click.stop="onPreview(idx)" />
+        </view>
+        <view class="action-row">
+            <view class="action-item" @click.stop="onLike">
+                <text class="action-icon">{{ story.is_liked ? '♥' : '♡' }}</text>
+                <text class="action-text" :class="{ liked: story.is_liked }">{{ story.like_count }}</text>
+            </view>
+            <view class="action-item" @click.stop="onComment">
+                <text class="action-icon">💬</text>
+                <text class="action-text">{{ story.comment_count }}</text>
+            </view>
+            <view class="action-item" @click.stop="onShare">
+                <text class="action-icon">↗</text>
+                <text class="action-text">{{ story.share_count }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Story = {
+        id: number
+        author_id: number
+        author_name: string
+        author_avatar: string
+        content: string
+        images: string[]
+        topic: string
+        like_count: number
+        comment_count: number
+        share_count: number
+        view_count: number
+        is_liked: boolean
+        time_text: string
+    }
+
+    const props = withDefaults(defineProps<{
+        story: Story
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'like', id: number): void
+        (e: 'comment', id: number): void
+        (e: 'share', id: number): void
+        (e: 'preview', idx: number): void
+    }>()
+
+    const onClick = () => {
+        emit('click', props.story.id)
+    }
+
+    const onLike = () => {
+        emit('like', props.story.id)
+    }
+
+    const onComment = () => {
+        emit('comment', props.story.id)
+    }
+
+    const onShare = () => {
+        emit('share', props.story.id)
+    }
+
+    const onPreview = (idx: number) => {
+        emit('preview', idx)
+    }
+</script>
+
+<style>
+    .story-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .user-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        margin-right: 8px;
+    }
+
+    .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .avatar-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .nickname {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .topic-badge {
+        background-color: #FFF5F0;
+        border-radius: 12px;
+        padding: 2px 8px;
+    }
+
+    .topic-text {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .content-row {
+        margin-top: 10px;
+    }
+
+    .content {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.5;
+    }
+
+    .image-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .image-item {
+        width: 110px;
+        height: 110px;
+        border-radius: 6px;
+        margin-right: 4px;
+        margin-top: 4px;
+    }
+
+    .image-item.single {
+        width: 200px;
+        height: 200px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .action-item {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .action-icon {
+        font-size: 16px;
+        color: #666;
+        margin-right: 4px;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.liked {
+        color: #EE0A24;
+    }
+</style>

@@ -1,0 +1,83 @@
+<template>
+    <view class="skill-tag" :class="colorClass" @click="onClick">
+        <text class="skill-text">#{{ skill }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        skill: string
+        color?: string
+    }>(), {
+        color: ''
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', skill: string): void
+    }>()
+
+    const colorClass = computed(() : string => {
+        if (props.color.length > 0) return props.color
+        const colors = ['orange', 'blue', 'green', 'purple', 'red'] as string[]
+        const sum = props.skill.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+        const idx = sum % colors.length
+        return colors[idx]
+    })
+
+    const onClick = () => {
+        emit('click', props.skill)
+    }
+</script>
+
+<style>
+    .skill-tag {
+        border-radius: 12px;
+        padding: 3px 10px;
+        margin-right: 6px;
+        margin-top: 6px;
+    }
+
+    .skill-tag.orange {
+        background-color: #FFF5F0;
+    }
+
+    .skill-tag.blue {
+        background-color: #E5F8FF;
+    }
+
+    .skill-tag.green {
+        background-color: #F0FFF8;
+    }
+
+    .skill-tag.purple {
+        background-color: #F5F0FF;
+    }
+
+    .skill-tag.red {
+        background-color: #FFE5E5;
+    }
+
+    .skill-text {
+        font-size: 11px;
+    }
+
+    .skill-tag.orange .skill-text {
+        color: #FF6B35;
+    }
+
+    .skill-tag.blue .skill-text {
+        color: #1989FA;
+    }
+
+    .skill-tag.green .skill-text {
+        color: #07C160;
+    }
+
+    .skill-tag.purple .skill-text {
+        color: #722ED1;
+    }
+
+    .skill-tag.red .skill-text {
+        color: #EE0A24;
+    }
+</style>

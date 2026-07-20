@@ -1,0 +1,520 @@
+// 同城拼车出行模块 API 封装
+// 对应后端 backend/internal/modules/pinche/plugin.go 路由清单（80+ API）
+// 路由前缀：/pinche（由 request.uts 中 BASE_URL 拼接为 /api/v1/pinche）
+// 按场景分组：拼车/路线/行程/预订/车主/车辆/支付/评价/保险/紧急联系
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 拼车行程（pinches） =====
+// 拼车列表（公开）
+export const listPinches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche', params)
+}
+
+// 拼车详情（公开）
+export const getPincheDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/' + id)
+}
+
+// 搜索拼车（公开）
+export const searchPinches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/search', params)
+}
+
+// 附近拼车（公开）
+export const listNearbyPinches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/nearby', params)
+}
+
+// 智能匹配（公开，按起点/终点/时间/座位/车主评分综合匹配）
+export const matchPinches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/match', params)
+}
+
+// 我的拼车发布（需登录）
+export const listMyPinches = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/mine', params)
+}
+
+// 发布拼车（需登录）
+export const createPinche = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche', data)
+}
+
+// 更新拼车（需登录）
+export const updatePinche = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/' + id, data)
+}
+
+// 删除拼车（需登录）
+export const deletePinche = (id: number) : Promise<ApiResult> => {
+    return del('/pinche/' + id)
+}
+
+// 联系量自增（公开，电话/IM 触发）
+export const incrPincheContact = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/' + id + '/contact', null)
+}
+
+// 分享量自增（公开，分享行程触发）
+export const incrPincheShare = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/' + id + '/share', null)
+}
+
+// 浏览量自增（公开）
+export const recordPincheView = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/views', data)
+}
+
+// ===== 路线（routes） =====
+// 路线列表（公开）
+export const listRoutes = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/routes', params)
+}
+
+// 常用路线（公开）
+export const listCommonRoutes = () : Promise<ApiResult> => {
+    return get('/pinche/routes/common')
+}
+
+// 路线详情（公开）
+export const getRouteDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/routes/' + id)
+}
+
+// 创建路线（需登录）
+export const createRoute = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/routes', data)
+}
+
+// 更新路线（需登录）
+export const updateRoute = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/routes/' + id, data)
+}
+
+// 删除路线（需登录）
+export const deleteRoute = (id: number) : Promise<ApiResult> => {
+    return del('/pinche/routes/' + id)
+}
+
+// 我的路线（需登录）
+export const listMyRoutes = () : Promise<ApiResult> => {
+    return get('/pinche/routes/mine')
+}
+
+// 收藏路线（需登录）
+export const favRoute = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/routes/' + id + '/fav', null)
+}
+
+// 我的路线收藏（需登录）
+export const listRouteFavs = () : Promise<ApiResult> => {
+    return get('/pinche/routes/favorites')
+}
+
+// 路线使用量自增（需登录）
+export const incrRouteUseCount = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/routes/' + id + '/use', null)
+}
+
+// ===== 行程（trips） =====
+// 行程列表（公开）
+export const listTrips = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/trips', params)
+}
+
+// 行程详情（公开）
+export const getTripDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/trips/' + id)
+}
+
+// 按行程号查询（公开）
+export const getTripByNo = (tripNo: string) : Promise<ApiResult> => {
+    return get('/pinche/trips/no/' + tripNo)
+}
+
+// 按分享 token 查询（公开，行程分享）
+export const getTripByShareToken = (token: string) : Promise<ApiResult> => {
+    return get('/pinche/trips/share/' + token)
+}
+
+// 拼车关联行程（公开）
+export const listTripsByPinche = (pincheId: number) : Promise<ApiResult> => {
+    return get('/pinche/pinches/' + pincheId + '/trips')
+}
+
+// 开始行程（需登录，车主触发）
+export const startTrip = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/trips', data)
+}
+
+// 完成行程（需登录，车主触发）
+export const completeTrip = (id: number) : Promise<ApiResult> => {
+    return put('/pinche/trips/' + id + '/complete', null)
+}
+
+// 确认行程（需登录，乘客确认）
+export const confirmTrip = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/trips/' + id + '/confirm', data)
+}
+
+// 我的行程（需登录）
+export const listMyTrips = () : Promise<ApiResult> => {
+    return get('/pinche/trips/mine')
+}
+
+// 车主行程（需登录）
+export const listDriverTrips = (driverId: number) : Promise<ApiResult> => {
+    return get('/pinche/trips/driver/' + driverId)
+}
+
+// 乘客行程（需登录）
+export const listPassengerTrips = (passengerId: number) : Promise<ApiResult> => {
+    return get('/pinche/trips/passenger/' + passengerId)
+}
+
+// 行程分享（需登录，生成分享 token）
+export const shareTrip = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/trips/' + id + '/share', null)
+}
+
+// ===== 预订（bookings） =====
+// 预订列表（公开）
+export const listBookings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/bookings', params)
+}
+
+// 预订详情（公开）
+export const getBookingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/bookings/' + id)
+}
+
+// 拼车关联预订（公开）
+export const listBookingsByPinche = (pincheId: number) : Promise<ApiResult> => {
+    return get('/pinche/pinches/' + pincheId + '/bookings')
+}
+
+// 创建预订（需登录，乘客提交）
+export const createBooking = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/bookings', data)
+}
+
+// 更新预订（需登录）
+export const updateBooking = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/bookings/' + id, data)
+}
+
+// 取消预订（需登录，乘客/车主触发）
+export const cancelBooking = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/bookings/' + id + '/cancel', null)
+}
+
+// 上车确认（需登录，乘客扫码/车主确认）
+export const confirmBoarding = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/bookings/' + id + '/boarding', null)
+}
+
+// 我的预订（需登录，乘客视角）
+export const listMyBookings = () : Promise<ApiResult> => {
+    return get('/pinche/bookings/mine')
+}
+
+// 车主预订（需登录，车主视角）
+export const listDriverBookings = () : Promise<ApiResult> => {
+    return get('/pinche/bookings/driver')
+}
+
+// ===== 车主认证（drivers） =====
+// 车主列表（公开）
+export const listDrivers = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/drivers', params)
+}
+
+// 车主详情（公开）
+export const getDriverDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/drivers/' + id)
+}
+
+// 申请车主认证（需登录）
+export const createDriver = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/drivers', data)
+}
+
+// 更新车主资料（需登录）
+export const updateDriver = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/drivers/' + id, data)
+}
+
+// 我的车主信息（需登录）
+export const getMyDriver = () : Promise<ApiResult> => {
+    return get('/pinche/drivers/me')
+}
+
+// ===== 车辆（vehicles） =====
+// 车辆列表（公开）
+export const listVehicles = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/vehicles', params)
+}
+
+// 车辆详情（公开）
+export const getVehicleDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/vehicles/' + id)
+}
+
+// 车主车辆（公开）
+export const listVehiclesByDriver = (driverId: number) : Promise<ApiResult> => {
+    return get('/pinche/vehicles/driver/' + driverId)
+}
+
+// 创建车辆（需登录）
+export const createVehicle = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/vehicles', data)
+}
+
+// 更新车辆（需登录）
+export const updateVehicle = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/vehicles/' + id, data)
+}
+
+// 删除车辆（需登录）
+export const deleteVehicle = (id: number) : Promise<ApiResult> => {
+    return del('/pinche/vehicles/' + id)
+}
+
+// 我的车辆（需登录）
+export const listMyVehicles = () : Promise<ApiResult> => {
+    return get('/pinche/vehicles/mine')
+}
+
+// 设为默认车辆（需登录）
+export const setDefaultVehicle = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/vehicles/' + id + '/default', null)
+}
+
+// ===== 支付（payments） =====
+// 支付详情（公开）
+export const getPaymentDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/payments/' + id)
+}
+
+// 按支付号查询（公开）
+export const getPaymentByNo = (paymentNo: string) : Promise<ApiResult> => {
+    return get('/pinche/payments/no/' + paymentNo)
+}
+
+// 创建支付（需登录）
+export const createPayment = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/payments', data)
+}
+
+// 付款方支付记录（需登录）
+export const listPayerPayments = () : Promise<ApiResult> => {
+    return get('/pinche/payments/payer')
+}
+
+// 收款方支付记录（需登录）
+export const listPayeePayments = () : Promise<ApiResult> => {
+    return get('/pinche/payments/payee')
+}
+
+// 预订关联支付（需登录）
+export const listPaymentsByBooking = (bookingId: number) : Promise<ApiResult> => {
+    return get('/pinche/bookings/' + bookingId + '/payments')
+}
+
+// ETC 结算（需登录）
+export const etcSettlement = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/payments/etc', data)
+}
+
+// ===== 评价（ratings） =====
+// 评价列表（公开，按 pinche_id 查询）
+export const listRatings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/ratings', params)
+}
+
+// 评价详情（公开）
+export const getRatingDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/ratings/' + id)
+}
+
+// 评价统计（公开）
+export const getRatingStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/ratings/stats', params)
+}
+
+// 拼车评价列表（公开）
+export const listRatingsByPinche = (pincheId: number) : Promise<ApiResult> => {
+    return get('/pinche/pinches/' + pincheId + '/ratings')
+}
+
+// 创建评价（需登录）
+export const createRating = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/ratings', data)
+}
+
+// 更新评价（需登录）
+export const updateRating = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/ratings/' + id, data)
+}
+
+// 删除评价（需登录）
+export const deleteRating = (id: number) : Promise<ApiResult> => {
+    return del('/pinche/ratings/' + id)
+}
+
+// 我发出的评价（需登录）
+export const listRaterRatings = () : Promise<ApiResult> => {
+    return get('/pinche/ratings/rater')
+}
+
+// 我收到的评价（需登录）
+export const listRateeRatings = () : Promise<ApiResult> => {
+    return get('/pinche/ratings/ratee')
+}
+
+// 回复评价（需登录）
+export const replyRating = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/ratings/' + id + '/reply', data)
+}
+
+// 点赞评价（需登录）
+export const likeRating = (id: number) : Promise<ApiResult> => {
+    return post('/pinche/ratings/' + id + '/like', null)
+}
+
+// ===== 保险（insurances） =====
+// 保险详情（公开）
+export const getInsuranceDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/insurances/' + id)
+}
+
+// 按保单号查询（公开）
+export const getInsuranceByPolicyNo = (policyNo: string) : Promise<ApiResult> => {
+    return get('/pinche/insurances/no/' + policyNo)
+}
+
+// 拼车关联保险（公开）
+export const listInsurancesByPinche = (pincheId: number) : Promise<ApiResult> => {
+    return get('/pinche/pinches/' + pincheId + '/insurances')
+}
+
+// 预订关联保险（公开）
+export const listInsurancesByBooking = (bookingId: number) : Promise<ApiResult> => {
+    return get('/pinche/bookings/' + bookingId + '/insurances')
+}
+
+// 投保（需登录）
+export const createInsurance = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/insurances', data)
+}
+
+// 理赔（需登录）
+export const claimInsurance = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/insurances/' + id + '/claim', data)
+}
+
+// 保险报价（需登录）
+export const insuranceQuote = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/insurances/quote', data)
+}
+
+// ===== 紧急联系/报警 =====
+// 报警详情（公开）
+export const getAlertDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/emergencies/' + id)
+}
+
+// 拼车关联报警（公开）
+export const listAlertsByPinche = (pincheId: number) : Promise<ApiResult> => {
+    return get('/pinche/pinches/' + pincheId + '/emergencies')
+}
+
+// 行程关联报警（公开）
+export const listAlertsByTrip = (tripId: number) : Promise<ApiResult> => {
+    return get('/pinche/trips/' + tripId + '/emergencies')
+}
+
+// 创建紧急联系人（需登录）
+export const createEmergencyContact = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/emergency-contacts', data)
+}
+
+// 更新紧急联系人（需登录）
+export const updateEmergencyContact = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/pinche/emergency-contacts/' + id, data)
+}
+
+// 删除紧急联系人（需登录）
+export const deleteEmergencyContact = (id: number) : Promise<ApiResult> => {
+    return del('/pinche/emergency-contacts/' + id)
+}
+
+// 紧急联系人列表（需登录）
+export const listEmergencyContacts = () : Promise<ApiResult> => {
+    return get('/pinche/emergency-contacts')
+}
+
+// 一键报警 SOS（需登录）
+export const sosAlert = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/pinche/emergencies/sos', data)
+}
+
+// 我的报警记录（需登录）
+export const listMyAlerts = () : Promise<ApiResult> => {
+    return get('/pinche/emergencies/mine')
+}
+
+// ===== 审核规则（公开只读） =====
+// 审核规则列表
+export const listAuditRules = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/audit-rules', params)
+}
+
+// 启用的审核规则
+export const listEnabledAuditRules = () : Promise<ApiResult> => {
+    return get('/pinche/audit-rules/enabled')
+}
+
+// 按类型查询审核规则
+export const listAuditRulesByType = (ruleType: string) : Promise<ApiResult> => {
+    return get('/pinche/audit-rules/type/' + ruleType)
+}
+
+// 审核规则详情
+export const getAuditRuleDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/audit-rules/' + id)
+}
+
+// ===== 数据统计 =====
+// 统计列表（公开）
+export const listStatistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/statistics', params)
+}
+
+// 总览（公开）
+export const getStatisticsOverview = () : Promise<ApiResult> => {
+    return get('/pinche/statistics/overview')
+}
+
+// 区间统计（公开）
+export const listStatisticsByDateRange = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/pinche/statistics/date-range', params)
+}
+
+// 统计详情（公开）
+export const getStatisticDetail = (id: number) : Promise<ApiResult> => {
+    return get('/pinche/statistics/' + id)
+}
+
+// 我的统计（需登录）
+export const listMyStatistics = () : Promise<ApiResult> => {
+    return get('/pinche/statistics/mine')
+}

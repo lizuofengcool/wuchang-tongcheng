@@ -1,0 +1,569 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="sos-card">
+                <view class="sos-circle" @click="onSOS">
+                    <text class="sos-text">SOS</text>
+                    <text class="sos-sub">一键报警</text>
+                </view>
+                <text class="sos-tip">长按 3 秒触发紧急求助，自动通知紧急联系人和平台</text>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">紧急联系人</text>
+                    <text class="add-btn" @click="onAddContact">+ 添加</text>
+                </view>
+                <view class="contact-item" v-for="(item, idx) in contactList" :key="idx">
+                    <view class="contact-info">
+                        <text class="contact-name">{{ item.name }}</text>
+                        <text class="contact-relation" v-if="item.relation.length > 0">{{ item.relation }}</text>
+                    </view>
+                    <text class="contact-phone">{{ item.phone }}</text>
+                    <view class="contact-actions">
+                        <text class="action-call" @click="onCall(item.phone)">📞</text>
+                        <text class="action-delete" @click="onDeleteContact(item.id)">🗑️</text>
+                    </view>
+                </view>
+                <view class="empty-tip" v-if="contactList.length == 0 && !contactLoading">
+                    <text class="empty-tip-text">暂无紧急联系人，请添加</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">行程分享</text>
+                </view>
+                <view class="share-row" @click="onShareTrip">
+                    <text class="share-icon">🔗</text>
+                    <view class="share-info">
+                        <text class="share-title">分享我的实时行程</text>
+                        <text class="share-sub">让家人朋友看到你的行程动态</text>
+                    </view>
+                    <text class="arrow">›</text>
+                </view>
+            </view>
+
+            <view class="section">
+                <view class="section-header">
+                    <text class="section-title">报警记录</text>
+                </view>
+                <view class="alert-item" v-for="(item, idx) in alertList" :key="idx" @click="onAlertDetail(item.id)">
+                    <view class="alert-info">
+                        <text class="alert-type">{{ getTypeText(item.type) }}</text>
+                        <text class="alert-time">{{ item.created_at }}</text>
+                    </view>
+                    <view class="alert-status" :class="item.status">
+                        <text class="alert-status-text">{{ getStatusText(item.status) }}</text>
+                    </view>
+                </view>
+                <view class="empty-tip" v-if="alertList.length == 0 && !alertLoading">
+                    <text class="empty-tip-text">暂无报警记录</text>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="contact-form" v-if="showForm">
+            <view class="form-mask" @click="showForm = false"></view>
+            <view class="form-content">
+                <text class="form-title">添加紧急联系人</text>
+                <view class="form-row">
+                    <text class="form-label">姓名</text>
+                    <input class="form-input" v-model="form.name" placeholder="请输入姓名" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">手机号</text>
+                    <input class="form-input" v-model="form.phone" placeholder="请输入手机号" />
+                </view>
+                <view class="form-row">
+                    <text class="form-label">关系</text>
+                    <input class="form-input" v-model="form.relation" placeholder="如 父亲/朋友" />
+                </view>
+                <view class="form-btn-row">
+                    <view class="form-btn cancel" @click="showForm = false">
+                        <text class="form-btn-text">取消</text>
+                    </view>
+                    <view class="form-btn confirm" @click="onSaveContact">
+                        <text class="form-btn-text-white">保存</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listEmergencyContacts, createEmergencyContact, deleteEmergencyContact, sosAlert, listMyAlerts } from '@/api/business/pinche.uts'
+
+    type Contact = {
+        id: number
+        name: string
+        phone: string
+        relation: string
+    }
+    type Alert = {
+        id: number
+        type: string
+        status: string
+        created_at: string
+    }
+    type Form = {
+        name: string
+        phone: string
+        relation: string
+    }
+
+    const contactList = ref([] as Contact[])
+    const alertList = ref([] as Alert[])
+    const contactLoading = ref(false)
+    const alertLoading = ref(false)
+    const showForm = ref(false)
+    const form = ref({ name: '', phone: '', relation: '' } as Form)
+
+    const loadContacts = () => {
+        contactLoading.value = true
+        listEmergencyContacts().then((res: ApiResult) => {
+            contactLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                contactList.value = (d['list'] as Contact[]) ?? ([] as Contact[])
+            }
+        }).catch(() => {
+            contactLoading.value = false
+        })
+    }
+
+    const loadAlerts = () => {
+        alertLoading.value = true
+        listMyAlerts().then((res: ApiResult) => {
+            alertLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                alertList.value = (d['list'] as Alert[]) ?? ([] as Alert[])
+            }
+        }).catch(() => {
+            alertLoading.value = false
+        })
+    }
+
+    const onAddContact = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        form.value = { name: '', phone: '', relation: '' } as Form
+        showForm.value = true
+    }
+
+    const onSaveContact = () => {
+        if (form.value.name.length == 0) {
+            uni.showToast({ title: '请输入姓名', icon: 'none' })
+            return
+        }
+        if (form.value.phone.length == 0) {
+            uni.showToast({ title: '请输入手机号', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = {
+            name: form.value.name,
+            phone: form.value.phone,
+            relation: form.value.relation
+        } as UTSJSONObject
+        uni.showLoading({ title: '保存中...' })
+        createEmergencyContact(data).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '添加成功', icon: 'success' })
+                showForm.value = false
+                loadContacts()
+            } else {
+                uni.showToast({ title: res.message || '添加失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const onDeleteContact = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认删除该联系人？',
+            success: (res) => {
+                if (res.confirm) {
+                    deleteEmergencyContact(id).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已删除', icon: 'success' })
+                            loadContacts()
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onCall = (phone: string) => {
+        if (phone.length > 0) {
+            uni.makePhoneCall({ phoneNumber: phone })
+        }
+    }
+
+    const onSOS = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '一键报警',
+            content: '确认发送紧急求助？平台将立即通知你的紧急联系人。',
+            success: (res) => {
+                if (res.confirm) {
+                    uni.showLoading({ title: '发送中...' })
+                    const data: UTSJSONObject = {
+                        type: 'sos',
+                        location: '',
+                        description: '用户主动触发SOS'
+                    } as UTSJSONObject
+                    sosAlert(data).then((r: ApiResult) => {
+                        uni.hideLoading()
+                        if (r.code == 200) {
+                            uni.showToast({ title: '求助已发送', icon: 'success' })
+                            loadAlerts()
+                        } else {
+                            uni.showToast({ title: r.message || '发送失败', icon: 'none' })
+                        }
+                    }).catch(() => {
+                        uni.hideLoading()
+                    })
+                }
+            }
+        })
+    }
+
+    const onShareTrip = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/pinche/trips/index' })
+    }
+
+    const onAlertDetail = (id: number) => {
+        uni.showToast({ title: '报警详情 #' + id, icon: 'none' })
+    }
+
+    const getTypeText = (t: string) : string => {
+        if (t == 'sos') return '🚨 紧急求助'
+        if (t == 'timeout') return '⏰ 行程超时'
+        if (t == 'deviation') return '📍 路线偏离'
+        return t
+    }
+
+    const getStatusText = (s: string) : string => {
+        if (s == 'pending') return '处理中'
+        if (s == 'handling') return '处理中'
+        if (s == 'resolved') return '已解决'
+        if (s == 'false_alarm') return '误报'
+        return s
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadContacts()
+        loadAlerts()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadContacts()
+            loadAlerts()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadContacts()
+        loadAlerts()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .sos-card {
+        background-color: #FFFFFF;
+        align-items: center;
+        padding: 24px 16px;
+        margin-bottom: 8px;
+    }
+
+    .sos-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 60px;
+        background-color: #EE0A24;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(238, 10, 36, 0.4);
+    }
+
+    .sos-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .sos-sub {
+        font-size: 12px;
+        color: #FFFFFF;
+        margin-top: 4px;
+    }
+
+    .sos-tip {
+        font-size: 12px;
+        color: #999;
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .add-btn {
+        font-size: 13px;
+        color: #FF6B35;
+    }
+
+    .contact-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .contact-info {
+        flex: 1;
+    }
+
+    .contact-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .contact-relation {
+        font-size: 12px;
+        color: #999;
+        margin-left: 8px;
+    }
+
+    .contact-phone {
+        font-size: 13px;
+        color: #666;
+        margin-right: 12px;
+    }
+
+    .contact-actions {
+        flex-direction: row;
+    }
+
+    .action-call, .action-delete {
+        font-size: 16px;
+        margin-left: 12px;
+    }
+
+    .share-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 0;
+    }
+
+    .share-icon {
+        font-size: 20px;
+        margin-right: 12px;
+    }
+
+    .share-info {
+        flex: 1;
+    }
+
+    .share-title {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .share-sub {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .arrow {
+        font-size: 18px;
+        color: #CCC;
+    }
+
+    .alert-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .alert-info {
+        flex: 1;
+    }
+
+    .alert-type {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .alert-time {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .alert-status {
+        border-radius: 3px;
+        padding: 2px 6px;
+        background-color: #FFF5E5;
+    }
+
+    .alert-status.resolved {
+        background-color: #E5F8FF;
+    }
+
+    .alert-status-text {
+        font-size: 11px;
+        color: #FF9900;
+    }
+
+    .alert-status.resolved .alert-status-text {
+        color: #1989FA;
+    }
+
+    .empty-tip {
+        padding: 24px 0;
+        align-items: center;
+    }
+
+    .empty-tip-text {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .contact-form {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        justify-content: flex-end;
+    }
+
+    .form-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .form-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 16px;
+    }
+
+    .form-title {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 12px;
+        text-align: center;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .form-input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .form-btn-row {
+        flex-direction: row;
+        margin-top: 16px;
+    }
+
+    .form-btn {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 0;
+        border-radius: 22px;
+        margin-right: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .form-btn.confirm {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .form-btn-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .form-btn-text-white {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

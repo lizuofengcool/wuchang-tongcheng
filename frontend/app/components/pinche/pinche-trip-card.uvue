@@ -1,0 +1,243 @@
+<template>
+    <view class="trip-card" @click="onClick">
+        <view class="card-main">
+            <view class="header-row">
+                <view class="status-tag" :class="trip.status">
+                    <text class="status-text">{{ statusText }}</text>
+                </view>
+                <text class="trip-no" v-if="trip.trip_no.length > 0">{{ trip.trip_no }}</text>
+                <text class="share-btn" v-if="canShare" @click.stop="onShare">分享</text>
+            </view>
+            <view class="route-points">
+                <view class="point">
+                    <view class="point-dot start-dot"></view>
+                    <text class="point-text">{{ trip.origin }}</text>
+                </view>
+                <view class="route-line"></view>
+                <view class="point">
+                    <view class="point-dot end-dot"></view>
+                    <text class="point-text">{{ trip.destination }}</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="meta">🕒 {{ trip.start_time }}</text>
+                <text class="meta-dot" v-if="trip.end_time.length > 0">~</text>
+                <text class="meta" v-if="trip.end_time.length > 0">{{ trip.end_time }}</text>
+            </view>
+            <view class="bottom-row">
+                <text class="passenger-count">{{ trip.passenger_count }}位乘客</text>
+                <text class="revenue" v-if="trip.revenue > 0">收入 ¥{{ trip.revenue }}</text>
+                <text class="cost" v-else-if="trip.cost > 0">花费 ¥{{ trip.cost }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Trip = {
+        id: number
+        trip_no: string
+        origin: string
+        destination: string
+        status: string
+        start_time: string
+        end_time: string
+        passenger_count: number
+        revenue: number
+        cost: number
+    }
+
+    const props = withDefaults(defineProps<{
+        trip: Trip
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'share', id: number): void
+    }>()
+
+    const statusText = computed(() : string => {
+        const s = props.trip.status
+        if (s == 'ongoing') return '进行中'
+        if (s == 'completed') return '已完成'
+        if (s == 'cancelled') return '已取消'
+        if (s == 'scheduled') return '待开始'
+        return s
+    })
+
+    const canShare = computed(() : boolean => {
+        return props.trip.status == 'ongoing' || props.trip.status == 'scheduled'
+    })
+
+    const onClick = () => {
+        emit('click', props.trip.id)
+    }
+
+    const onShare = () => {
+        emit('share', props.trip.id)
+    }
+</script>
+
+<style>
+    .trip-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-main {
+        flex: 1;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .status-tag {
+        border-radius: 3px;
+        padding: 2px 6px;
+    }
+
+    .status-tag.ongoing {
+        background-color: #E5F8FF;
+    }
+
+    .status-tag.completed {
+        background-color: #F0F0F0;
+    }
+
+    .status-tag.cancelled {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.scheduled {
+        background-color: #FFF5E5;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .status-tag.ongoing .status-text {
+        color: #1989FA;
+    }
+
+    .status-tag.completed .status-text {
+        color: #999;
+    }
+
+    .status-tag.cancelled .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.scheduled .status-text {
+        color: #FF9900;
+    }
+
+    .trip-no {
+        flex: 1;
+        font-size: 11px;
+        color: #BBB;
+        margin-left: 8px;
+    }
+
+    .share-btn {
+        font-size: 12px;
+        color: #FF6B35;
+        padding: 2px 8px;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .route-points {
+        flex-direction: column;
+        margin-top: 8px;
+    }
+
+    .point {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .point-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+
+    .start-dot {
+        background-color: #07C160;
+    }
+
+    .end-dot {
+        background-color: #FF6B35;
+    }
+
+    .point-text {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .route-line {
+        width: 1px;
+        height: 14px;
+        background-color: #DDD;
+        margin-left: 3px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        justify-content: space-between;
+    }
+
+    .passenger-count {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .revenue {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .cost {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+    }
+</style>

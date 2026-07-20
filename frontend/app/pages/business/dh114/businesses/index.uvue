@@ -1,0 +1,286 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap">
+                <view class="biz-item" v-for="item in list" :key="item.id" @click="goDetail(item)">
+                    <view class="biz-info">
+                        <text class="biz-name">{{ item.name }}</text>
+                        <view class="meta-row">
+                            <text class="meta">{{ item.category_name }}</text>
+                            <text class="meta-dot">·</text>
+                            <text class="meta">{{ item.region }}</text>
+                        </view>
+                        <view class="status-row">
+                            <view class="status-tag" :class="item.status">
+                                <text class="status-text">{{ statusText(item.status) }}</text>
+                            </view>
+                            <text class="time-text">发布于 {{ item.created_at }}</text>
+                        </view>
+                    </view>
+                    <view class="action-area">
+                        <text class="action-btn" @click.stop="goEdit(item.id)">编辑</text>
+                        <text class="action-btn danger" @click.stop="onDelete(item.id)">删除</text>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <dh114-empty v-if="list.length == 0 && !loading" icon="🏪" text="暂无商户" btn-text="去入驻" @click="goPublish" />
+        </scroll-view>
+        <view class="fab-btn" @click="goPublish">
+            <text class="fab-text">+ 入驻</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyDh114s, deleteDh114 } from '@/api/business/dh114.uts'
+
+    type BizItem = {
+        id: number
+        name: string
+        category_name: string
+        region: string
+        status: string
+        created_at: string
+    }
+
+    const list = ref([] as BizItem[])
+    const loading = ref(false)
+
+    const statusText = (status: string) : string => {
+        if (status == 'published') return '已发布'
+        if (status == 'draft') return '草稿'
+        if (status == 'pending') return '审核中'
+        if (status == 'rejected') return '审核未通过'
+        if (status == 'offline') return '已下架'
+        return status
+    }
+
+    const loadList = () => {
+        if (loading.value) return
+        loading.value = true
+        listMyDh114s().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                list.value = (d['list'] as BizItem[]) ?? ([] as BizItem[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+    }
+
+    const goDetail = (item: BizItem) => {
+        uni.navigateTo({ url: '/pages/business/dh114/detail/index?id=' + item.id })
+    }
+
+    const goEdit = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/dh114/publish/index?id=' + id })
+    }
+
+    const goPublish = () => {
+        uni.navigateTo({ url: '/pages/business/dh114/publish/index' })
+    }
+
+    const onDelete = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认删除该商户？删除后不可恢复',
+            success: (res) => {
+                if (res.confirm) {
+                    deleteDh114(id).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '删除成功', icon: 'success' })
+                            loadList()
+                        } else {
+                            uni.showToast({ title: r.message || '删除失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .biz-item {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+    }
+
+    .biz-info {
+        flex: 1;
+    }
+
+    .biz-name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .status-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .status-tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 8px;
+    }
+
+    .status-tag.published {
+        background-color: #E8F8EA;
+    }
+
+    .status-tag.draft {
+        background-color: #F5F5F5;
+    }
+
+    .status-tag.pending {
+        background-color: #FFF5E5;
+    }
+
+    .status-tag.rejected {
+        background-color: #FFE5E5;
+    }
+
+    .status-tag.offline {
+        background-color: #F5F5F5;
+    }
+
+    .status-text {
+        font-size: 10px;
+    }
+
+    .status-tag.published .status-text {
+        color: #07C160;
+    }
+
+    .status-tag.draft .status-text {
+        color: #999;
+    }
+
+    .status-tag.pending .status-text {
+        color: #FF9900;
+    }
+
+    .status-tag.rejected .status-text {
+        color: #EE0A24;
+    }
+
+    .status-tag.offline .status-text {
+        color: #999;
+    }
+
+    .time-text {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .action-area {
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .action-btn {
+        font-size: 12px;
+        color: #FF6B35;
+        padding: 4px 10px;
+        margin-top: 4px;
+    }
+
+    .action-btn.danger {
+        color: #EE0A24;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .fab-btn {
+        position: fixed;
+        right: 16px;
+        bottom: 80px;
+        background-color: #FF6B35;
+        border-radius: 28px;
+        padding: 12px 20px;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+    }
+
+    .fab-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

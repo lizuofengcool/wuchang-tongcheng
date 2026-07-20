@@ -1,0 +1,216 @@
+<template>
+    <view class="header">
+        <view class="bg-wrap">
+            <image class="bg" :src="profile.avatar" mode="aspectFill" lazy-load="true" v-if="profile.avatar.length > 0" />
+            <view class="bg-mask"></view>
+        </view>
+        <view class="info-wrap">
+            <image class="avatar" :src="profile.avatar" mode="aspectFill" lazy-load="true" v-if="profile.avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ profile.nickname.length > 0 ? profile.nickname.charAt(0) : 'U' }}</text>
+            </view>
+            <view class="main-info">
+                <view class="name-row">
+                    <text class="nickname">{{ profile.nickname }}</text>
+                    <love-verify-badge :status="profile.verify_status" :size="'small'" />
+                    <love-member-badge :level="profile.member_level" :size="'small'" />
+                </view>
+                <view class="meta-row">
+                    <view class="age-badge" :class="{ male: profile.gender == 'male', female: profile.gender == 'female' }">
+                        <text class="age-text">{{ profile.age }}岁</text>
+                    </view>
+                    <text class="meta">{{ profile.city }}</text>
+                    <text class="meta-dot">·</text>
+                    <text class="meta">{{ profile.height > 0 ? profile.height + 'cm' : '未填' }}</text>
+                    <text class="meta-dot">·</text>
+                    <text class="meta">{{ profile.occupation.length > 0 ? profile.occupation : '未填' }}</text>
+                </view>
+                <view class="stats-row">
+                    <view class="stat-item">
+                        <text class="stat-num">{{ profile.view_count }}</text>
+                        <text class="stat-label">浏览</text>
+                    </view>
+                    <view class="stat-item">
+                        <text class="stat-num">{{ profile.like_count }}</text>
+                        <text class="stat-label">喜欢</text>
+                    </view>
+                    <view class="stat-item">
+                        <text class="stat-num">{{ profile.match_count }}</text>
+                        <text class="stat-label">匹配</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+        <view class="signature-row" v-if="profile.signature.length > 0">
+            <text class="signature">{{ profile.signature }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Profile = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        verify_status: string
+        member_level: string
+        view_count: number
+        like_count: number
+        match_count: number
+    }
+
+    withDefaults(defineProps<{
+        profile: Profile
+    }>(), {} as any)
+</script>
+
+<style>
+    .header {
+        background-color: #FFFFFF;
+    }
+
+    .bg-wrap {
+        width: 100%;
+        height: 160px;
+        position: relative;
+    }
+
+    .bg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .bg-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .info-wrap {
+        flex-direction: row;
+        padding: 0 16px;
+        margin-top: -40px;
+    }
+
+    .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        border-width: 3px;
+        border-color: #FFFFFF;
+    }
+
+    .avatar-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        border-width: 3px;
+        border-color: #FFFFFF;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .main-info {
+        flex: 1;
+        margin-left: 12px;
+        margin-top: 40px;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .nickname {
+        font-size: 17px;
+        color: #333;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .age-badge {
+        background-color: #FF6B35;
+        border-radius: 10px;
+        padding: 1px 6px;
+        margin-right: 8px;
+    }
+
+    .age-badge.male {
+        background-color: #1989FA;
+    }
+
+    .age-badge.female {
+        background-color: #FF6B35;
+    }
+
+    .age-text {
+        font-size: 11px;
+        color: #FFFFFF;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 4px;
+    }
+
+    .stats-row {
+        flex-direction: row;
+        margin-top: 8px;
+    }
+
+    .stat-item {
+        flex-direction: column;
+        align-items: center;
+        margin-right: 24px;
+    }
+
+    .stat-num {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .signature-row {
+        padding: 12px 16px;
+    }
+
+    .signature {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.5;
+    }
+</style>

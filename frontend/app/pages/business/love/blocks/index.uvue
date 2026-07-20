@@ -1,0 +1,214 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap" v-if="list.length > 0">
+                <view class="block-item" v-for="item in list" :key="item.id">
+                    <image class="avatar" :src="item.avatar" mode="aspectFill" lazy-load="true" v-if="item.avatar.length > 0" />
+                    <view class="avatar-placeholder" v-else>
+                        <text class="avatar-text">{{ item.nickname.length > 0 ? item.nickname.charAt(0) : 'U' }}</text>
+                    </view>
+                    <view class="info">
+                        <text class="nickname">{{ item.nickname }}</text>
+                        <text class="time">拉黑于 {{ item.time_text }}</text>
+                    </view>
+                    <view class="unblock-btn" @click="onUnblock(item)">
+                        <text class="unblock-text">取消拉黑</text>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <love-empty v-if="list.length == 0 && !loading" icon="🚫" text="暂无黑名单" sub-text="你还没有拉黑任何人" btn-text="去发现" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveBlocks, deleteLoveBlock } from '@/api/business/love.uts'
+
+    type BlockItem = {
+        id: number
+        love_id: number
+        nickname: string
+        avatar: string
+        time_text: string
+    }
+
+    const list = ref([] as BlockItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listLoveBlocks(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as BlockItem[]) ?? ([] as BlockItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onUnblock = (item: BlockItem) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认取消拉黑 ' + item.nickname + ' ？',
+            success: (res) => {
+                if (res.confirm) {
+                    deleteLoveBlock(item.id).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已取消拉黑', icon: 'success' })
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: r.message || '操作失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/love/list/index' })
+    }
+
+    onLoad(() => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        loadList(true)
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) {
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        background-color: #FFFFFF;
+        margin-top: 8px;
+    }
+
+    .block-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        margin-right: 12px;
+    }
+
+    .avatar-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .avatar-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .nickname {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .unblock-btn {
+        background-color: #FFF5F0;
+        border-radius: 14px;
+        padding: 6px 12px;
+        border-width: 1px;
+        border-color: #FF6B35;
+    }
+
+    .unblock-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

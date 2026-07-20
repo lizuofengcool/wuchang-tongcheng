@@ -1,0 +1,339 @@
+<template>
+    <view class="page">
+        <view class="top-bar">
+            <text class="back-arrow" @click="goBack">‹</text>
+            <text class="title">{{ peerName }}</text>
+            <text class="more-icon">⋯</text>
+        </view>
+        <scroll-view class="msg-list" scroll-y :scroll-top="scrollTop" :scroll-into-view="scrollToId">
+            <view class="msg-item" v-for="(msg, idx) in messageList" :key="idx" :id="'msg-' + idx">
+                <view class="msg-row" :class="{ mine: msg.is_mine }">
+                    <image class="msg-avatar" :src="msg.sender_avatar" mode="aspectFill" lazy-load="true" v-if="msg.sender_avatar.length > 0 && !msg.is_mine" />
+                    <view class="msg-avatar-placeholder" v-else-if="!msg.is_mine">
+                        <text class="msg-avatar-text">{{ peerName.length > 0 ? peerName.charAt(0) : 'U' }}</text>
+                    </view>
+                    <view class="msg-bubble" :class="{ mine: msg.is_mine }">
+                        <text class="msg-text">{{ msg.content }}</text>
+                    </view>
+                    <image class="msg-avatar mine-avatar" :src="msg.my_avatar" mode="aspectFill" lazy-load="true" v-if="msg.is_mine && msg.my_avatar.length > 0" />
+                    <view class="msg-avatar-placeholder mine-avatar" v-else-if="msg.is_mine">
+                        <text class="msg-avatar-text">我</text>
+                    </view>
+                </view>
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && messageList.length > 0">
+                <text class="no-more-text">没有更多消息了</text>
+            </view>
+        </scroll-view>
+        <view class="input-bar">
+            <input class="msg-input" type="text" v-model="inputText" placeholder="请输入消息" :confirm-type="'send'" @confirm="onSend" />
+            <view class="send-btn" @click="onSend">
+                <text class="send-text">发送</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listLoveChatSessions, loveChatSessionAction, markLoveChatSessionRead } from '@/api/business/love.uts'
+
+    type Message = {
+        id: number
+        session_id: number
+        sender_id: number
+        sender_avatar: string
+        my_avatar: string
+        content: string
+        type: string
+        is_mine: boolean
+        created_at: string
+    }
+
+    const sessionId = ref(0)
+    const loveId = ref(0)
+    const peerId = ref(0)
+    const peerName = ref('')
+    const messageList = ref([] as Message[])
+    const inputText = ref('')
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 50
+    const scrollTop = ref(0)
+    const scrollToId = ref('')
+
+    const loadMessages = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        // 通过会话详情接口拿历史消息（chat-sessions 接口列表）
+        listLoveChatSessions(params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as Message[]) ?? ([] as Message[])
+                if (reset) {
+                    messageList.value = newList
+                } else {
+                    messageList.value = newList.concat(messageList.value)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+                if (reset && messageList.value.length > 0) {
+                    nextTick(() => {
+                        scrollToBottom()
+                    })
+                }
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const scrollToBottom = () => {
+        if (messageList.value.length == 0) return
+        scrollToId.value = 'msg-' + (messageList.value.length - 1)
+    }
+
+    const onSend = () => {
+        const text = inputText.value.trim()
+        if (text.length == 0) {
+            uni.showToast({ title: '请输入消息', icon: 'none' })
+            return
+        }
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+
+        // 添加本地消息
+        const myId = state.userInfo != null ? state.userInfo!.userId : 0
+        const myAvatar = state.userInfo != null ? state.userInfo!.avatarUrl : ''
+        const localMsg: Message = {
+            id: 0,
+            session_id: sessionId.value,
+            sender_id: myId,
+            sender_avatar: '',
+            my_avatar: myAvatar,
+            content: text,
+            type: 'text',
+            is_mine: true,
+            created_at: ''
+        }
+        messageList.value.push(localMsg)
+        inputText.value = ''
+        nextTick(() => { scrollToBottom() })
+
+        const data: UTSJSONObject = {
+            session_id: sessionId.value,
+            content: text,
+            type: 'text',
+            receiver_id: peerId.value
+        } as UTSJSONObject
+
+        loveChatSessionAction(sessionId.value, data).then((res: ApiResult) => {
+            if (res.code != 200) {
+                uni.showToast({ title: res.message || '发送失败', icon: 'none' })
+            }
+        })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            setTimeout(() => { uni.navigateBack() }, 1000)
+            return
+        }
+        const sid = options['session_id']
+        const lid = options['love_id']
+        const pid = options['peer_id']
+        const pn = options['peer_name']
+        if (sid != null) {
+            sessionId.value = parseInt(sid as string)
+        }
+        if (lid != null) {
+            loveId.value = parseInt(lid as string)
+        }
+        if (pid != null) {
+            peerId.value = parseInt(pid as string)
+        }
+        if (pn != null) {
+            peerName.value = decodeURIComponent(pn as string)
+        }
+        if (sessionId.value > 0) {
+            markLoveChatSessionRead(sessionId.value).then((_r: ApiResult) => {})
+        }
+        loadMessages(true)
+    })
+
+    onShow(() => {
+        if (sessionId.value > 0) {
+            loadMessages(true)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .top-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .back-arrow {
+        font-size: 24px;
+        color: #333;
+        padding: 0 8px;
+    }
+
+    .title {
+        flex: 1;
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .more-icon {
+        font-size: 18px;
+        color: #666;
+        padding: 0 8px;
+    }
+
+    .msg-list {
+        flex: 1;
+    }
+
+    .msg-item {
+        padding: 6px 12px;
+    }
+
+    .msg-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .msg-row.mine {
+        flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        margin-right: 8px;
+    }
+
+    .msg-avatar.mine-avatar {
+        margin-right: 0;
+        margin-left: 8px;
+    }
+
+    .msg-avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .msg-avatar-placeholder.mine-avatar {
+        margin-right: 0;
+        margin-left: 8px;
+    }
+
+    .msg-avatar-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .msg-bubble {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 8px 12px;
+        max-width: 240px;
+    }
+
+    .msg-bubble.mine {
+        background-color: #FF6B35;
+    }
+
+    .msg-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .msg-bubble.mine .msg-text {
+        color: #FFFFFF;
+    }
+
+    .input-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .msg-input {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 18px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .send-btn {
+        background-color: #FF6B35;
+        border-radius: 18px;
+        padding: 8px 16px;
+        margin-left: 8px;
+    }
+
+    .send-text {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .load-more, .no-more {
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

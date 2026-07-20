@@ -1,0 +1,473 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <love-profile-header :profile="headerData" />
+            <view class="section">
+                <text class="section-title">个人资料</text>
+                <view class="info-row">
+                    <text class="info-label">年龄</text>
+                    <text class="info-value">{{ detail.age }}岁</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">身高</text>
+                    <text class="info-value">{{ detail.height > 0 ? detail.height + 'cm' : '未填' }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">体重</text>
+                    <text class="info-value">{{ detail.weight > 0 ? detail.weight + 'kg' : '未填' }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">城市</text>
+                    <text class="info-value">{{ detail.city }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">职业</text>
+                    <text class="info-value">{{ detail.occupation || '未填' }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">学历</text>
+                    <text class="info-value">{{ detail.education || '未填' }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">收入</text>
+                    <text class="info-value">{{ detail.income || '未填' }}</text>
+                </view>
+            </view>
+            <view class="section" v-if="detail.tags.length > 0">
+                <text class="section-title">个人标签</text>
+                <view class="tag-wrap">
+                    <view class="tag" v-for="(t, idx) in detail.tags" :key="idx">
+                        <text class="tag-text">{{ t }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="section" v-if="detail.albums.length > 0">
+                <text class="section-title">相册</text>
+                <view class="album-wrap">
+                    <image class="album-img" v-for="(img, idx) in detail.albums" :key="idx" :src="img" mode="aspectFill" lazy-load="true" @click="previewAlbum(idx)" />
+                </view>
+            </view>
+            <view class="section" v-if="detail.about.length > 0">
+                <text class="section-title">关于我</text>
+                <text class="section-content">{{ detail.about }}</text>
+            </view>
+            <view class="section" v-if="detail.requirement.length > 0">
+                <text class="section-title">期待的你</text>
+                <text class="section-content">{{ detail.requirement }}</text>
+            </view>
+            <view class="section" v-if="storyList.length > 0">
+                <text class="section-title">TA的动态</text>
+                <love-story-card v-for="item in storyList" :key="item.id" :story="transformStory(item)" @click="goStory" @like="onStoryLike" @comment="onStoryComment" @share="onStoryShare" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="bottom-btn icon-btn" @click="onBlock">
+                <text class="bottom-icon">🚫</text>
+                <text class="bottom-icon-text">拉黑</text>
+            </view>
+            <view class="bottom-btn pass-btn" @click="onPass">
+                <text class="bottom-icon">✕</text>
+                <text class="bottom-icon-text">不喜欢</text>
+            </view>
+            <view class="bottom-btn primary-btn" @click="onGreet">
+                <text class="primary-btn-text">打招呼</text>
+            </view>
+            <view class="bottom-btn super-btn" @click="onSuperLike">
+                <text class="bottom-icon">★</text>
+                <text class="bottom-icon-text">超级喜欢</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { getLoveDetail, listLoveStoriesByLoveId, likeLoveUser, incrLoveView, createLoveBlock } from '@/api/business/love.uts'
+
+    type Detail = {
+        id: number
+        user_id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        weight: number
+        occupation: string
+        education: string
+        income: string
+        signature: string
+        about: string
+        requirement: string
+        tags: string[]
+        albums: string[]
+        verify_status: string
+        member_level: string
+        view_count: number
+        like_count: number
+        match_count: number
+    }
+    type HeaderData = {
+        id: number
+        nickname: string
+        avatar: string
+        gender: string
+        age: number
+        city: string
+        height: number
+        occupation: string
+        signature: string
+        verify_status: string
+        member_level: string
+        view_count: number
+        like_count: number
+        match_count: number
+    }
+    type StoryItem = {
+        id: number
+        author_id: number
+        author_name: string
+        author_avatar: string
+        content: string
+        images: string[]
+        topic: string
+        like_count: number
+        comment_count: number
+        share_count: number
+        view_count: number
+        is_liked: boolean
+        time_text: string
+    }
+    type StoryData = {
+        id: number
+        author_id: number
+        author_name: string
+        author_avatar: string
+        content: string
+        images: string[]
+        topic: string
+        like_count: number
+        comment_count: number
+        share_count: number
+        view_count: number
+        is_liked: boolean
+        time_text: string
+    }
+
+    const loveId = ref(0)
+    const detail = ref({
+        id: 0, user_id: 0, nickname: '', avatar: '', gender: '', age: 0, city: '',
+        height: 0, weight: 0, occupation: '', education: '', income: '',
+        signature: '', about: '', requirement: '',
+        tags: [] as string[], albums: [] as string[],
+        verify_status: '', member_level: '',
+        view_count: 0, like_count: 0, match_count: 0
+    } as Detail)
+    const storyList = ref([] as StoryItem[])
+
+    const headerData = computed(() : HeaderData => {
+        return {
+            id: detail.value.id,
+            nickname: detail.value.nickname,
+            avatar: detail.value.avatar,
+            gender: detail.value.gender,
+            age: detail.value.age,
+            city: detail.value.city,
+            height: detail.value.height,
+            occupation: detail.value.occupation,
+            signature: detail.value.signature,
+            verify_status: detail.value.verify_status,
+            member_level: detail.value.member_level,
+            view_count: detail.value.view_count,
+            like_count: detail.value.like_count,
+            match_count: detail.value.match_count
+        } as HeaderData
+    })
+
+    const transformStory = (item: StoryItem) : StoryData => {
+        return {
+            id: item.id,
+            author_id: item.author_id,
+            author_name: item.author_name,
+            author_avatar: item.author_avatar,
+            content: item.content,
+            images: item.images,
+            topic: item.topic,
+            like_count: item.like_count,
+            comment_count: item.comment_count,
+            share_count: item.share_count,
+            view_count: item.view_count,
+            is_liked: item.is_liked,
+            time_text: item.time_text
+        } as StoryData
+    }
+
+    const loadDetail = () => {
+        getLoveDetail(loveId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = mapDetail(d)
+            }
+        })
+        incrLoveView(loveId.value).then((_r: ApiResult) => {})
+        loadStories()
+    }
+
+    const mapDetail = (d: UTSJSONObject) : Detail => {
+        return {
+            id: (d['id'] as number) ?? 0,
+            user_id: (d['user_id'] as number) ?? 0,
+            nickname: (d['nickname'] as string) ?? '',
+            avatar: (d['avatar'] as string) ?? '',
+            gender: (d['gender'] as string) ?? '',
+            age: (d['age'] as number) ?? 0,
+            city: (d['city'] as string) ?? '',
+            height: (d['height'] as number) ?? 0,
+            weight: (d['weight'] as number) ?? 0,
+            occupation: (d['occupation'] as string) ?? '',
+            education: (d['education'] as string) ?? '',
+            income: (d['income'] as string) ?? '',
+            signature: (d['signature'] as string) ?? '',
+            about: (d['about'] as string) ?? '',
+            requirement: (d['requirement'] as string) ?? '',
+            tags: (d['tags'] as string[]) ?? ([] as string[]),
+            albums: (d['albums'] as string[]) ?? ([] as string[]),
+            verify_status: (d['verify_status'] as string) ?? '',
+            member_level: (d['member_level'] as string) ?? '',
+            view_count: (d['view_count'] as number) ?? 0,
+            like_count: (d['like_count'] as number) ?? 0,
+            match_count: (d['match_count'] as number) ?? 0
+        } as Detail
+    }
+
+    const loadStories = () => {
+        const params: UTSJSONObject = { page: 1, page_size: 5 } as UTSJSONObject
+        listLoveStoriesByLoveId(loveId.value, params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                storyList.value = (d['list'] as StoryItem[]) ?? ([] as StoryItem[])
+            }
+        })
+    }
+
+    const previewAlbum = (idx: number) => {
+        uni.previewImage({
+            urls: detail.value.albums,
+            current: detail.value.albums[idx]
+        })
+    }
+
+    const onPass = () => {
+        const data: UTSJSONObject = { love_id: loveId.value, action: 'pass' } as UTSJSONObject
+        likeLoveUser(data).then((_r: ApiResult) => {
+            uni.showToast({ title: '已跳过', icon: 'none' })
+        })
+    }
+
+    const onGreet = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/love/messages/chat?love_id=' + loveId.value + '&peer_id=' + detail.value.user_id + '&peer_name=' + encodeURIComponent(detail.value.nickname) })
+    }
+
+    const onSuperLike = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = { love_id: loveId.value, action: 'super_like' } as UTSJSONObject
+        likeLoveUser(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '超级喜欢已发送', icon: 'success' })
+            }
+        })
+    }
+
+    const onBlock = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提示',
+            content: '确认拉黑该用户？',
+            success: (res) => {
+                if (res.confirm) {
+                    const data: UTSJSONObject = { love_id: loveId.value } as UTSJSONObject
+                    createLoveBlock(data).then((r: ApiResult) => {
+                        if (r.code == 200) {
+                            uni.showToast({ title: '已拉黑', icon: 'success' })
+                            setTimeout(() => { uni.navigateBack() }, 1000)
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const goStory = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/love/stories/index?id=' + id })
+    }
+
+    const onStoryLike = (id: number) => {
+        uni.showToast({ title: '点赞成功', icon: 'success' })
+    }
+
+    const onStoryComment = (id: number) => {
+        uni.showToast({ title: '评论功能开发中', icon: 'none' })
+    }
+
+    const onStoryShare = (id: number) => {
+        uni.showToast({ title: '分享功能开发中', icon: 'none' })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            loveId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .section-content {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .tag-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        background-color: #FFF5F0;
+        border-radius: 12px;
+        padding: 4px 10px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+
+    .tag-text {
+        font-size: 11px;
+        color: #FF6B35;
+    }
+
+    .album-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .album-img {
+        width: 110px;
+        height: 110px;
+        border-radius: 6px;
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        align-items: center;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 50px;
+        padding: 4px 0;
+    }
+
+    .pass-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .super-btn {
+        width: 60px;
+        padding: 4px 0;
+    }
+
+    .bottom-icon {
+        font-size: 18px;
+        color: #FF6B35;
+    }
+
+    .bottom-icon-text {
+        font-size: 10px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .primary-btn {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 22px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin: 0 8px;
+    }
+
+    .primary-btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>
