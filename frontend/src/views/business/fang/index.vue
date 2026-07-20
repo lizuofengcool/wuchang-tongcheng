@@ -99,7 +99,7 @@
           <template #default="{ row }">
             <div class="title-cell">
               <div class="title-text">
-                <el-link type="primary" :underline="false" @click="openDetail(row)">{{ row.title }}</el-link>
+                <el-link type="primary" :underline="'never'" @click="openDetail(row)">{{ row.title }}</el-link>
                 <el-tag v-if="row.house_type === 'rent'" type="primary" size="small">租</el-tag>
                 <el-tag v-else type="success" size="small">售</el-tag>
               </div>

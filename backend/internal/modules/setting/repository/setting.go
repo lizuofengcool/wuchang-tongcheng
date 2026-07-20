@@ -43,7 +43,7 @@ func (r *settingRepository) FindByID(id uint) (*model.Setting, error) {
 
 func (r *settingRepository) FindByKey(group, key string, regionID uint) (*model.Setting, error) {
 	var s model.Setting
-	query := r.db.Where("`group` = ? AND `key` = ?", group, key)
+	query := r.db.Where("\"group\" = ? AND \"key\" = ?", group, key)
 	if regionID > 0 {
 		query = query.Where("region_id = ?", regionID)
 	}
@@ -55,7 +55,7 @@ func (r *settingRepository) FindByKey(group, key string, regionID uint) (*model.
 
 func (r *settingRepository) FindByGroup(group string, regionID uint) ([]model.Setting, error) {
 	var list []model.Setting
-	query := r.db.Where("`group` = ?", group)
+	query := r.db.Where("\"group\" = ?", group)
 	if regionID > 0 {
 		query = query.Where("region_id = ?", regionID)
 	}
@@ -71,7 +71,7 @@ func (r *settingRepository) FindAll(regionID uint) ([]model.Setting, error) {
 	if regionID > 0 {
 		query = query.Where("region_id = ?", regionID)
 	}
-	if err := query.Order("`group` ASC, sort ASC, id ASC").Find(&list).Error; err != nil {
+	if err := query.Order("\"group\" ASC, sort ASC, id ASC").Find(&list).Error; err != nil {
 		return nil, err
 	}
 	return list, nil
@@ -86,7 +86,7 @@ func (r *settingRepository) UpdateFields(id uint, fields map[string]interface{})
 }
 
 func (r *settingRepository) UpdateValue(group, key string, regionID uint, value string) error {
-	query := r.db.Model(&model.Setting{}).Where("`group` = ? AND `key` = ?", group, key)
+	query := r.db.Model(&model.Setting{}).Where("\"group\" = ? AND \"key\" = ?", group, key)
 	if regionID > 0 {
 		query = query.Where("region_id = ?", regionID)
 	}

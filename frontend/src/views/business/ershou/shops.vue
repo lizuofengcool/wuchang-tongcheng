@@ -35,7 +35,7 @@
         </el-table-column>
         <el-table-column label="店铺名" min-width="180">
           <template #default="{ row }">
-            <el-link type="primary" :underline="false" @click="openDetail(row)">{{ row.shop_name }}</el-link>
+            <el-link type="primary" :underline="'never'" @click="openDetail(row)">{{ row.shop_name }}</el-link>
           </template>
         </el-table-column>
         <el-table-column label="Banner" width="100">

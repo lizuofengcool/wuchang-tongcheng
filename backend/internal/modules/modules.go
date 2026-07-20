@@ -25,6 +25,12 @@ import (
 	_ "wuchang-tongcheng/internal/modules/house"
 	_ "wuchang-tongcheng/internal/modules/car"
 
+	// P1 阶段3 第2批：同城业务垂直模块（love/pinche/linggong/dh114）
+	_ "wuchang-tongcheng/internal/modules/love"
+	_ "wuchang-tongcheng/internal/modules/pinche"
+	_ "wuchang-tongcheng/internal/modules/linggong"
+	_ "wuchang-tongcheng/internal/modules/dh114"
+
 	// P1 中台精简版（ershou 模块依赖）
 	_ "wuchang-tongcheng/internal/modules/pay"
 	_ "wuchang-tongcheng/internal/modules/im"

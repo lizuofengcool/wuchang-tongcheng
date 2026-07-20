@@ -249,6 +249,134 @@ const (
 	CodeAIRecommendationNotFound = 4410 // 推荐记录不存在
 	CodeAITrainingNotFound  = 4411 // 训练数据不存在
 	CodeAIModelConfigNotFound = 4412 // 模型配置不存在
+
+	// ===== love 相亲交友模块错误 5001-5030 =====
+	CodeLoveError               = 5001 // 相亲交友通用错误
+	CodeLoveNotFound            = 5002 // 用户资料不存在
+	CodeLoveAlreadyLiked        = 5003 // 已经喜欢过该用户
+	CodeLoveBlocked             = 5004 // 已被对方拉黑
+	CodeLoveMemberExpired       = 5005 // 会员已过期
+	CodeLoveVerificationFailed  = 5006 // 实名认证失败
+	CodeLoveMatchFailed         = 5007 // 匹配失败
+	CodeLoveStoryNotFound       = 5008 // 动态不存在
+	CodeLoveGiftNotFound        = 5009 // 礼物不存在
+	CodeLoveInsufficientCredits = 5010 // 金币余额不足
+	CodeLoveNoPermission        = 5011 // 无权操作
+	CodeLoveAlreadyMatched      = 5012 // 已经匹配过
+	CodeLoveSuperLikeLimited    = 5013 // 心动信号今日已用完
+	CodeLoveProfileNotComplete  = 5014 // 资料未完善
+	CodeLoveNotVerified         = 5015 // 未通过实名认证
+	CodeLoveReportError         = 5016 // 举报错误
+	CodeLoveReportNotFound      = 5017 // 举报记录不存在
+	CodeLoveAuditRuleError      = 5018 // 审核规则错误
+	CodeLoveAuditRuleNotFound   = 5019 // 审核规则不存在
+	CodeLoveMemberNotFound      = 5020 // 会员订阅不存在
+	CodeLoveVisitNotFound       = 5021 // 访客记录不存在
+	CodeLoveBlockNotFound       = 5022 // 拉黑记录不存在
+	CodeLoveNotificationError   = 5023 // 通知错误
+	CodeLoveNotificationNotFound = 5024 // 通知不存在
+	CodeLoveRecommendationNotFound = 5025 // 推荐记录不存在
+	CodeLoveImpressionError     = 5026 // 印象标签错误
+	CodeLoveChatSessionNotFound = 5027 // 聊天会话不存在
+	CodeLoveVerificationNotFound = 5028 // 认证记录不存在
+	CodeLoveMemberLevelNotFound = 5029 // 会员等级不存在
+	CodeLovePrivacyError        = 5030 // 隐私设置错误
+
+	// ===== pinche 拼车出行模块错误 5101-5130 =====
+	CodePincheError              = 5101 // 拼车通用错误
+	CodePincheNotFound           = 5102 // 拼车行程不存在
+	CodePincheRouteNotFound      = 5103 // 路线不存在
+	CodePincheBookingConflict    = 5104 // 预订冲突
+	CodePincheDriverNotVerified  = 5105 // 车主未认证
+	CodePincheSeatUnavailable    = 5106 // 座位已满
+	CodePincheTripOngoing        = 5107 // 行程进行中
+	CodePincheInsuranceFailed    = 5108 // 保险投保失败
+	CodePinchePaymentFailed      = 5109 // 支付失败
+	CodePincheDriverNotFound     = 5110 // 车主不存在
+	CodePincheVehicleNotFound    = 5111 // 车辆不存在
+	CodePincheBookingNotFound    = 5112 // 预订不存在
+	CodePincheTripNotFound       = 5113 // 行程记录不存在
+	CodePincheRatingNotFound     = 5114 // 评价不存在
+	CodePincheEmergencyNotFound  = 5115 // 紧急联系人不存在
+	CodePinchePaymentNotFound    = 5116 // 支付记录不存在
+	CodePincheRefundNotFound     = 5117 // 退款记录不存在
+	CodePincheComplaintNotFound  = 5118 // 投诉不存在
+	CodePincheMessageNotFound    = 5119 // 消息不存在
+	CodePincheNoPermission       = 5120 // 无权操作
+	CodePincheStatusInvalid      = 5121 // 状态不允许此操作
+	CodePincheAuditError         = 5122 // 审核错误
+	CodePincheAuditRuleError     = 5123 // 审核规则错误
+	CodePincheRouteFavoriteError = 5124 // 常用路线错误
+	CodePincheLocationError      = 5125 // 实时位置错误
+	CodePincheCancelError        = 5126 // 取消错误
+	CodePincheRefundError        = 5127 // 退款错误
+	CodePincheAlreadyBooked      = 5128 // 已预订过该行程
+	CodePincheDriverBusy         = 5129 // 车主行程冲突
+	CodePincheTripNotStarted     = 5130 // 行程尚未开始
+
+	// ===== linggong 零工兼职模块错误 5201-5230 =====
+	CodeLinggongError                = 5201 // 零工兼职通用错误
+	CodeLinggongNotFound             = 5202 // 零工兼职岗位不存在
+	CodeLinggongPublishError         = 5203 // 零工兼职发布错误
+	CodeLinggongAuditError           = 5204 // 零工兼职审核错误
+	CodeLinggongNoPermission         = 5205 // 无权操作零工兼职
+	CodeLinggongStatusInvalid        = 5206 // 状态不允许此操作
+	CodeLinggongApplicationNotFound  = 5207 // 报名申请不存在
+	CodeLinggongApplicationDuplicate = 5208 // 重复报名
+	CodeLinggongApplicationFull      = 5209 // 报名名额已满
+	CodeLinggongTaskNotFound         = 5210 // 任务不存在
+	CodeLinggongTaskClaimError       = 5211 // 任务认领错误
+	CodeLinggongEmployerNotFound     = 5212 // 雇主不存在
+	CodeLinggongWorkerNotFound       = 5213 // 零工不存在
+	CodeLinggongContractNotFound     = 5214 // 合同不存在
+	CodeLinggongContractSignError    = 5215 // 合同签署错误
+	CodeLinggongPaymentNotFound      = 5216 // 支付记录不存在
+	CodeLinggongPaymentError         = 5217 // 支付错误
+	CodeLinggongWithdrawalNotFound   = 5218 // 提现记录不存在
+	CodeLinggongWithdrawalError      = 5219 // 提现错误
+	CodeLinggongRatingNotFound       = 5220 // 评价不存在
+	CodeLinggongRatingDuplicate      = 5221 // 重复评价
+	CodeLinggongCertificationNotFound = 5222 // 资质证书不存在
+	CodeLinggongCertificationError   = 5223 // 资质证书错误
+	CodeLinggongCreditNotFound       = 5224 // 信用记录不存在
+	CodeLinggongDisputeNotFound      = 5225 // 纠纷不存在
+	CodeLinggongDisputeError         = 5226 // 纠纷处理错误
+	CodeLinggongSkillNotFound        = 5227 // 技能不存在
+	CodeLinggongAuditRuleNotFound    = 5228 // 审核规则不存在
+	CodeLinggongAttendanceError      = 5229 // 考勤打卡错误
+	CodeLinggongStatisticError       = 5230 // 统计错误
+
+	// ===== dh114 同城114模块错误 5301-5330 =====
+	CodeDh114Error              = 5301 // 同城114通用错误
+	CodeDh114NotFound           = 5302 // 商户不存在
+	CodeDh114PublishError       = 5303 // 商户发布错误
+	CodeDh114AuditError         = 5304 // 商户审核错误
+	CodeDh114NoPermission       = 5305 // 无权操作商户
+	CodeDh114StatusInvalid      = 5306 // 商户状态不允许此操作
+	CodeDh114CategoryError     = 5307 // 分类错误
+	CodeDh114CategoryNotFound  = 5308 // 分类不存在
+	CodeDh114BusinessError     = 5309 // 商户详情错误
+	CodeDh114BusinessNotFound  = 5310 // 商户详情不存在
+	CodeDh114GroupbuyError     = 5311 // 团购错误
+	CodeDh114GroupbuyNotFound  = 5312 // 团购不存在
+	CodeDh114GroupbuySoldOut   = 5313 // 团购已售罄
+	CodeDh114CouponError      = 5314 // 优惠券错误
+	CodeDh114CouponNotFound   = 5315 // 优惠券不存在
+	CodeDh114CouponSoldOut    = 5316 // 优惠券已抢完
+	CodeDh114ReviewError      = 5317 // 评价错误
+	CodeDh114ReviewNotFound   = 5318 // 评价不存在
+	CodeDh114FavoriteError    = 5319 // 收藏错误
+	CodeDh114FavoriteExists   = 5320 // 已收藏过
+	CodeDh114VerificationError = 5321 // 认证错误
+	CodeDh114VerificationNotFound = 5322 // 认证记录不存在
+	CodeDh114PhoneCallError  = 5323 // 电话拨打记录错误
+	CodeDh114AuditRuleError  = 5324 // 审核规则错误
+	CodeDh114AuditRuleNotFound = 5325 // 审核规则不存在
+	CodeDh114RecommendationError = 5326 // 推荐错误
+	CodeDh114RecommendationNotFound = 5327 // 推荐记录不存在
+	CodeDh114StatisticError  = 5328 // 统计错误
+	CodeDh114MenuError       = 5329 // 菜单错误
+	CodeDh114MenuNotFound    = 5330 // 菜单不存在
 )
 
 // 错误消息映射
@@ -489,6 +617,134 @@ var codeMessages = map[int]string{
 	CodeAIRecommendationNotFound: "推荐记录不存在",
 	CodeAITrainingNotFound:       "训练数据不存在",
 	CodeAIModelConfigNotFound:    "模型配置不存在",
+
+	// pinche 拼车出行模块错误
+	CodePincheError:              "拼车错误",
+	CodePincheNotFound:           "拼车行程不存在",
+	CodePincheRouteNotFound:      "路线不存在",
+	CodePincheBookingConflict:    "预订冲突",
+	CodePincheDriverNotVerified:  "车主未认证",
+	CodePincheSeatUnavailable:    "座位已满",
+	CodePincheTripOngoing:        "行程进行中",
+	CodePincheInsuranceFailed:    "保险投保失败",
+	CodePinchePaymentFailed:      "支付失败",
+	CodePincheDriverNotFound:     "车主不存在",
+	CodePincheVehicleNotFound:    "车辆不存在",
+	CodePincheBookingNotFound:    "预订不存在",
+	CodePincheTripNotFound:       "行程记录不存在",
+	CodePincheRatingNotFound:     "评价不存在",
+	CodePincheEmergencyNotFound:  "紧急联系人不存在",
+	CodePinchePaymentNotFound:    "支付记录不存在",
+	CodePincheRefundNotFound:     "退款记录不存在",
+	CodePincheComplaintNotFound:  "投诉不存在",
+	CodePincheMessageNotFound:    "消息不存在",
+	CodePincheNoPermission:       "无权操作",
+	CodePincheStatusInvalid:      "状态不允许此操作",
+	CodePincheAuditError:         "拼车审核错误",
+	CodePincheAuditRuleError:     "审核规则错误",
+	CodePincheRouteFavoriteError: "常用路线错误",
+	CodePincheLocationError:      "实时位置错误",
+	CodePincheCancelError:        "取消错误",
+	CodePincheRefundError:        "退款错误",
+	CodePincheAlreadyBooked:      "已预订过该行程",
+        CodePincheDriverBusy:         "车主行程冲突",
+        CodePincheTripNotStarted:     "行程尚未开始",
+
+        // linggong 零工兼职模块错误
+        CodeLinggongError:                "零工兼职错误",
+        CodeLinggongNotFound:             "零工兼职岗位不存在",
+        CodeLinggongPublishError:         "零工兼职发布错误",
+        CodeLinggongAuditError:           "零工兼职审核错误",
+        CodeLinggongNoPermission:         "无权操作零工兼职",
+        CodeLinggongStatusInvalid:        "状态不允许此操作",
+        CodeLinggongApplicationNotFound:  "报名申请不存在",
+        CodeLinggongApplicationDuplicate: "重复报名",
+        CodeLinggongApplicationFull:      "报名名额已满",
+        CodeLinggongTaskNotFound:         "任务不存在",
+        CodeLinggongTaskClaimError:       "任务认领错误",
+        CodeLinggongEmployerNotFound:     "雇主不存在",
+        CodeLinggongWorkerNotFound:       "零工不存在",
+        CodeLinggongContractNotFound:     "合同不存在",
+        CodeLinggongContractSignError:    "合同签署错误",
+        CodeLinggongPaymentNotFound:      "支付记录不存在",
+        CodeLinggongPaymentError:         "支付错误",
+        CodeLinggongWithdrawalNotFound:   "提现记录不存在",
+        CodeLinggongWithdrawalError:      "提现错误",
+        CodeLinggongRatingNotFound:       "评价不存在",
+        CodeLinggongRatingDuplicate:      "重复评价",
+        CodeLinggongCertificationNotFound: "资质证书不存在",
+        CodeLinggongCertificationError:   "资质证书错误",
+        CodeLinggongCreditNotFound:       "信用记录不存在",
+        CodeLinggongDisputeNotFound:      "纠纷不存在",
+        CodeLinggongDisputeError:         "纠纷处理错误",
+        CodeLinggongSkillNotFound:        "技能不存在",
+        CodeLinggongAuditRuleNotFound:    "审核规则不存在",
+        CodeLinggongAttendanceError:      "考勤打卡错误",
+        CodeLinggongStatisticError:       "统计错误",
+
+        // dh114 同城114模块错误
+        CodeDh114Error:              "同城114错误",
+        CodeDh114NotFound:           "商户不存在",
+        CodeDh114PublishError:       "商户发布错误",
+        CodeDh114AuditError:         "商户审核错误",
+        CodeDh114NoPermission:       "无权操作商户",
+        CodeDh114StatusInvalid:      "商户状态不允许此操作",
+        CodeDh114CategoryError:      "分类错误",
+        CodeDh114CategoryNotFound:   "分类不存在",
+        CodeDh114BusinessError:      "商户详情错误",
+        CodeDh114BusinessNotFound:   "商户详情不存在",
+        CodeDh114GroupbuyError:      "团购错误",
+        CodeDh114GroupbuyNotFound:   "团购不存在",
+        CodeDh114GroupbuySoldOut:    "团购已售罄",
+        CodeDh114CouponError:        "优惠券错误",
+        CodeDh114CouponNotFound:     "优惠券不存在",
+        CodeDh114CouponSoldOut:      "优惠券已抢完",
+        CodeDh114ReviewError:        "评价错误",
+        CodeDh114ReviewNotFound:     "评价不存在",
+        CodeDh114FavoriteError:      "收藏错误",
+        CodeDh114FavoriteExists:     "已收藏过",
+        CodeDh114VerificationError:  "认证错误",
+        CodeDh114VerificationNotFound: "认证记录不存在",
+        CodeDh114PhoneCallError:     "电话拨打记录错误",
+        CodeDh114AuditRuleError:     "审核规则错误",
+        CodeDh114AuditRuleNotFound:  "审核规则不存在",
+        CodeDh114RecommendationError: "推荐错误",
+        CodeDh114RecommendationNotFound: "推荐记录不存在",
+        CodeDh114StatisticError:     "统计错误",
+        CodeDh114MenuError:          "菜单错误",
+        CodeDh114MenuNotFound:       "菜单不存在",
+
+        // love 相亲交友模块错误
+        CodeLoveError:                "相亲交友错误",
+        CodeLoveNotFound:             "用户资料不存在",
+        CodeLoveAlreadyLiked:         "已经喜欢过该用户",
+        CodeLoveBlocked:              "已被对方拉黑",
+        CodeLoveMemberExpired:        "会员已过期",
+        CodeLoveVerificationFailed:   "实名认证失败",
+        CodeLoveMatchFailed:          "匹配失败",
+        CodeLoveStoryNotFound:        "动态不存在",
+        CodeLoveGiftNotFound:         "礼物不存在",
+        CodeLoveInsufficientCredits:  "金币余额不足",
+        CodeLoveNoPermission:         "无权操作",
+        CodeLoveAlreadyMatched:       "已经匹配过",
+        CodeLoveSuperLikeLimited:     "心动信号今日已用完",
+        CodeLoveProfileNotComplete:   "资料未完善",
+        CodeLoveNotVerified:          "未通过实名认证",
+        CodeLoveReportError:          "举报错误",
+        CodeLoveReportNotFound:       "举报记录不存在",
+        CodeLoveAuditRuleError:       "审核规则错误",
+        CodeLoveAuditRuleNotFound:    "审核规则不存在",
+        CodeLoveMemberNotFound:       "会员订阅不存在",
+        CodeLoveVisitNotFound:        "访客记录不存在",
+        CodeLoveBlockNotFound:        "拉黑记录不存在",
+        CodeLoveNotificationError:    "通知错误",
+        CodeLoveNotificationNotFound: "通知不存在",
+        CodeLoveRecommendationNotFound: "推荐记录不存在",
+        CodeLoveImpressionError:      "印象标签错误",
+        CodeLoveChatSessionNotFound:  "聊天会话不存在",
+        CodeLoveVerificationNotFound: "认证记录不存在",
+        CodeLoveMemberLevelNotFound:  "会员等级不存在",
+        CodeLovePrivacyError:         "隐私设置错误",
 }
 
 // GetMessage 获取错误码对应的消息

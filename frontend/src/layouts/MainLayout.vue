@@ -83,7 +83,7 @@
             :default-openeds="defaultOpeneds"
             :collapse="isCollapse"
             :collapse-transition="false"
-            :unique-opened="false"
+            :unique-opened="true"
             router
             background-color="#001529"
             text-color="#bfcbd9"
@@ -219,8 +219,17 @@ function buildMenuTree(children, basePath) {
     })
 }
 
-// 默认展开第一层（让用户直接看到分组下的子菜单）
-const defaultOpeneds = computed(() => sidebarMenus.value.map((m) => m.path))
+// 手风琴模式：默认仅展开当前路由所属的父级菜单，其他自动收起（符合大厂中后台 UX 规范）
+const defaultOpeneds = computed(() => {
+  // 根据当前路由匹配所属 sidebarMenu 父级 path
+  for (const m of sidebarMenus.value) {
+    if (m.children && m.children.some(c => route.path === c.path || route.path.startsWith(c.path + '/') || route.path.startsWith(m.path + '/'))) {
+      return [m.path]
+    }
+  }
+  // 兜底：未匹配到时展开第一个父级（避免首次进入无展开）
+  return sidebarMenus.value.length > 0 ? [sidebarMenus.value[0].path] : []
+})
 
 // ====== 顶部 Tab 切换 ======
 const onTopMenuSelect = (path) => {
