@@ -110,7 +110,25 @@
     }
 
     const goCategory = (categoryId: number) => {
-        uni.navigateTo({ url: '/pages/category/category?id=' + categoryId })
+        let url: string = '/pages/category/category?id=' + categoryId
+        if (categoryId == 1) {
+            url = '/pages/ershou/list'
+        } else if (categoryId == 2) {
+            url = '/pages/business/job/list/index'
+        } else if (categoryId == 3) {
+            url = '/pages/business/fang/list/index'
+        } else if (categoryId == 4) {
+            url = '/pages/business/pinche/list/index'
+        } else if (categoryId == 5) {
+            url = '/pages/business/love/list/index'
+        } else if (categoryId == 6) {
+            url = '/pages/business/car/list/index'
+        } else if (categoryId == 7) {
+            url = '/pages/business/linggong/list/index'
+        } else if (categoryId == 8) {
+            url = '/pages/business/dh114/list/index'
+        }
+        uni.navigateTo({ url: url })
     }
 
     const goDetail = (id: number) => {

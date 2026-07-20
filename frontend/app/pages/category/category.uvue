@@ -35,6 +35,27 @@
 
     const switchTab = (id: number) => {
         activeId.value = id
+        let url: string = ''
+        if (id == 1) {
+            url = '/pages/ershou/list'
+        } else if (id == 2) {
+            url = '/pages/business/job/list/index'
+        } else if (id == 3) {
+            url = '/pages/business/fang/list/index'
+        } else if (id == 4) {
+            url = '/pages/business/pinche/list/index'
+        } else if (id == 5) {
+            url = '/pages/business/love/list/index'
+        } else if (id == 6) {
+            url = '/pages/business/car/list/index'
+        } else if (id == 7) {
+            url = '/pages/business/linggong/list/index'
+        } else if (id == 8) {
+            url = '/pages/business/dh114/list/index'
+        }
+        if (url.length > 0) {
+            uni.navigateTo({ url: url })
+        }
     }
 
     onLoad((options: OnLoadOptions) => {

@@ -905,23 +905,23 @@ COMMENT ON COLUMN dh114_verifications.status IS '状态：0待审 1通过 2拒�
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
-        CREATE TRIGGER IF NOT EXISTS trg_dh114s_updated_at BEFORE UPDATE ON dh114s FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_business_updated_at BEFORE UPDATE ON dh114_business FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_business_hours_updated_at BEFORE UPDATE ON dh114_business_hours FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_categories_updated_at BEFORE UPDATE ON dh114_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_images_updated_at BEFORE UPDATE ON dh114_images FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_tags_updated_at BEFORE UPDATE ON dh114_tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_menus_updated_at BEFORE UPDATE ON dh114_menus FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_coupons_updated_at BEFORE UPDATE ON dh114_coupons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_groupbuys_updated_at BEFORE UPDATE ON dh114_groupbuys FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_reviews_updated_at BEFORE UPDATE ON dh114_reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_review_replies_updated_at BEFORE UPDATE ON dh114_review_replies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_favorites_updated_at BEFORE UPDATE ON dh114_favorites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_phone_calls_updated_at BEFORE UPDATE ON dh114_phone_calls FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_visits_updated_at BEFORE UPDATE ON dh114_visits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_recommendations_updated_at BEFORE UPDATE ON dh114_recommendations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_statistics_updated_at BEFORE UPDATE ON dh114_statistics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_audit_rules_updated_at BEFORE UPDATE ON dh114_audit_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        CREATE TRIGGER IF NOT EXISTS trg_dh114_verifications_updated_at BEFORE UPDATE ON dh114_verifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114s_updated_at ON dh114s; CREATE TRIGGER trg_dh114s_updated_at BEFORE UPDATE ON dh114s FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_business_updated_at ON dh114_business; CREATE TRIGGER trg_dh114_business_updated_at BEFORE UPDATE ON dh114_business FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_business_hours_updated_at ON dh114_business_hours; CREATE TRIGGER trg_dh114_business_hours_updated_at BEFORE UPDATE ON dh114_business_hours FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_categories_updated_at ON dh114_categories; CREATE TRIGGER trg_dh114_categories_updated_at BEFORE UPDATE ON dh114_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_images_updated_at ON dh114_images; CREATE TRIGGER trg_dh114_images_updated_at BEFORE UPDATE ON dh114_images FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_tags_updated_at ON dh114_tags; CREATE TRIGGER trg_dh114_tags_updated_at BEFORE UPDATE ON dh114_tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_menus_updated_at ON dh114_menus; CREATE TRIGGER trg_dh114_menus_updated_at BEFORE UPDATE ON dh114_menus FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_coupons_updated_at ON dh114_coupons; CREATE TRIGGER trg_dh114_coupons_updated_at BEFORE UPDATE ON dh114_coupons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_groupbuys_updated_at ON dh114_groupbuys; CREATE TRIGGER trg_dh114_groupbuys_updated_at BEFORE UPDATE ON dh114_groupbuys FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_reviews_updated_at ON dh114_reviews; CREATE TRIGGER trg_dh114_reviews_updated_at BEFORE UPDATE ON dh114_reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_review_replies_updated_at ON dh114_review_replies; CREATE TRIGGER trg_dh114_review_replies_updated_at BEFORE UPDATE ON dh114_review_replies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_favorites_updated_at ON dh114_favorites; CREATE TRIGGER trg_dh114_favorites_updated_at BEFORE UPDATE ON dh114_favorites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_phone_calls_updated_at ON dh114_phone_calls; CREATE TRIGGER trg_dh114_phone_calls_updated_at BEFORE UPDATE ON dh114_phone_calls FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_visits_updated_at ON dh114_visits; CREATE TRIGGER trg_dh114_visits_updated_at BEFORE UPDATE ON dh114_visits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_recommendations_updated_at ON dh114_recommendations; CREATE TRIGGER trg_dh114_recommendations_updated_at BEFORE UPDATE ON dh114_recommendations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_statistics_updated_at ON dh114_statistics; CREATE TRIGGER trg_dh114_statistics_updated_at BEFORE UPDATE ON dh114_statistics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_audit_rules_updated_at ON dh114_audit_rules; CREATE TRIGGER trg_dh114_audit_rules_updated_at BEFORE UPDATE ON dh114_audit_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        DROP TRIGGER IF EXISTS trg_dh114_verifications_updated_at ON dh114_verifications; CREATE TRIGGER trg_dh114_verifications_updated_at BEFORE UPDATE ON dh114_verifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 END $$;
