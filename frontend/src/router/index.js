@@ -175,11 +175,106 @@ export const constantRoutes = [
               { path: 'batch', name: 'CarBatch', component: () => import('@/views/business/car/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
             ]
           },
-          // 其他 4 个垂直业务模块（空壳，开发中）
-          { path: 'love', name: 'Love', component: () => import('@/views/business/love/index.vue'), meta: { title: '相亲交友', icon: 'User', permission: 'love:read', menuLevel: 2 } },
-          { path: 'pinche', name: 'Pinche', component: () => import('@/views/business/pinche/index.vue'), meta: { title: '拼车出行', icon: 'Van', permission: 'pinche:read', menuLevel: 2 } },
-          { path: 'linggong', name: 'Linggong', component: () => import('@/views/business/linggong/index.vue'), meta: { title: '零工兼职', icon: 'Briefcase', permission: 'linggong:read', menuLevel: 2 } },
-          { path: 'dh114', name: 'Dh114', component: () => import('@/views/business/dh114/index.vue'), meta: { title: '同城114', icon: 'Phone', permission: 'dh114:read', menuLevel: 2 } }
+          // 相亲交友（完整功能：16 个管理页面，对标 Soul/陌陌/探探/百合网）
+          {
+            path: 'love',
+            name: 'Love',
+            redirect: '/business/love/list',
+            meta: { title: '相亲交友', icon: 'User', permission: 'love:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'LoveList', component: () => import('@/views/business/love/index.vue'), meta: { title: '会员列表', icon: 'List', permission: 'love:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'LoveDetail', component: () => import('@/views/business/love/detail.vue'), meta: { title: '会员详情', hidden: true, permission: 'love:read' } },
+              { path: 'profiles', name: 'LoveProfiles', component: () => import('@/views/business/love/profiles.vue'), meta: { title: '资料管理', icon: 'Document', permission: 'love:read', menuLevel: 3 } },
+              { path: 'matches', name: 'LoveMatches', component: () => import('@/views/business/love/matches.vue'), meta: { title: '匹配管理', icon: 'Connection', permission: 'love:read', menuLevel: 3 } },
+              { path: 'likes', name: 'LoveLikes', component: () => import('@/views/business/love/likes.vue'), meta: { title: '喜欢记录', icon: 'Star', permission: 'love:read', menuLevel: 3 } },
+              { path: 'blocks', name: 'LoveBlocks', component: () => import('@/views/business/love/blocks.vue'), meta: { title: '拉黑管理', icon: 'CircleClose', permission: 'love:read', menuLevel: 3 } },
+              { path: 'visits', name: 'LoveVisits', component: () => import('@/views/business/love/visits.vue'), meta: { title: '访客记录', icon: 'View', permission: 'love:read', menuLevel: 3 } },
+              { path: 'impressions', name: 'LoveImpressions', component: () => import('@/views/business/love/impressions.vue'), meta: { title: '印象标签', icon: 'PriceTag', permission: 'love:read', menuLevel: 3 } },
+              { path: 'stories', name: 'LoveStories', component: () => import('@/views/business/love/stories.vue'), meta: { title: '故事管理', icon: 'EditPen', permission: 'love:read', menuLevel: 3 } },
+              { path: 'verifications', name: 'LoveVerifications', component: () => import('@/views/business/love/verifications.vue'), meta: { title: '实名认证', icon: 'Postcard', permission: 'love:read', menuLevel: 3 } },
+              { path: 'member-levels', name: 'LoveMemberLevels', component: () => import('@/views/business/love/member-levels.vue'), meta: { title: '会员等级', icon: 'Medal', permission: 'love:read', menuLevel: 3 } },
+              { path: 'memberships', name: 'LoveMemberships', component: () => import('@/views/business/love/memberships.vue'), meta: { title: '会员订阅', icon: 'CreditCard', permission: 'love:read', menuLevel: 3 } },
+              { path: 'gifts', name: 'LoveGifts', component: () => import('@/views/business/love/gifts.vue'), meta: { title: '礼物管理', icon: 'Present', permission: 'love:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'LoveAuditRules', component: () => import('@/views/business/love/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'reports', name: 'LoveReports', component: () => import('@/views/business/love/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'love:read', menuLevel: 3 } },
+              { path: 'statistics', name: 'LoveStatistics', component: () => import('@/views/business/love/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'love:read', menuLevel: 3 } }
+            ]
+          },
+          // 拼车出行（完整功能：16 个管理页面，对标哈啰出行/嘀嗒出行/滴滴顺风车）
+          {
+            path: 'pinche',
+            name: 'Pinche',
+            redirect: '/business/pinche/list',
+            meta: { title: '拼车出行', icon: 'Van', permission: 'pinche:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'PincheList', component: () => import('@/views/business/pinche/index.vue'), meta: { title: '拼车列表', icon: 'List', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'PincheDetail', component: () => import('@/views/business/pinche/detail.vue'), meta: { title: '拼车详情', hidden: true, permission: 'pinche:read' } },
+              { path: 'routes', name: 'PincheRoutes', component: () => import('@/views/business/pinche/routes.vue'), meta: { title: '路线管理', icon: 'Position', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'trips', name: 'PincheTrips', component: () => import('@/views/business/pinche/trips.vue'), meta: { title: '行程管理', icon: 'Van', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'bookings', name: 'PincheBookings', component: () => import('@/views/business/pinche/bookings.vue'), meta: { title: '预订管理', icon: 'Tickets', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'drivers', name: 'PincheDrivers', component: () => import('@/views/business/pinche/drivers.vue'), meta: { title: '车主认证', icon: 'User', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'vehicles', name: 'PincheVehicles', component: () => import('@/views/business/pinche/vehicles.vue'), meta: { title: '车辆管理', icon: 'Van', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'payments', name: 'PinchePayments', component: () => import('@/views/business/pinche/payments.vue'), meta: { title: '支付管理', icon: 'Wallet', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'ratings', name: 'PincheRatings', component: () => import('@/views/business/pinche/ratings.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'insurances', name: 'PincheInsurances', component: () => import('@/views/business/pinche/insurances.vue'), meta: { title: '保险管理', icon: 'Umbrella', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'emergencies', name: 'PincheEmergencies', component: () => import('@/views/business/pinche/emergencies.vue'), meta: { title: '紧急报警', icon: 'Warning', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'PincheAuditRules', component: () => import('@/views/business/pinche/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'PincheStatistics', component: () => import('@/views/business/pinche/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'reports', name: 'PincheReports', component: () => import('@/views/business/pinche/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'refunds', name: 'PincheRefunds', component: () => import('@/views/business/pinche/refunds.vue'), meta: { title: '退款管理', icon: 'RefreshLeft', permission: 'pinche:read', menuLevel: 3 } },
+              { path: 'batch', name: 'PincheBatch', component: () => import('@/views/business/pinche/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          },
+          // 零工兼职（完整功能：16 个管理页面，对标斗米/青团兼职/兼职猫/猪八戒）
+          {
+            path: 'linggong',
+            name: 'Linggong',
+            redirect: '/business/linggong/list',
+            meta: { title: '零工兼职', icon: 'Briefcase', permission: 'linggong:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'LinggongList', component: () => import('@/views/business/linggong/index.vue'), meta: { title: '零工列表', icon: 'List', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'LinggongDetail', component: () => import('@/views/business/linggong/detail.vue'), meta: { title: '零工详情', hidden: true, permission: 'linggong:read' } },
+              { path: 'tasks', name: 'LinggongTasks', component: () => import('@/views/business/linggong/tasks.vue'), meta: { title: '任务管理', icon: 'Tickets', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'applications', name: 'LinggongApplications', component: () => import('@/views/business/linggong/applications.vue'), meta: { title: '报名管理', icon: 'Document', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'employers', name: 'LinggongEmployers', component: () => import('@/views/business/linggong/employers.vue'), meta: { title: '雇主管理', icon: 'User', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'workers', name: 'LinggongWorkers', component: () => import('@/views/business/linggong/workers.vue'), meta: { title: '工人管理', icon: 'UserFilled', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'contracts', name: 'LinggongContracts', component: () => import('@/views/business/linggong/contracts.vue'), meta: { title: '合同管理', icon: 'Tickets', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'payments', name: 'LinggongPayments', component: () => import('@/views/business/linggong/payments.vue'), meta: { title: '支付管理', icon: 'Wallet', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'ratings', name: 'LinggongRatings', component: () => import('@/views/business/linggong/ratings.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'skills', name: 'LinggongSkills', component: () => import('@/views/business/linggong/skills.vue'), meta: { title: '技能管理', icon: 'PriceTag', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'certifications', name: 'LinggongCertifications', component: () => import('@/views/business/linggong/certifications.vue'), meta: { title: '资质管理', icon: 'Postcard', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'credits', name: 'LinggongCredits', component: () => import('@/views/business/linggong/credits.vue'), meta: { title: '信用管理', icon: 'CreditCard', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'LinggongAuditRules', component: () => import('@/views/business/linggong/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'reports', name: 'LinggongReports', component: () => import('@/views/business/linggong/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'statistics', name: 'LinggongStatistics', component: () => import('@/views/business/linggong/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'linggong:read', menuLevel: 3 } },
+              { path: 'batch', name: 'LinggongBatch', component: () => import('@/views/business/linggong/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          },
+          // 同城114（完整功能：16 个管理页面，对标大众点评/美团/58同城）
+          {
+            path: 'dh114',
+            name: 'Dh114',
+            redirect: '/business/dh114/list',
+            meta: { title: '同城114', icon: 'Phone', permission: 'dh114:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'Dh114List', component: () => import('@/views/business/dh114/index.vue'), meta: { title: '商户列表', icon: 'List', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'Dh114Detail', component: () => import('@/views/business/dh114/detail.vue'), meta: { title: '商户详情', hidden: true, permission: 'dh114:read' } },
+              { path: 'businesses', name: 'Dh114Businesses', component: () => import('@/views/business/dh114/businesses.vue'), meta: { title: '商户资料', icon: 'Shop', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'menus', name: 'Dh114Menus', component: () => import('@/views/business/dh114/menus.vue'), meta: { title: '菜单管理', icon: 'Food', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'categories', name: 'Dh114Categories', component: () => import('@/views/business/dh114/categories.vue'), meta: { title: '分类管理', icon: 'Files', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'coupons', name: 'Dh114Coupons', component: () => import('@/views/business/dh114/coupons.vue'), meta: { title: '优惠券', icon: 'Ticket', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'groupbuys', name: 'Dh114Groupbuys', component: () => import('@/views/business/dh114/groupbuys.vue'), meta: { title: '团购管理', icon: 'Present', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'reviews', name: 'Dh114Reviews', component: () => import('@/views/business/dh114/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'phone-calls', name: 'Dh114PhoneCalls', component: () => import('@/views/business/dh114/phone-calls.vue'), meta: { title: '电话记录', icon: 'Phone', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'recommendations', name: 'Dh114Recommendations', component: () => import('@/views/business/dh114/recommendations.vue'), meta: { title: '推荐管理', icon: 'MagicStick', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'favorites', name: 'Dh114Favorites', component: () => import('@/views/business/dh114/favorites.vue'), meta: { title: '收藏管理', icon: 'Star', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'Dh114AuditRules', component: () => import('@/views/business/dh114/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'Dh114Statistics', component: () => import('@/views/business/dh114/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'reports', name: 'Dh114Reports', component: () => import('@/views/business/dh114/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'verifications', name: 'Dh114Verifications', component: () => import('@/views/business/dh114/verifications.vue'), meta: { title: '商户认证', icon: 'Postcard', permission: 'dh114:read', menuLevel: 3 } },
+              { path: 'batch', name: 'Dh114Batch', component: () => import('@/views/business/dh114/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
+            ]
+          }
         ]
       },
 
