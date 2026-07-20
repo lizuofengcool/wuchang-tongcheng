@@ -143,11 +143,20 @@ func (h *StatisticHandler) HotCategories(ctx plugin.Context) {
 
 // Overview 平台总览统计
 // GET /api/v1/dh114/admin/statistics/overview  （需 dh114:audit 权限）
+// 注：start_date/end_date 可选，缺省时使用最近 30 天
 func (h *StatisticHandler) Overview(ctx plugin.Context) {
 	regionID := getRegionID(ctx)
-	startDate, endDate, ok := parseDateRange(ctx)
-	if !ok {
-		return
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -30)
+	if s := ctx.Query("start_date"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			startDate = t
+		}
+	}
+	if s := ctx.Query("end_date"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			endDate = t
+		}
 	}
 	info, err := h.svc.Overview(regionID, startDate, endDate)
 	if err != nil {

@@ -20,6 +20,10 @@ type DisputeRepository interface {
 	ListByLinggong(linggongID uint, pagination *utils.Pagination) ([]model.LinggongDispute, int64, error)
 	ListByApplicant(applicantID uint, pagination *utils.Pagination) ([]model.LinggongDispute, int64, error)
 	ListByRespondent(respondentID uint, pagination *utils.Pagination) ([]model.LinggongDispute, int64, error)
+
+	// CountByStatus 按状态计数（用于举报统计：status=0 待处理，status>0 已处理）
+	// 返回 (total, pending, processed)
+	CountByStatus() (total, pending, processed int64, err error)
 }
 
 // DisputeListOptions 纠纷列表过滤条件
@@ -160,4 +164,29 @@ func (r *disputeRepository) ListByRespondent(respondentID uint, pagination *util
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+// CountByStatus 按状态计数（用于举报统计）
+// 返回 (total, pending(status=0), processed(status>0))
+// 复用 linggong_disputes 表，跨地区统计（M 端全局视角）
+func (r *disputeRepository) CountByStatus() (total, pending, processed int64, err error) {
+	type statResult struct {
+		Total     int64
+		Pending   int64
+		Processed int64
+	}
+	var res statResult
+	// 单次 SQL 完成 3 项计数，避免多次查询
+	// 使用 PostgreSQL 的 FILTER 子句（兼容 PG 9.4+）
+	if err := r.db.Model(&model.LinggongDispute{}).
+		Select(`
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE status = 0) AS pending,
+			COUNT(*) FILTER (WHERE status > 0) AS processed
+		`).
+		Where("deleted_at IS NULL").
+		Scan(&res).Error; err != nil {
+		return 0, 0, 0, err
+	}
+	return res.Total, res.Pending, res.Processed, nil
 }

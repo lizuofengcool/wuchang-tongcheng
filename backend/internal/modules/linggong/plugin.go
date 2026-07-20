@@ -36,6 +36,10 @@ type Plugin struct {
 	certificationHandler  *handler.CertificationHandler
 	creditHandler         *handler.CreditHandler
 	auditRuleHandler      *handler.AuditRuleHandler
+
+	// 扩展 Handler（举报管理 + 总览统计，复用已有 disputes/statistics 体系）
+	reportHandler    *handler.ReportHandler
+	statisticHandler *handler.StatisticHandler
 }
 
 // NewPlugin 创建零工兼职模块插件
@@ -129,9 +133,15 @@ func (p *Plugin) Init(ctx context.Context) error {
 	p.creditHandler = handler.NewCreditHandler(creditSvc)
 	p.auditRuleHandler = handler.NewAuditRuleHandler(auditRuleSvc)
 
-	// 避免未使用变量告警（attendance/dispute/withdrawal/favorite/recommendation/statistic 暂未在 handler 层直接使用，保留以备后续扩展）
+	// ===== 扩展 Handler（举报管理 + 总览统计） =====
+	// 举报管理：复用 disputes 表，注入 disputeSvc
+	p.reportHandler = handler.NewReportHandler(disputeSvc)
+	// 总览统计：跨表聚合，注入 db 直接 raw query
+	overviewSvc := service.NewOverviewService(db)
+	p.statisticHandler = handler.NewStatisticHandler(overviewSvc)
+
+	// 避免未使用变量告警（attendance/withdrawal/favorite/recommendation/statistic 暂未在 handler 层直接使用，保留以备后续扩展）
 	_ = attendanceSvc
-	_ = disputeSvc
 	_ = withdrawalSvc
 	_ = favoriteSvc
 	_ = recommendationSvc
@@ -355,6 +365,13 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	// 信用分管理
 	admin.POST("/credits/adjust", auditPerm, p.creditHandler.Adjust)
 	admin.DELETE("/credits/:id", auditPerm, p.creditHandler.Delete)
+
+	// 举报管理（复用 disputes 表）
+	admin.GET("/reports", auditPerm, p.reportHandler.AdminList)
+	admin.PUT("/reports/:id/process", auditPerm, p.reportHandler.Process)
+
+	// 总览统计（跨表聚合，不依赖 linggong_statistics 表）
+	admin.GET("/statistics/overview", auditPerm, p.statisticHandler.Overview)
 
 	// 审核规则管理
 	admin.GET("/audit-rules", auditPerm, p.auditRuleHandler.AdminList)

@@ -39,6 +39,13 @@ type DisputeService interface {
 
 	// M 端管理
 	AdminList(req *dto.DisputeListRequest) (*utils.Pagination, []dto.DisputeInfo, error)
+
+	// 举报管理（复用 disputes 表）
+	// ProcessReport 处理举报：设置 status + handle_result + handler_id 等
+	// 绕过 Handle 的状态机校验（举报 status 语义与纠纷不同：0-5）
+	ProcessReport(id uint, handlerID uint, handlerName string, req *dto.ReportProcessRequest) error
+	// GetReportStats 举报统计（total/pending/processed）
+	GetReportStats() (*dto.ReportStats, error)
 }
 
 type disputeService struct {
@@ -420,4 +427,89 @@ func (s *disputeService) AdminList(req *dto.DisputeListRequest) (*utils.Paginati
 		result = append(result, *toDisputeInfo(&list[i]))
 	}
 	return pagination, result, nil
+}
+
+// ===== 举报管理（复用 disputes 表） =====
+
+// ProcessReport 处理举报
+// 字段映射策略（与前端 reports.vue onProcess 对齐）：
+//   - req.Status       -> disputes.status（前端语义 1-5）
+//   - req.HandleResult -> disputes.mediation_result（处理说明，前端字段）
+//   - req.HandleNote   -> 兼容任务描述字段（handle_result 为空时使用）
+//   - req.PenaltyType  -> 拼接到 mediation_result 文本中
+//   - req.Result       -> disputes.final_result（valid=platform_decision, invalid=reject）
+//
+// 状态机绕过说明：举报 status 语义与纠纷不同（0-5 vs 0-7），不调用 Handle 避免状态机误判
+func (s *disputeService) ProcessReport(id uint, handlerID uint, handlerName string, req *dto.ReportProcessRequest) error {
+	d, err := s.repo.FindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrDisputeNotFound
+		}
+		return err
+	}
+	_ = d
+
+	// 处理说明：优先 handle_result，回退 handle_note
+	handleResult := req.HandleResult
+	if handleResult == "" {
+		handleResult = req.HandleNote
+	}
+
+	// 处罚类型拼接到处理说明
+	if req.PenaltyType != "" {
+		if handleResult != "" {
+			handleResult += " | 处罚: " + req.PenaltyType
+		} else {
+			handleResult = "处罚: " + req.PenaltyType
+		}
+		if req.PenaltyType == "credit" && req.CreditChange != 0 {
+			handleResult += fmt.Sprintf("（信用分 %+d）", req.CreditChange)
+		}
+	}
+
+	// final_result 推导
+	finalResult := ""
+	switch req.Result {
+	case "invalid":
+		finalResult = model.DisputeResultReject
+	case "valid":
+		finalResult = model.DisputeResultPlatformDecision
+	}
+	// 前端 status=4（已驳回）也归入 reject
+	if finalResult == "" && req.Status == 4 {
+		finalResult = model.DisputeResultReject
+	}
+
+	now := time.Now()
+	fields := map[string]interface{}{
+		"status":           req.Status,
+		"handler_id":       handlerID,
+		"handler_name":     handlerName,
+		"handled_at":       &now,
+		"mediation_result": handleResult,
+	}
+	// 已处理（status > 0）即视为已关闭
+	if req.Status >= 1 {
+		fields["resolved_at"] = &now
+		fields["closed_at"] = &now
+	}
+	if finalResult != "" {
+		fields["final_result"] = finalResult
+	}
+
+	return s.repo.Update(id, fields)
+}
+
+// GetReportStats 举报统计
+func (s *disputeService) GetReportStats() (*dto.ReportStats, error) {
+	total, pending, processed, err := s.repo.CountByStatus()
+	if err != nil {
+		return nil, err
+	}
+	return &dto.ReportStats{
+		Total:     total,
+		Pending:   pending,
+		Processed: processed,
+	}, nil
 }

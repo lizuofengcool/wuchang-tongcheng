@@ -215,19 +215,85 @@
 
 ## 九、待完成任务
 
-- [ ] 任务1：创建迁移脚本 009-012（4模块）+ 4个rollback
-- [ ] 任务2：love 模块全栈开发（model/dto/repository/service/handler/plugin）
-- [ ] 任务3：pinche 模块全栈开发
-- [ ] 任务4：linggong 模块全栈开发
-- [ ] 任务5：dh114 模块全栈开发
-- [ ] 任务6：错误码体系（love/pinche/linggong/dh114 4段）
-- [ ] 任务7：编译验证 + 迁移应用 + backend 启动
-- [ ] 任务8：API 测试 4模块
-- [ ] 任务9：管理后台 64 页面
-- [ ] 任务10：C端 48 页面 + 40 组件
-- [ ] 任务11：Playwright 集成验证
-- [ ] 任务12：commit push 到 Gitee
+- [x] 任务1：创建迁移脚本 017/019/021/023（4模块）✅ 已在 wuchang_tongcheng 数据库执行成功，72 张表创建
+- [x] 任务2：love 模块全栈开发（model/dto/repository/service/handler/plugin）✅
+- [x] 任务3：pinche 模块全栈开发 ✅
+- [x] 任务4：linggong 模块全栈开发 ✅
+- [x] 任务5：dh114 模块全栈开发 ✅
+- [x] 任务6：错误码体系（love 5001-5030 / pinche 5101-5130 / linggong 5201-5230 / dh114 5301-5330）✅
+- [x] 任务7：编译验证 + 迁移应用 + backend 启动 ✅ go build 通过，backend 8088 运行
+- [x] 任务8：API 测试 4模块 ✅ 4 模块主表+15 个公开子表 API 全部返回 code=0
+- [x] 任务9：管理后台 64 页面 ✅ 4 模块 × 16 页全部创建，vite build 通过
+- [ ] 任务10：C端 48 页面 + 40 组件（后续任务）
+- [x] 任务11：Playwright 集成验证 ✅ 64/64 页面渲染正常，55/64 完全无提示，9/64 有非致命 API 提示
+- [ ] 任务12：commit push 到 Gitee（本地 commit 已完成：20953b9，待 push）
 
-## 十、下一步
+## 十、本会话已完成工作（2026-07-20 晚）
 
-立即启动 Agent A 数据库开发，4模块共 72 张表 + 4 迁移脚本 + 4 rollback 脚本。
+### 后端修复（commit 1593707）
+1. ✅ 修复 pinche/trips、pinche/vehicles、love/gifts 路由冲突（被 /:id 拦截）
+2. ✅ 修复 setting 模块 SQL 42601 语法错误（PostgreSQL 保留字 group/key 反引号→双引号）
+3. ✅ 修复 el-link underline 弃用警告（5 个 vue 文件 boolean→string 'never'）
+4. ✅ 重跑迁移脚本到 wuchang_tongcheng 数据库（72 张表）
+5. ✅ 修复菜单手风琴模式（仅当前所属菜单展开）
+
+### 前端 64 页面开发（commit 20953b9）
+1. ✅ 主进程注册 64 条子路由（router/index.js）
+2. ✅ 4 subagent 并行创建 64 个 vue 页面（love/pinche/linggong/dh114 各 16 页）
+3. ✅ 完整 CRUD：统计卡片 + 筛选 + 表格 + 分页 + 弹窗 + 删除确认
+4. ✅ 对标各行业头部平台（Soul/陌陌/哈啰/嘀嗒/斗米/青团兼职/大众点评/美团）
+5. ✅ Element Plus 3.0.0 兼容（el-link underline 字符串）
+6. ✅ 修复路由文件语法错误（line 277 多余的 }）
+7. ✅ 修复 love/verifications.vue 和 pinche/drivers.vue 的 HTML 标签错误
+8. ✅ vite build 通过（405 模块编译成功）
+9. ✅ Playwright 验证 64 页面渲染：55/64 完全无提示
+
+## 十一、待解决问题
+
+1. ✅ 9 个页面对应的后端 admin 端点缺失（已解决，见第十三章）
+2. 🔧 pinche/dh114 迁移脚本触发器 IF NOT EXISTS 语法问题（低优先级，不影响表创建）
+3. 🔄 C 端 48 页面 + 40 组件（后续任务）
+4. ⬜ commit push 到 Gitee（本地已 commit 20953b9，本次新增修复待 commit）
+
+## 十二、下一步
+
+- 选项 A：开始 C 端 48 页面 + 40 组件开发
+- 选项 B：修复 pinche/dh114 迁移脚本触发器语法问题
+- 选项 C：开始 C 端页面 + 后续模块
+
+## 十三、本会话补全工作（2026-07-20 晚）
+
+### 后端 19 个缺失 admin 端点补全（commit 待提交）
+
+#### pinche 模块（12 端点）
+- 复用 `pinche_complaints` 表作 reports：`GET/POST /pinche/admin/reports`、`PUT /pinche/admin/reports/:id/process`
+- 复用 `pinche_refunds` 表：`GET /pinche/admin/refunds`、`PUT /pinche/admin/refunds/:id/process`
+- 新建 `pinche_batch_tasks` 表（迁移脚本 `024_pinche_batch_tasks.sql`，已执行）：
+  - `GET /pinche/admin/batch-tasks/preview-ids`（先注册避免被 /:id 吞）
+  - `GET/POST /pinche/admin/batch-tasks`
+  - `GET /pinche/admin/batch-tasks/:id`
+  - `PUT /pinche/admin/batch-tasks/:id/cancel`
+  - `POST /pinche/admin/batch-tasks/:id/retry`
+  - `DELETE /pinche/admin/batch-tasks/:id`
+- 新建文件：model/batch_task.go + repository/batch_task.go + service/{complaint,refund,batch_task}.go + handler/{complaint,refund,batch_task}.go + dto/{complaint,refund,batch_task}.go
+- 修改 plugin.go：注入 3 个新 handler，注册 12 个 admin 路由，移除 `_ = refundRepo/complaintRepo`
+
+#### linggong 模块（3 端点）
+- 复用 `linggong_disputes` 表作 reports：`GET /linggong/admin/reports`、`PUT /linggong/admin/reports/:id/process`
+- 跨表 raw query 实现 overview：`GET /linggong/admin/statistics/overview`
+- 新建文件：handler/{report,statistic}.go + service/statistic_overview.go + dto/{report,statistic_overview}.go
+- 修改文件：plugin.go（注入 2 个新 handler + 注册 3 个路由）、repository/dispute.go（新增 CountByStatus）、service/dispute.go（新增 ProcessReport/GetReportStats）
+
+#### dh114 模块（4 端点）
+- 新建 `dh114_reports` 表（迁移脚本 `024_dh114_reports.sql`，已执行）
+- `GET/POST /dh114/reports`（公开 + 需登录）
+- `PUT /dh114/reports/:id/process`（需 audit 权限）
+- `DELETE /dh114/reports/:id`（需 audit 权限）
+- 新建文件：model/report.go + repository/report.go + service/report.go + handler/report.go + dto/report.go
+- 修改文件：plugin.go（注入 reportHandler + 注册 4 个路由）、utils/error_code.go（新增 CodeDh114ReportError=5331/CodeDh114ReportNotFound=5332）
+- 修复 handler/statistic.go 的 Overview 方法：start_date/end_date 改为可选（缺省最近 30 天）
+
+### 验证结果
+- ✅ go build ./... 退出码 0
+- ✅ 9/9 端点 API 测试全部返回 code=0
+- ✅ Playwright 验证 9 个页面渲染：9/9 PASS，无 API 404/500 错误

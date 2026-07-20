@@ -27,15 +27,20 @@ type Plugin struct {
 	pincheHandler      *handler.PincheHandler
 	routeHandler       *handler.RouteHandler
 	tripHandler        *handler.TripHandler
-	bookingHandler     *handler.BookingHandler
-	driverHandler      *handler.DriverHandler
-	vehicleHandler     *handler.VehicleHandler
-	paymentHandler     *handler.PaymentHandler
-	ratingHandler      *handler.RatingHandler
-	insuranceHandler   *handler.InsuranceHandler
-	emergencyHandler   *handler.EmergencyHandler
-	auditRuleHandler   *handler.AuditRuleHandler
-	statisticsHandler  *handler.StatisticsHandler
+	bookingHandler    *handler.BookingHandler
+	driverHandler     *handler.DriverHandler
+	vehicleHandler    *handler.VehicleHandler
+	paymentHandler    *handler.PaymentHandler
+	ratingHandler     *handler.RatingHandler
+	insuranceHandler  *handler.InsuranceHandler
+	emergencyHandler  *handler.EmergencyHandler
+	auditRuleHandler  *handler.AuditRuleHandler
+	statisticsHandler *handler.StatisticsHandler
+
+	// 新增 3 个 Handler（举报/退款/批量任务）
+	complaintHandler  *handler.ComplaintHandler
+	refundHandler     *handler.RefundHandler
+	batchTaskHandler  *handler.BatchTaskHandler
 }
 
 // NewPlugin 创建拼车出行模块插件
@@ -109,6 +114,12 @@ func (p *Plugin) Init(ctx context.Context) error {
 	auditRuleSvc := service.NewAuditRuleService(auditRuleRepo)
 	statisticSvc := service.NewStatisticService(statisticRepo)
 
+	// 新增 3 个 Service（举报/退款/批量任务）
+	complaintSvc := service.NewComplaintService(complaintRepo)
+	refundSvc := service.NewRefundService(refundRepo)
+	batchTaskRepo := repository.NewBatchTaskRepository(db)
+	batchTaskSvc := service.NewBatchTaskService(batchTaskRepo)
+
 	// ===== 依赖注入：Handler 层（12 个） =====
 	p.pincheHandler = handler.NewPincheHandler(pincheSvc)
 	p.routeHandler = handler.NewRouteHandler(routeSvc)
@@ -123,11 +134,14 @@ func (p *Plugin) Init(ctx context.Context) error {
 	p.auditRuleHandler = handler.NewAuditRuleHandler(auditRuleSvc)
 	p.statisticsHandler = handler.NewStatisticsHandler(statisticSvc)
 
-	// 避免未使用变量告警（driver_location/cancel/refund/complaint/message 暂未在 service 层使用，保留以备后续扩展）
+	// 新增 3 个 Handler
+	p.complaintHandler = handler.NewComplaintHandler(complaintSvc)
+	p.refundHandler = handler.NewRefundHandler(refundSvc)
+	p.batchTaskHandler = handler.NewBatchTaskHandler(batchTaskSvc)
+
+	// 避免未使用变量告警（driver_location/cancel/message 暂未在 service 层使用，保留以备后续扩展）
 	_ = driverLocationRepo
 	_ = cancelRepo
-	_ = refundRepo
-	_ = complaintRepo
 	_ = messageRepo
 
 	return nil
@@ -363,6 +377,27 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	admin.GET("/statistics", auditPerm, p.statisticsHandler.AdminList)
 	admin.POST("/statistics", auditPerm, p.statisticsHandler.Upsert)
 	admin.DELETE("/statistics/:id", auditPerm, p.statisticsHandler.Delete)
+
+	// ==================== 新增：举报/退款/批量任务管理 ====================
+
+	// 举报管理（前端 URL 为 /reports，复用 pinche_complaints 表）
+	admin.GET("/reports", auditPerm, p.complaintHandler.AdminList)
+	admin.POST("/reports", auditPerm, p.complaintHandler.Create)
+	admin.PUT("/reports/:id/process", auditPerm, p.complaintHandler.Process)
+	admin.GET("/reports/stats", auditPerm, p.complaintHandler.Stats)
+
+	// 退款管理（复用 pinche_refunds 表）
+	admin.GET("/refunds", auditPerm, p.refundHandler.AdminList)
+	admin.PUT("/refunds/:id/process", auditPerm, p.refundHandler.Process)
+
+	// 批量任务管理（注意：固定路径 /preview-ids 必须在 /:id 之前注册）
+	admin.GET("/batch-tasks/preview-ids", auditPerm, p.batchTaskHandler.PreviewIDs)
+	admin.GET("/batch-tasks", auditPerm, p.batchTaskHandler.AdminList)
+	admin.GET("/batch-tasks/:id", auditPerm, p.batchTaskHandler.AdminGetByID)
+	admin.POST("/batch-tasks", auditPerm, p.batchTaskHandler.Create)
+	admin.PUT("/batch-tasks/:id/cancel", auditPerm, p.batchTaskHandler.Cancel)
+	admin.POST("/batch-tasks/:id/retry", auditPerm, p.batchTaskHandler.Retry)
+	admin.DELETE("/batch-tasks/:id", auditPerm, p.batchTaskHandler.Delete)
 }
 
 // Close 关闭插件

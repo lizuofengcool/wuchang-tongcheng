@@ -36,6 +36,8 @@ type Plugin struct {
 	recommendationHandler *handler.RecommendationHandler
 	statisticHandler     *handler.StatisticHandler
 	verificationHandler  *handler.VerificationHandler
+	// 举报 Handler
+	reportHandler        *handler.ReportHandler
 }
 
 // NewPlugin 创建同城114模块插件
@@ -94,6 +96,7 @@ func (p *Plugin) Init(ctx context.Context) error {
 	statisticRepo := repository.NewStatisticRepository(db)
 	auditRuleRepo := repository.NewAuditRuleRepository(db)
 	verificationRepo := repository.NewVerificationRepository(db)
+	reportRepo := repository.NewReportRepository(db)
 
 	// ===== 依赖注入：Service 层（12 个） =====
 	dh114Svc := service.NewDh114Service(dh114Repo, imageRepo, visitRepo, favoriteRepo, phoneCallRepo)
@@ -108,6 +111,7 @@ func (p *Plugin) Init(ctx context.Context) error {
 	recommendationSvc := service.NewRecommendationService(recommendationRepo)
 	statisticSvc := service.NewStatisticService(statisticRepo)
 	verificationSvc := service.NewVerificationService(verificationRepo)
+	reportSvc := service.NewReportService(reportRepo)
 
 	// ===== 依赖注入：Handler 层（12 个） =====
 	p.dh114Handler = handler.NewHandler(dh114Svc)
@@ -122,6 +126,7 @@ func (p *Plugin) Init(ctx context.Context) error {
 	p.recommendationHandler = handler.NewRecommendationHandler(recommendationSvc)
 	p.statisticHandler = handler.NewStatisticHandler(statisticSvc)
 	p.verificationHandler = handler.NewVerificationHandler(verificationSvc)
+	p.reportHandler = handler.NewReportHandler(reportSvc)
 
 	// 避免未使用变量告警（tagRepo 暂未在 service 层使用，保留以备后续扩展）
 	_ = tagRepo
@@ -226,6 +231,10 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.GET("/:id/statistics", readLimiter, p.statisticHandler.ListByDh114)
 	router.GET("/:id/statistics/summary", readLimiter, p.statisticHandler.SumByDh114)
 
+	// 举报列表（公开，无需登录）
+	// 注意：注册在 /:id 之前的固定路径，避免被 :id 参数路由吞掉
+	router.GET("/reports", readLimiter, p.reportHandler.List)
+
 	// ==================== 需登录路由（C 端发布/收藏/交易） ====================
 
 	// 商户主表 CRUD
@@ -314,6 +323,12 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.POST("/recommendations/:id/clicked", auth, p.recommendationHandler.MarkClicked)
 	router.POST("/recommendations/:id/contacted", auth, p.recommendationHandler.MarkContacted)
 	router.POST("/recommendations/:id/dismissed", auth, p.recommendationHandler.MarkDismissed)
+
+	// 举报 CRUD（前端调用 /dh114/reports/* 公开端点，非 /admin/reports/*）
+	// Create 需 auth 登录；Process/Delete 需 auth + dh114:audit 权限
+	router.POST("/reports", auth, writeLimiter, p.reportHandler.Create)
+	router.PUT("/reports/:id/process", auth, auditPerm, writeLimiter, p.reportHandler.Process)
+	router.DELETE("/reports/:id", auth, auditPerm, writeLimiter, p.reportHandler.Delete)
 
 	// ==================== 管理后台路由（需 dh114:audit 权限） ====================
 

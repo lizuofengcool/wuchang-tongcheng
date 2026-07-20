@@ -377,6 +377,8 @@ const (
 	CodeDh114StatisticError  = 5328 // 统计错误
 	CodeDh114MenuError       = 5329 // 菜单错误
 	CodeDh114MenuNotFound    = 5330 // 菜单不存在
+	CodeDh114ReportError     = 5331 // 举报错误
+	CodeDh114ReportNotFound  = 5332 // 举报记录不存在
 )
 
 // 错误消息映射
@@ -713,6 +715,8 @@ var codeMessages = map[int]string{
         CodeDh114StatisticError:     "统计错误",
         CodeDh114MenuError:          "菜单错误",
         CodeDh114MenuNotFound:       "菜单不存在",
+        CodeDh114ReportError:        "举报错误",
+        CodeDh114ReportNotFound:     "举报记录不存在",
 
         // love 相亲交友模块错误
         CodeLoveError:                "相亲交友错误",
