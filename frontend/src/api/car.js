@@ -1,5 +1,5 @@
 // 同城车辆买卖模块 API 封装（完整版 v1.0）
-// 对应后端路由前缀：/api/v1/car（公开/C端） + /api/v1/admin/car（管理后台，注意 admin 在 car 之前）
+// 对应后端路由前缀：/api/v1/car（公开/C端） + /api/v1/car/admin（管理后台）
 // 涵盖：车源/发布单/检测/评估/分期/车险/试驾/过户/合同/担保/评价/举报/统计/推荐/审核规则/车型库
 import request from '@/utils/request'
 
@@ -90,32 +90,32 @@ export function recordCarView(id) {
 
 // 管理端 - 车源列表
 export function adminListCars(params) {
-  return request.get('/admin/car/cars', { params })
+  return request.get('/car/admin/cars', { params })
 }
 
 // 管理端 - 车源详情
 export function adminGetCar(id) {
-  return request.get(`/admin/car/cars/${id}`)
+  return request.get(`/car/admin/cars/${id}`)
 }
 
 // 管理端 - 审核
 export function auditCar(id, data) {
-  return request.put(`/admin/car/cars/${id}/audit`, data)
+  return request.put(`/car/admin/cars/${id}/audit`, data)
 }
 
 // 管理端 - 状态变更
 export function adminUpdateCarStatus(id, data) {
-  return request.put(`/admin/car/cars/${id}/status`, data)
+  return request.put(`/car/admin/cars/${id}/status`, data)
 }
 
 // 管理端 - 真车验证
 export function realCarVerify(id, data) {
-  return request.put(`/admin/car/cars/${id}/real-car-verify`, data)
+  return request.put(`/car/admin/cars/${id}/real-car-verify`, data)
 }
 
 // 管理端 - 推广
 export function updateCarPromotion(id, data) {
-  return request.put(`/admin/car/cars/${id}/promotion`, data)
+  return request.put(`/car/admin/cars/${id}/promotion`, data)
 }
 
 // ====================================================================
@@ -154,27 +154,27 @@ export function listMyListings(params) {
 
 // 管理端 - 发布单列表
 export function adminListListings(params) {
-  return request.get('/admin/car/listings', { params })
+  return request.get('/car/admin/listings', { params })
 }
 
 // 管理端 - 发布单详情
 export function adminGetListing(id) {
-  return request.get(`/admin/car/listings/${id}`)
+  return request.get(`/car/admin/listings/${id}`)
 }
 
 // 管理端 - 发布单审核
 export function auditListing(id, data) {
-  return request.put(`/admin/car/listings/${id}/audit`, data)
+  return request.put(`/car/admin/listings/${id}/audit`, data)
 }
 
 // 管理端 - 发布单状态变更
 export function adminUpdateListingStatus(id, data) {
-  return request.put(`/admin/car/listings/${id}/status`, data)
+  return request.put(`/car/admin/listings/${id}/status`, data)
 }
 
 // 管理端 - 检测状态变更
 export function updateListingInspectionStatus(id, data) {
-  return request.put(`/admin/car/listings/${id}/inspection-status`, data)
+  return request.put(`/car/admin/listings/${id}/inspection-status`, data)
 }
 
 // ====================================================================
@@ -218,22 +218,22 @@ export function listMyInspections(params) {
 
 // 管理端 - 检测列表
 export function adminListInspections(params) {
-  return request.get('/admin/car/inspections', { params })
+  return request.get('/car/admin/inspections', { params })
 }
 
 // 管理端 - 检测详情
 export function adminGetInspection(id) {
-  return request.get(`/admin/car/inspections/${id}`)
+  return request.get(`/car/admin/inspections/${id}`)
 }
 
 // 管理端 - 检测审核
 export function reviewInspection(id, data) {
-  return request.put(`/admin/car/inspections/${id}/review`, data)
+  return request.put(`/car/admin/inspections/${id}/review`, data)
 }
 
 // 管理端 - 检测状态变更
 export function adminUpdateInspectionStatus(id, data) {
-  return request.put(`/admin/car/inspections/${id}/status`, data)
+  return request.put(`/car/admin/inspections/${id}/status`, data)
 }
 
 // ====================================================================
@@ -287,17 +287,17 @@ export function onlineEvaluate(data) {
 
 // 管理端 - 评估列表
 export function adminListEvaluations(params) {
-  return request.get('/admin/car/evaluations', { params })
+  return request.get('/car/admin/evaluations', { params })
 }
 
 // 管理端 - 评估详情
 export function adminGetEvaluation(id) {
-  return request.get(`/admin/car/evaluations/${id}`)
+  return request.get(`/car/admin/evaluations/${id}`)
 }
 
 // 管理端 - 评估状态变更
 export function adminUpdateEvaluationStatus(id, data) {
-  return request.put(`/admin/car/evaluations/${id}/status`, data)
+  return request.put(`/car/admin/evaluations/${id}/status`, data)
 }
 
 // ====================================================================
@@ -326,32 +326,32 @@ export function calculateFinancing(data) {
 
 // 管理端 - 分期列表
 export function adminListFinancings(params) {
-  return request.get('/admin/car/financings', { params })
+  return request.get('/car/admin/financings', { params })
 }
 
 // 管理端 - 分期详情
 export function adminGetFinancing(id) {
-  return request.get(`/admin/car/financings/${id}`)
+  return request.get(`/car/admin/financings/${id}`)
 }
 
 // 管理端 - 创建分期
 export function createFinancing(data) {
-  return request.post('/admin/car/financings', data)
+  return request.post('/car/admin/financings', data)
 }
 
 // 管理端 - 更新分期
 export function updateFinancing(id, data) {
-  return request.put(`/admin/car/financings/${id}`, data)
+  return request.put(`/car/admin/financings/${id}`, data)
 }
 
 // 管理端 - 删除分期
 export function deleteFinancing(id) {
-  return request.delete(`/admin/car/financings/${id}`)
+  return request.delete(`/car/admin/financings/${id}`)
 }
 
 // 管理端 - 分期状态变更
 export function adminUpdateFinancingStatus(id, data) {
-  return request.put(`/admin/car/financings/${id}/status`, data)
+  return request.put(`/car/admin/financings/${id}/status`, data)
 }
 
 // ====================================================================
@@ -380,32 +380,32 @@ export function quoteInsurance(data) {
 
 // 管理端 - 车险列表
 export function adminListInsurances(params) {
-  return request.get('/admin/car/insurances', { params })
+  return request.get('/car/admin/insurances', { params })
 }
 
 // 管理端 - 车险详情
 export function adminGetInsurance(id) {
-  return request.get(`/admin/car/insurances/${id}`)
+  return request.get(`/car/admin/insurances/${id}`)
 }
 
 // 管理端 - 创建车险
 export function createInsurance(data) {
-  return request.post('/admin/car/insurances', data)
+  return request.post('/car/admin/insurances', data)
 }
 
 // 管理端 - 更新车险
 export function updateInsurance(id, data) {
-  return request.put(`/admin/car/insurances/${id}`, data)
+  return request.put(`/car/admin/insurances/${id}`, data)
 }
 
 // 管理端 - 删除车险
 export function deleteInsurance(id) {
-  return request.delete(`/admin/car/insurances/${id}`)
+  return request.delete(`/car/admin/insurances/${id}`)
 }
 
 // 管理端 - 车险状态变更
 export function adminUpdateInsuranceStatus(id, data) {
-  return request.put(`/admin/car/insurances/${id}/status`, data)
+  return request.put(`/car/admin/insurances/${id}/status`, data)
 }
 
 // ====================================================================
@@ -459,17 +459,17 @@ export function uploadTestDriveLicense(id, data) {
 
 // 管理端 - 试驾列表
 export function adminListTestDrives(params) {
-  return request.get('/admin/car/test-drives', { params })
+  return request.get('/car/admin/test-drives', { params })
 }
 
 // 管理端 - 试驾详情
 export function adminGetTestDrive(id) {
-  return request.get(`/admin/car/test-drives/${id}`)
+  return request.get(`/car/admin/test-drives/${id}`)
 }
 
 // 管理端 - 试驾状态变更
 export function adminUpdateTestDriveStatus(id, data) {
-  return request.put(`/admin/car/test-drives/${id}/status`, data)
+  return request.put(`/car/admin/test-drives/${id}/status`, data)
 }
 
 // ====================================================================
@@ -518,17 +518,17 @@ export function listBoughtTransfers(params) {
 
 // 管理端 - 过户列表
 export function adminListTransfers(params) {
-  return request.get('/admin/car/transfers', { params })
+  return request.get('/car/admin/transfers', { params })
 }
 
 // 管理端 - 过户详情
 export function adminGetTransfer(id) {
-  return request.get(`/admin/car/transfers/${id}`)
+  return request.get(`/car/admin/transfers/${id}`)
 }
 
 // 管理端 - 过户状态变更
 export function adminUpdateTransferStatus(id, data) {
-  return request.put(`/admin/car/transfers/${id}/status`, data)
+  return request.put(`/car/admin/transfers/${id}/status`, data)
 }
 
 // ====================================================================
@@ -562,17 +562,17 @@ export function escrowAction(id, data) {
 
 // 管理端 - 担保列表
 export function adminListEscrows(params) {
-  return request.get('/admin/car/escrows', { params })
+  return request.get('/car/admin/escrows', { params })
 }
 
 // 管理端 - 担保详情
 export function adminGetEscrow(id) {
-  return request.get(`/admin/car/escrows/${id}`)
+  return request.get(`/car/admin/escrows/${id}`)
 }
 
 // 管理端 - 担保状态变更
 export function adminUpdateEscrowStatus(id, data) {
-  return request.put(`/admin/car/escrows/${id}/status`, data)
+  return request.put(`/car/admin/escrows/${id}/status`, data)
 }
 
 // ====================================================================
@@ -611,17 +611,17 @@ export function terminateContract(id) {
 
 // 管理端 - 合同列表
 export function adminListContracts(params) {
-  return request.get('/admin/car/contracts', { params })
+  return request.get('/car/admin/contracts', { params })
 }
 
 // 管理端 - 合同详情
 export function adminGetContract(id) {
-  return request.get(`/admin/car/contracts/${id}`)
+  return request.get(`/car/admin/contracts/${id}`)
 }
 
 // 管理端 - 合同状态变更
 export function adminUpdateContractStatus(id, data) {
-  return request.put(`/admin/car/contracts/${id}/status`, data)
+  return request.put(`/car/admin/contracts/${id}/status`, data)
 }
 
 // ====================================================================
@@ -685,12 +685,12 @@ export function likeReview(id) {
 
 // 管理端 - 评价列表
 export function adminListReviews(params) {
-  return request.get('/admin/car/reviews', { params })
+  return request.get('/car/admin/reviews', { params })
 }
 
 // 管理端 - 评价状态变更
 export function adminUpdateReviewStatus(id, data) {
-  return request.put(`/admin/car/reviews/${id}/status`, data)
+  return request.put(`/car/admin/reviews/${id}/status`, data)
 }
 
 // ====================================================================
@@ -719,27 +719,27 @@ export function appealReport(id, data) {
 
 // 管理端 - 举报列表
 export function adminListReports(params) {
-  return request.get('/admin/car/reports', { params })
+  return request.get('/car/admin/reports', { params })
 }
 
 // 管理端 - 举报详情
 export function adminGetReport(id) {
-  return request.get(`/admin/car/reports/${id}`)
+  return request.get(`/car/admin/reports/${id}`)
 }
 
 // 管理端 - 处理举报
 export function processReport(id, data) {
-  return request.put(`/admin/car/reports/${id}/process`, data)
+  return request.put(`/car/admin/reports/${id}/process`, data)
 }
 
 // 管理端 - 申诉处理
 export function processAppeal(id, data) {
-  return request.put(`/admin/car/reports/${id}/appeal`, data)
+  return request.put(`/car/admin/reports/${id}/appeal`, data)
 }
 
 // 管理端 - 举报状态变更
 export function adminUpdateReportStatus(id, data) {
-  return request.put(`/admin/car/reports/${id}/status`, data)
+  return request.put(`/car/admin/reports/${id}/status`, data)
 }
 
 // ====================================================================
@@ -773,12 +773,12 @@ export function markRecDismissed(id) {
 
 // 管理端 - 推荐列表
 export function adminListRecommendations(params) {
-  return request.get('/admin/car/recommendations', { params })
+  return request.get('/car/admin/recommendations', { params })
 }
 
 // 管理端 - 删除推荐
 export function adminDeleteRecommendation(id) {
-  return request.delete(`/admin/car/recommendations/${id}`)
+  return request.delete(`/car/admin/recommendations/${id}`)
 }
 
 // ====================================================================
@@ -787,37 +787,37 @@ export function adminDeleteRecommendation(id) {
 
 // 管理端 - 规则列表
 export function listAuditRules(params) {
-  return request.get('/admin/car/audit-rules', { params })
+  return request.get('/car/admin/audit-rules', { params })
 }
 
 // 管理端 - 规则详情
 export function getAuditRule(id) {
-  return request.get(`/admin/car/audit-rules/${id}`)
+  return request.get(`/car/admin/audit-rules/${id}`)
 }
 
 // 管理端 - 创建规则
 export function createAuditRule(data) {
-  return request.post('/admin/car/audit-rules', data)
+  return request.post('/car/admin/audit-rules', data)
 }
 
 // 管理端 - 更新规则
 export function updateAuditRule(id, data) {
-  return request.put(`/admin/car/audit-rules/${id}`, data)
+  return request.put(`/car/admin/audit-rules/${id}`, data)
 }
 
 // 管理端 - 删除规则
 export function deleteAuditRule(id) {
-  return request.delete(`/admin/car/audit-rules/${id}`)
+  return request.delete(`/car/admin/audit-rules/${id}`)
 }
 
 // 管理端 - 规则状态变更
 export function updateAuditRuleStatus(id, data) {
-  return request.put(`/admin/car/audit-rules/${id}/status`, data)
+  return request.put(`/car/admin/audit-rules/${id}/status`, data)
 }
 
 // 管理端 - 规则检查
 export function checkAuditRules(data) {
-  return request.post('/admin/car/audit-rules/check', data)
+  return request.post('/car/admin/audit-rules/check', data)
 }
 
 // ====================================================================
@@ -890,12 +890,12 @@ export function getSellerStats() {
 
 // 管理端 - 平台总览
 export function getOverviewStats() {
-  return request.get('/admin/car/statistics/overview')
+  return request.get('/car/admin/statistics/overview')
 }
 
 // 管理端 - 统计列表
 export function adminListStats(params) {
-  return request.get('/admin/car/statistics', { params })
+  return request.get('/car/admin/statistics', { params })
 }
 
 // ====================================================================
