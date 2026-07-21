@@ -1,26 +1,50 @@
 <template>
     <view class="page">
-        <!-- 骑手信息 -->
-        <view class="rider-header">
-            <view class="rider-info">
-                <text class="rider-name">{{ riderName }}</text>
-                <view class="status-switch" @click="toggleOnline">
-                    <text class="status-text">{{ isOnline ? '在线接单' : '已下线' }}</text>
+        <!-- 骑手信息头部 -->
+        <rider-profile-header :rider="riderInfo" @toggle="toggleOnline" />
+
+        <!-- 今日数据卡片 -->
+        <view class="stat-row">
+            <rider-stat-card label="今日订单" :value="todayOrders" icon="📦" type="primary" />
+            <rider-stat-card label="今日收益" :value="todayIncome" prefix="¥" icon="💰" />
+            <rider-stat-card label="今日里程" :value="todayDistance" suffix="km" icon="📏" />
+        </view>
+
+        <!-- 待处理订单提醒 -->
+        <view class="todo-card" v-if="todoList.length > 0">
+            <view class="todo-header">
+                <text class="todo-title">待处理订单</text>
+                <text class="todo-count">{{ todoList.length }}</text>
+            </view>
+            <view class="todo-list">
+                <view class="todo-item" v-for="(t, idx) in todoList" :key="idx" @click="goTodo(t.url)">
+                    <text class="todo-icon">{{ t.icon }}</text>
+                    <text class="todo-text">{{ t.text }}</text>
+                    <text class="todo-arrow">›</text>
                 </view>
             </view>
         </view>
-        <!-- 功能入口 -->
-        <view class="grid">
-            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
-                <text class="grid-icon">{{ item.icon }}</text>
-                <text class="grid-name">{{ item.name }}</text>
+
+        <!-- 快捷入口 6 项 -->
+        <view class="grid-card">
+            <text class="grid-title">功能入口</text>
+            <view class="grid">
+                <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
+                    <view class="grid-icon-wrap">
+                        <text class="grid-icon">{{ item.icon }}</text>
+                    </view>
+                    <text class="grid-name">{{ item.name }}</text>
+                </view>
             </view>
         </view>
+
+        <rider-loading :text="'加载中...'" v-if="loading" />
     </view>
 </template>
 
 <script setup lang="uts">
     import { guardRider } from '@/utils/auth.uts'
+    import { getMyRider, riderOnline, riderOffline, getMyEarnings, listMyDeliveries } from '@/api/business/rider.uts'
 
     type MenuItem = {
         id: number
@@ -29,26 +53,149 @@
         url: string
     }
 
-    const riderName = ref('骑手小哥')
-    const isOnline = ref(true)
+    type RiderInfo = {
+        name: string
+        avatar: string
+        level: string
+        credit_score: number
+        total_orders: number
+        is_online: boolean
+    }
+
+    type Todo = {
+        icon: string
+        text: string
+        url: string
+    }
+
+    const riderInfo = ref({
+        name: '骑手小哥',
+        avatar: '',
+        level: '',
+        credit_score: 100,
+        total_orders: 0,
+        is_online: false
+    } as RiderInfo)
+    const riderId = ref(0)
+    const todayOrders = ref(0)
+    const todayIncome = ref('0.00')
+    const todayDistance = ref('0.0')
+    const loading = ref(false)
+    const todoList = ref([] as Todo[])
 
     const menuList = ref([
-        { id: 1, name: '配送中', icon: '🛵', url: '/pages/rider/delivering' },
-        { id: 2, name: '历史订单', icon: '📋', url: '/pages/rider/history' },
-        { id: 3, name: '我的收益', icon: '💰', url: '/pages/rider/earnings' }
+        { id: 1, name: '抢单大厅', icon: '🎯', url: '/pages/rider/grab' },
+        { id: 2, name: '配送中', icon: '🛵', url: '/pages/rider/delivering' },
+        { id: 3, name: '历史订单', icon: '📋', url: '/pages/rider/history' },
+        { id: 4, name: '我的收益', icon: '💰', url: '/pages/rider/earnings' },
+        { id: 5, name: '骑手认证', icon: '✅', url: '/pages/rider/verify' },
+        { id: 6, name: '设置', icon: '⚙️', url: '/pages/rider/profile' }
     ] as MenuItem[])
 
+    const loadRider = () => {
+        loading.value = true
+        getMyRider().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                riderId.value = (d['id'] as number) ?? 0
+                riderInfo.value = {
+                    name: (d['real_name'] as string) ?? '骑手小哥',
+                    avatar: (d['avatar'] as string) ?? '',
+                    level: (d['level'] as string) ?? '',
+                    credit_score: (d['credit_score'] as number) ?? 100,
+                    total_orders: (d['total_orders'] as number) ?? 0,
+                    is_online: (d['is_online'] as boolean) ?? false
+                } as RiderInfo
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadStats = () => {
+        getMyEarnings({ period: 'today' } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                todayOrders.value = (d['today_orders'] as number) ?? 0
+                todayIncome.value = (d['today_income'] as string) ?? '0.00'
+                todayDistance.value = (d['today_distance'] as string) ?? '0.0'
+            }
+        }).catch(() => {})
+
+        // 加载配送中订单
+        listMyDeliveries({ status: 'delivering', page: 1, page_size: 5 } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const cnt = (d['total'] as number) ?? 0
+                const arr = [] as Todo[]
+                if (cnt > 0) {
+                    arr.push({
+                        icon: '🛵',
+                        text: '有 ' + cnt + ' 个订单正在配送',
+                        url: '/pages/rider/delivering'
+                    } as Todo)
+                }
+                // 待取货订单
+                const pickedCnt = (d['pending_count'] as number) ?? 0
+                if (pickedCnt > 0) {
+                    arr.push({
+                        icon: '📦',
+                        text: '有 ' + pickedCnt + ' 个订单待取货',
+                        url: '/pages/rider/delivering?status=grabbed'
+                    } as Todo)
+                }
+                todoList.value = arr
+            }
+        }).catch(() => {})
+    }
+
     const toggleOnline = () => {
-        isOnline.value = !isOnline.value
-        uni.showToast({ title: isOnline.value ? '已上线接单' : '已下线', icon: 'none' })
+        if (riderId.value == 0) {
+            uni.showToast({ title: '骑手信息加载中', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提示',
+            content: riderInfo.value.is_online ? '确定要下线吗？下线后将无法接单' : '确定要上线接单吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    const api = riderInfo.value.is_online
+                        ? riderOffline(riderId.value)
+                        : riderOnline(riderId.value)
+                    api.then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            riderInfo.value.is_online = !riderInfo.value.is_online
+                            uni.showToast({
+                                title: riderInfo.value.is_online ? '已上线接单' : '已下线',
+                                icon: 'none'
+                            })
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
     }
 
     const goPage = (url: string) => {
         uni.navigateTo({ url: url })
     }
 
+    const goTodo = (url: string) => {
+        uni.navigateTo({ url: url })
+    }
+
     onLoad(() => {
-        guardRider()
+        if (!guardRider()) return
+        loadRider()
+        loadStats()
+    })
+
+    onPullDownRefresh(() => {
+        loadRider()
+        loadStats()
     })
 </script>
 
@@ -58,56 +205,111 @@
         background-color: #F5F5F5;
     }
 
-    .rider-header {
-        background-color: #FF6B35;
-        padding: 20px 16px;
-    }
-
-    .rider-info {
+    .stat-row {
         flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .rider-name {
-        font-size: 18px;
-        color: #FFFFFF;
-        font-weight: 600;
-    }
-
-    .status-switch {
-        background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        padding: 4px 12px;
-    }
-
-    .status-text {
-        font-size: 12px;
-        color: #FFFFFF;
-    }
-
-    .grid {
-        flex-direction: row;
-        flex-wrap: wrap;
-        padding: 12px;
+        padding: 12px 8px;
         background-color: #FFFFFF;
         margin: 12px;
         border-radius: 12px;
     }
 
-    .grid-item {
-        width: 33.33%;
-        align-items: center;
-        padding: 20px 0;
+    .todo-card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
-    .grid-icon {
-        font-size: 32px;
+    .todo-header {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .todo-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .todo-count {
+        font-size: 12px;
+        color: #FFFFFF;
+        background-color: #FF6B35;
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+
+    .todo-list {
+        padding: 0 12px;
+    }
+
+    .todo-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .todo-icon {
+        font-size: 16px;
+        margin-right: 8px;
+    }
+
+    .todo-text {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .todo-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .grid-card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .grid-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
         margin-bottom: 8px;
     }
 
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .grid-item {
+        width: 33.33%;
+        align-items: center;
+        padding: 12px 0;
+    }
+
+    .grid-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 6px;
+    }
+
+    .grid-icon {
+        font-size: 22px;
+    }
+
     .grid-name {
-        font-size: 13px;
+        font-size: 12px;
         color: #333;
     }
 </style>

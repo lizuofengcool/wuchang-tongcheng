@@ -1,14 +1,19 @@
 <template>
     <view class="page">
-        <!-- 状态筛选 -->
-        <scroll-view class="tabs" scroll-x>
-            <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
-                <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
-                <text class="tab-count" v-if="tab.count > 0">{{ tab.count }}</text>
+        <!-- 状态筛选 + 搜索 -->
+        <view class="filter-bar">
+            <scroll-view class="tabs" scroll-x>
+                <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
+                    <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+                </view>
+            </scroll-view>
+            <view class="search-bar">
+                <text class="search-icon">🔍</text>
+                <input class="search-input" placeholder="搜索订单号/商家/收货人" v-model="keyword" confirm-type="search" @confirm="onSearch" />
             </view>
-        </scroll-view>
+        </view>
 
-        <!-- 配送中列表 -->
+        <!-- 配送单列表 -->
         <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
             <rider-loading :text="'加载中...'" v-if="loading && list.length == 0" />
             <view class="list-wrap" v-if="list.length > 0">
@@ -28,19 +33,24 @@
             </view>
             <rider-empty
                 v-if="list.length == 0 && !loading"
-                icon="🛵"
-                text="暂无配送中订单"
-                btn-text="去抢单"
-                @click="goGrab" />
+                icon="🎯"
+                text="暂无可抢配送单"
+                btn-text="刷新"
+                @click="onRefresh" />
         </scroll-view>
+
+        <!-- 浮动刷新按钮 -->
+        <view class="fab-refresh" @click="onRefresh">
+            <text class="fab-icon">🔄</text>
+        </view>
     </view>
 </template>
 
 <script setup lang="uts">
     import { guardRider } from '@/utils/auth.uts'
-    import { listMyDeliveries, arriveShop, pickupDelivery, startDeliver, completeDelivery, cancelDelivery } from '@/api/business/rider.uts'
+    import { listGrabDeliveries, grabDelivery } from '@/api/business/rider.uts'
 
-    type Tab = { id: number, name: string, value: string, count: number }
+    type Tab = { id: number, name: string, value: string }
 
     type ListItem = {
         id: number
@@ -73,14 +83,14 @@
     type Action = { text: string, type: string, primary: boolean }
 
     const tabs = ref([
-        { id: 0, name: '全部', value: '', count: 0 },
-        { id: 1, name: '已接单', value: 'grabbed', count: 0 },
-        { id: 2, name: '到店', value: 'arrived', count: 0 },
-        { id: 3, name: '已取货', value: 'picked', count: 0 },
-        { id: 4, name: '配送中', value: 'delivering', count: 0 }
+        { id: 0, name: '全部', value: '' },
+        { id: 1, name: '就近', value: 'nearby' },
+        { id: 2, name: '高价', value: 'high_fee' },
+        { id: 3, name: '最新', value: 'latest' }
     ] as Tab[])
 
     const activeTab = ref(0)
+    const keyword = ref('')
     const list = ref([] as ListItem[])
     const loading = ref(false)
     const hasMore = ref(true)
@@ -106,18 +116,8 @@
     const getActions = (item: ListItem) : Action[] => {
         const arr = [] as Action[]
         arr.push({ text: '查看', type: 'detail', primary: false } as Action)
-        if (item.status == 'grabbed') {
-            arr.push({ text: '到店', type: 'arrive-shop', primary: true } as Action)
-        } else if (item.status == 'arrived') {
-            arr.push({ text: '取货', type: 'pickup', primary: true } as Action)
-        } else if (item.status == 'picked') {
-            arr.push({ text: '开始配送', type: 'deliver', primary: true } as Action)
-        } else if (item.status == 'delivering') {
-            arr.push({ text: '送达', type: 'complete', primary: true } as Action)
-        }
-        // 已接单后均允许取消
-        if (item.status == 'grabbed' || item.status == 'arrived' || item.status == 'picked' || item.status == 'delivering') {
-            arr.push({ text: '取消', type: 'cancel', primary: false } as Action)
+        if (item.status == 'pending') {
+            arr.push({ text: '抢单', type: 'grab', primary: true } as Action)
         }
         return arr
     }
@@ -125,6 +125,14 @@
     const switchTab = (id: number) => {
         if (activeTab.value == id) return
         activeTab.value = id
+        loadList(true)
+    }
+
+    const onSearch = () => {
+        loadList(true)
+    }
+
+    const onRefresh = () => {
         loadList(true)
     }
 
@@ -139,14 +147,18 @@
         loading.value = true
         const params: UTSJSONObject = {
             page: page.value,
-            page_size: pageSize
+            page_size: pageSize,
+            status: 'pending'
         } as UTSJSONObject
         const tab = tabs.value[activeTab.value]
         if (tab.value.length > 0) {
-            params['status'] = tab.value
+            params['sort'] = tab.value
+        }
+        if (keyword.value.length > 0) {
+            params['keyword'] = keyword.value
         }
 
-        listMyDeliveries(params).then((res: ApiResult) => {
+        listGrabDeliveries(params).then((res: ApiResult) => {
             loading.value = false
             uni.stopPullDownRefresh()
             if (res.code == 200 && res.data) {
@@ -177,68 +189,33 @@
         uni.navigateTo({ url: '/pages/rider/order/detail?id=' + id })
     }
 
-    const goGrab = () => {
-        uni.navigateTo({ url: '/pages/rider/grab' })
-    }
-
     const onAction = (deliveryId: number, actionType: string) => {
         if (actionType == 'detail') {
             goDetail(deliveryId)
             return
         }
-
-        const actionMap: UTSJSONObject = {
-            'arrive-shop': '到店',
-            'pickup': '取货',
-            'deliver': '开始配送',
-            'complete': '送达',
-            'cancel': '取消'
-        } as UTSJSONObject
-        const actionText = (actionMap[actionType] as string) ?? ''
-        if (actionText.length == 0) return
-
-        uni.showModal({
-            title: '提示',
-            content: '确定要执行「' + actionText + '」操作吗？',
-            success: (r: ShowModalRes) => {
-                if (r.confirm) {
-                    let api: Promise<ApiResult> | null = null
-                    if (actionType == 'arrive-shop') {
-                        api = arriveShop(deliveryId)
-                    } else if (actionType == 'pickup') {
-                        api = pickupDelivery(deliveryId)
-                    } else if (actionType == 'deliver') {
-                        api = startDeliver(deliveryId)
-                    } else if (actionType == 'complete') {
-                        api = completeDelivery(deliveryId)
-                    } else if (actionType == 'cancel') {
-                        api = cancelDelivery(deliveryId)
+        if (actionType == 'grab') {
+            uni.showModal({
+                title: '抢单',
+                content: '确定要接此配送单吗？',
+                success: (r: ShowModalRes) => {
+                    if (r.confirm) {
+                        grabDelivery(deliveryId).then((res: ApiResult) => {
+                            if (res.code == 200) {
+                                uni.showToast({ title: '抢单成功', icon: 'success' })
+                                loadList(true)
+                            } else {
+                                uni.showToast({ title: res.message || '抢单失败', icon: 'none' })
+                            }
+                        }).catch(() => {})
                     }
-                    if (api == null) return
-                    api!.then((res: ApiResult) => {
-                        if (res.code == 200) {
-                            uni.showToast({ title: actionText + '成功', icon: 'success' })
-                            loadList(true)
-                        } else {
-                            uni.showToast({ title: res.message || actionText + '失败', icon: 'none' })
-                        }
-                    }).catch(() => {})
                 }
-            }
-        })
+            })
+        }
     }
 
-    onLoad((options: UTSJSONObject) => {
+    onLoad(() => {
         if (!guardRider()) return
-        if (options != null && options!['status'] != null) {
-            const s = options!['status'] as string
-            for (let i = 0; i < tabs.value.length; i++) {
-                if (tabs.value[i].value == s) {
-                    activeTab.value = tabs.value[i].id
-                    break
-                }
-            }
-        }
         loadList(true)
     })
 
@@ -253,8 +230,11 @@
         background-color: #F5F5F5;
     }
 
-    .tabs {
+    .filter-bar {
         background-color: #FFFFFF;
+    }
+
+    .tabs {
         flex-direction: row;
         padding: 0 8px;
         border-bottom: 1px solid #F0F0F0;
@@ -263,7 +243,6 @@
     .tab-item {
         padding: 12px 14px;
         align-items: center;
-        flex-direction: row;
     }
 
     .tab-text {
@@ -276,13 +255,24 @@
         font-weight: 600;
     }
 
-    .tab-count {
-        font-size: 10px;
-        color: #FFFFFF;
-        background-color: #FF6B35;
-        border-radius: 8px;
-        padding: 1px 6px;
-        margin-left: 4px;
+    .search-bar {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-input {
+        flex: 1;
+        font-size: 13px;
+        background-color: #F5F5F5;
+        border-radius: 16px;
+        padding: 6px 12px;
     }
 
     .list-scroll {
@@ -301,5 +291,22 @@
     .load-text, .no-more-text {
         font-size: 12px;
         color: #999;
+    }
+
+    .fab-refresh {
+        position: fixed;
+        right: 16px;
+        bottom: 80px;
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+    }
+
+    .fab-icon {
+        font-size: 22px;
     }
 </style>

@@ -1,0 +1,315 @@
+// 商家端 API 封装
+// 对应后端：
+//   - merchant 中台（/merchant/*）
+//   - mall 模块商家维度 API（/mall/products, /mall/orders, /mall/refunds, /mall/logistics, /mall/reviews, /mall/statistics, /mall/audit-rules, /mall/reports）
+//   - marketing 营销中台（/marketing/coupons, /marketing/activities）
+// 路由前缀由 request.uts BASE_URL 拼接为 /api/v1/{module}/...
+// 风格对标 frontend/app/api/business/mall.uts
+// 对标美团商家版 / 饿了么商家版
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== merchant 中台 - 店铺（shops）=====
+// 店铺列表
+export const listMerchantShops = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/shops', params)
+}
+
+// 店铺详情（按搜索）
+export const searchMerchantShop = (id: number) : Promise<ApiResult> => {
+    return get('/merchant/shops/search/' + id)
+}
+
+// 申请入驻
+export const applyMerchantShop = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/merchant/shops/apply', data)
+}
+
+// 认领店铺
+export const claimMerchantShop = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/merchant/shops/claim', data)
+}
+
+// 我的店铺
+export const getMyMerchantShop = () : Promise<ApiResult> => {
+    return get('/merchant/shops/mine')
+}
+
+// 更新店铺
+export const updateMerchantShop = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/merchant/shops/' + id, data)
+}
+
+// ===== merchant 中台 - 员工（staff）=====
+// 员工详情
+export const getMerchantStaffDetail = (id: number) : Promise<ApiResult> => {
+    return get('/merchant/staff/' + id)
+}
+
+// 员工列表
+export const listMerchantStaff = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/staff', params)
+}
+
+// 添加员工
+export const createMerchantStaff = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/merchant/staff', data)
+}
+
+// 更新员工
+export const updateMerchantStaff = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/merchant/staff/' + id, data)
+}
+
+// 删除员工
+export const deleteMerchantStaff = (id: number) : Promise<ApiResult> => {
+    return del('/merchant/staff/' + id)
+}
+
+// 更新员工权限
+export const updateMerchantStaffPermissions = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/merchant/staff/' + id + '/permissions', data)
+}
+
+// 更新员工角色
+export const updateMerchantStaffRole = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/merchant/staff/' + id + '/role', data)
+}
+
+// ===== merchant 中台 - 认证（verifications）=====
+// 认证列表
+export const listMerchantVerifications = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/verifications', params)
+}
+
+// 认证详情
+export const getMerchantVerificationDetail = (id: number) : Promise<ApiResult> => {
+    return get('/merchant/verifications/' + id)
+}
+
+// 提交认证
+export const createMerchantVerification = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/merchant/verifications', data)
+}
+
+// 更新认证
+export const updateMerchantVerification = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/merchant/verifications/' + id, data)
+}
+
+// 删除认证
+export const deleteMerchantVerification = (id: number) : Promise<ApiResult> => {
+    return del('/merchant/verifications/' + id)
+}
+
+// 按店铺查询认证
+export const listMerchantVerificationsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/shops/' + shopId + '/verifications', params)
+}
+
+// ===== merchant 中台 - 结算（settles）=====
+// 结算列表
+export const listMerchantSettles = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/settles', params)
+}
+
+// 结算详情
+export const getMerchantSettleDetail = (id: number) : Promise<ApiResult> => {
+    return get('/merchant/settles/' + id)
+}
+
+// 按店铺查询结算
+export const listMerchantSettlesByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/shops/' + shopId + '/settles', params)
+}
+
+// ===== merchant 中台 - 类目（categories）=====
+// 类目树
+export const listMerchantCategoryTree = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/categories/tree', params)
+}
+
+// 类目列表
+export const listMerchantCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/merchant/categories', params)
+}
+
+// 类目详情
+export const getMerchantCategoryDetail = (id: number) : Promise<ApiResult> => {
+    return get('/merchant/categories/' + id)
+}
+
+// ===== mall 商家维度 - 商品（products）=====
+// 商品列表
+export const listMerchantProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products', params)
+}
+
+// 商品搜索
+export const searchMerchantProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/search', params)
+}
+
+// 商品详情
+export const getMerchantProductDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/products/' + id)
+}
+
+// 创建商品
+export const createMerchantProduct = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/products', data)
+}
+
+// 更新商品
+export const updateMerchantProduct = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/products/' + id, data)
+}
+
+// 删除商品
+export const deleteMerchantProduct = (id: number) : Promise<ApiResult> => {
+    return del('/mall/products/' + id)
+}
+
+// 我的商品
+export const listMyMerchantProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/mine', params)
+}
+
+// ===== mall 商家维度 - 订单（orders）=====
+// 订单列表
+export const listMerchantOrders = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/orders', params)
+}
+
+// 订单详情
+export const getMerchantOrderDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/orders/' + id)
+}
+
+// 更新订单状态（接单/发货/完成等）
+export const updateMerchantOrderStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/orders/' + id + '/status', data)
+}
+
+// ===== mall 商家维度 - 退款（refunds）=====
+// 退款列表
+export const listMerchantRefunds = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/refunds', params)
+}
+
+// 退款详情
+export const getMerchantRefundDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/refunds/' + id)
+}
+
+// 处理退款（同意/拒绝）
+export const processMerchantRefund = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/refunds/' + id + '/process', data)
+}
+
+// ===== mall 商家维度 - 物流（logistics）=====
+// 物流列表
+export const listMerchantLogistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/logistics', params)
+}
+
+// 物流详情
+export const getMerchantLogisticsDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/logistics/' + id)
+}
+
+// 更新物流
+export const updateMerchantLogistics = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/logistics/' + id, data)
+}
+
+// ===== mall 商家维度 - 评价（reviews）=====
+// 评价列表
+export const listMerchantReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews', params)
+}
+
+// 评价详情
+export const getMerchantReviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/reviews/' + id)
+}
+
+// 回复评价
+export const replyMerchantReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/reviews/reply', data)
+}
+
+// ===== mall 商家维度 - 统计（statistics）=====
+// 概览统计
+export const getMerchantStatisticsOverview = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/overview', params)
+}
+
+// 销售统计
+export const getMerchantStatisticsSales = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/sales', params)
+}
+
+// 商品销量统计
+export const getMerchantStatisticsProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/products', params)
+}
+
+// ===== mall 商家维度 - 审核规则（audit-rules）=====
+// 审核规则列表
+export const listMerchantAuditRules = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/audit-rules', params)
+}
+
+// 审核规则详情
+export const getMerchantAuditRuleDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/audit-rules/' + id)
+}
+
+// ===== mall 商家维度 - 举报（reports）=====
+// 举报列表
+export const listMerchantReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reports', params)
+}
+
+// 处理举报
+export const processMerchantReport = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/reports/' + id + '/process', data)
+}
+
+// ===== marketing 营销中台 - 优惠券（coupons）=====
+// 优惠券列表
+export const listMerchantCoupons = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/marketing/coupons', params)
+}
+
+// 创建优惠券
+export const createMerchantCoupon = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/marketing/coupons', data)
+}
+
+// 更新优惠券
+export const updateMerchantCoupon = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/marketing/coupons/' + id, data)
+}
+
+// 用户优惠券（领取记录）
+export const listMerchantUserCoupons = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/marketing/user-coupons', params)
+}
+
+// ===== marketing 营销中台 - 活动（activities）=====
+// 活动列表
+export const listMerchantActivities = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/marketing/activities', params)
+}
+
+// 创建活动
+export const createMerchantActivity = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/marketing/activities', data)
+}
+
+// 更新活动
+export const updateMerchantActivity = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/marketing/activities/' + id, data)
+}

@@ -1,0 +1,445 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <shop-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading">
+                <!-- 认证状态 -->
+                <view class="status-card">
+                    <text class="status-icon">{{ statusIcon }}</text>
+                    <text class="status-text">{{ verification != null ? verification!.status_text : '未提交认证' }}</text>
+                    <text class="status-desc">{{ statusDesc }}</text>
+                </view>
+
+                <!-- 认证信息 -->
+                <view class="card" v-if="verification != null">
+                    <text class="card-title">认证信息</text>
+                    <view class="info-row">
+                        <text class="info-label">认证类型</text>
+                        <text class="info-value">{{ verification!.type_text }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">企业名称</text>
+                        <text class="info-value">{{ verification!.company_name }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">统一信用代码</text>
+                        <text class="info-value">{{ verification!.credit_code }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">法人姓名</text>
+                        <text class="info-value">{{ verification!.legal_person }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">联系电话</text>
+                        <text class="info-value">{{ verification!.contact_phone }}</text>
+                    </view>
+                    <view class="info-row" v-if="verification!.review_remark.length > 0">
+                        <text class="info-label">审核备注</text>
+                        <text class="info-value">{{ verification!.review_remark }}</text>
+                    </view>
+                    <view class="info-row" v-if="verification!.submitted_at.length > 0">
+                        <text class="info-label">提交时间</text>
+                        <text class="info-value">{{ verification!.submitted_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="verification!.reviewed_at.length > 0">
+                        <text class="info-label">审核时间</text>
+                        <text class="info-value">{{ verification!.reviewed_at }}</text>
+                    </view>
+                </view>
+
+                <!-- 提交/更新认证表单 -->
+                <view class="card" v-if="canEdit">
+                    <text class="card-title">{{ verification == null ? '提交认证' : '更新认证' }}</text>
+                    <view class="form-item">
+                        <text class="label">认证类型</text>
+                        <view class="picker-row">
+                            <text class="picker-text" v-for="t in typeOptions" :key="t.value" :class="{ active: form.type == t.value }" @click="form.type = t.value">{{ t.label }}</text>
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">企业名称</text>
+                        <input class="input" placeholder="请输入企业名称" v-model="form.company_name" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">信用代码</text>
+                        <input class="input" placeholder="请输入统一社会信用代码" v-model="form.credit_code" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">法人姓名</text>
+                        <input class="input" placeholder="请输入法人姓名" v-model="form.legal_person" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">联系电话</text>
+                        <input class="input" type="number" placeholder="请输入联系电话" v-model="form.contact_phone" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">营业执照</text>
+                        <view class="image-row">
+                            <image class="license-image" :src="form.license_image" mode="aspectFill" v-if="form.license_image.length > 0" />
+                            <view class="image-add" @click="chooseImage">
+                                <text class="image-add-icon">+</text>
+                                <text class="image-add-text">上传营业执照</text>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="footer" v-if="!loading && canEdit">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">{{ verification == null ? '提交认证' : '更新认证' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { listMerchantVerifications, createMerchantVerification, updateMerchantVerification } from '@/api/business/merchant.uts'
+
+    type Verification = {
+        id: number
+        type: string
+        type_text: string
+        company_name: string
+        credit_code: string
+        legal_person: string
+        contact_phone: string
+        license_image: string
+        status: string
+        status_text: string
+        review_remark: string
+        submitted_at: string
+        reviewed_at: string
+    }
+
+    type TypeOption = { label: string, value: string }
+
+    type Form = {
+        type: string
+        company_name: string
+        credit_code: string
+        legal_person: string
+        contact_phone: string
+        license_image: string
+    }
+
+    const verification = ref<Verification | null>(null)
+    const loading = ref(false)
+    const submitting = ref(false)
+    const typeOptions = ref([
+        { label: '个体工商户', value: 'individual' },
+        { label: '企业', value: 'enterprise' },
+        { label: '其他组织', value: 'other' }
+    ] as TypeOption[])
+    const form = ref({
+        type: 'enterprise',
+        company_name: '',
+        credit_code: '',
+        legal_person: '',
+        contact_phone: '',
+        license_image: ''
+    } as Form)
+
+    const canEdit = computed(() : boolean => {
+        if (verification.value == null) return true
+        const s = verification.value!.status
+        return s == 'rejected' || s == 'draft'
+    })
+
+    const statusIcon = computed(() : string => {
+        if (verification.value == null) return '📝'
+        const s = verification.value!.status
+        if (s == 'reviewing') return '⏰'
+        if (s == 'approved') return '✅'
+        if (s == 'rejected') return '❌'
+        return '📝'
+    })
+
+    const statusDesc = computed(() : string => {
+        if (verification.value == null) return '请尽快提交认证信息'
+        const s = verification.value!.status
+        if (s == 'reviewing') return '认证审核中，请耐心等待'
+        if (s == 'approved') return '认证已通过，可正常营业'
+        if (s == 'rejected') return '认证未通过，请查看备注并重新提交'
+        return '认证草稿已保存'
+    })
+
+    const loadVerification = () => {
+        loading.value = true
+        listMerchantVerifications({ page: 1, page_size: 1 } as UTSJSONObject).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const arr = (d['list'] as Verification[]) ?? ([] as Verification[])
+                if (arr.length > 0) {
+                    verification.value = arr[0]
+                    // 同步到表单
+                    form.value = {
+                        type: verification.value!.type,
+                        company_name: verification.value!.company_name,
+                        credit_code: verification.value!.credit_code,
+                        legal_person: verification.value!.legal_person,
+                        contact_phone: verification.value!.contact_phone,
+                        license_image: verification.value!.license_image
+                    } as Form
+                }
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const chooseImage = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: res.tempFilePaths[0],
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + (uni.getStorageSync('wctc_token') as string) },
+                        success: (r: UploadFileSuccessCallbackResult) => {
+                            try {
+                                const data = JSON.parse(r.data) as UTSJSONObject
+                                const code = (data['code'] as number) ?? 0
+                                if (code == 200 || code == 0) {
+                                    const d = (data['data'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+                                    form.value.license_image = (d['url'] as string) ?? ''
+                                } else {
+                                    uni.showToast({ title: (data['message'] as string) ?? '上传失败', icon: 'none' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const validate = () : boolean => {
+        if (form.value.company_name.length == 0) {
+            uni.showToast({ title: '请输入企业名称', icon: 'none' })
+            return false
+        }
+        if (form.value.credit_code.length == 0) {
+            uni.showToast({ title: '请输入信用代码', icon: 'none' })
+            return false
+        }
+        if (form.value.legal_person.length == 0) {
+            uni.showToast({ title: '请输入法人姓名', icon: 'none' })
+            return false
+        }
+        if (form.value.contact_phone.length == 0) {
+            uni.showToast({ title: '请输入联系电话', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!validate()) return
+        if (submitting.value) return
+        submitting.value = true
+
+        const data: UTSJSONObject = {
+            type: form.value.type,
+            company_name: form.value.company_name,
+            credit_code: form.value.credit_code,
+            legal_person: form.value.legal_person,
+            contact_phone: form.value.contact_phone,
+            license_image: form.value.license_image
+        } as UTSJSONObject
+
+        const api = verification.value == null
+            ? createMerchantVerification(data)
+            : updateMerchantVerification(verification.value!.id, data)
+
+        api.then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showToast({ title: '提交成功', icon: 'success' })
+                loadVerification()
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadVerification()
+    })
+
+    onPullDownRefresh(() => {
+        loadVerification()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .status-card {
+        background-color: #FF6B35;
+        padding: 24px 16px;
+        align-items: center;
+    }
+
+    .status-icon {
+        font-size: 40px;
+    }
+
+    .status-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .status-desc {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 100px;
+    }
+
+    .info-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .form-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .input {
+        font-size: 14px;
+        color: #333;
+        padding: 6px 0;
+        border-bottom: 1px solid #EEEEEE;
+    }
+
+    .picker-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .picker-text {
+        font-size: 13px;
+        color: #666;
+        background-color: #F5F5F5;
+        border-radius: 14px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-bottom: 6px;
+    }
+
+    .picker-text.active {
+        background-color: #FF6B35;
+        color: #FFFFFF;
+    }
+
+    .image-row {
+        flex-direction: row;
+    }
+
+    .license-image {
+        width: 120px;
+        height: 80px;
+        border-radius: 8px;
+        margin-right: 10px;
+    }
+
+    .image-add {
+        width: 120px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+        border: 1px dashed #CCCCCC;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-add-icon {
+        font-size: 24px;
+        color: #CCCCCC;
+    }
+
+    .image-add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .footer {
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-submit {
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 500;
+    }
+</style>

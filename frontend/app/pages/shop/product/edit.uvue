@@ -1,0 +1,545 @@
+<template>
+    <view class="page">
+        <scroll-view class="form-scroll" scroll-y>
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">基本信息</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">商品名称</text>
+                    <input class="input" placeholder="请输入商品名称" v-model="form.title" maxlength="50" />
+                </view>
+                <view class="form-item">
+                    <text class="label">商品分类</text>
+                    <view class="picker" @click="showCategoryPicker = true">
+                        <text :class="form.category_id > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.category_id > 0 ? categoryName : '请选择分类' }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">商品图片</text>
+                    <view class="image-row">
+                        <image class="product-image" :src="form.cover_image" mode="aspectFill" v-if="form.cover_image.length > 0" />
+                        <view class="image-add" @click="chooseImage">
+                            <text class="image-add-icon">+</text>
+                            <text class="image-add-text">添加图片</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">价格库存</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">售价（元）</text>
+                    <input class="input" type="digit" placeholder="0.00" v-model="form.price" />
+                </view>
+                <view class="form-item">
+                    <text class="label">原价（元）</text>
+                    <input class="input" type="digit" placeholder="0.00（可选）" v-model="form.origin_price" />
+                </view>
+                <view class="form-item">
+                    <text class="label">库存</text>
+                    <input class="input" type="number" placeholder="0" v-model="form.stock" />
+                </view>
+                <view class="form-item">
+                    <text class="label">单位</text>
+                    <input class="input" placeholder="件/份/箱..." v-model="form.unit" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">商品详情</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">商品描述</text>
+                    <textarea class="textarea" placeholder="请输入商品详细描述（最多 500 字）" v-model="form.description" maxlength="500" />
+                </view>
+                <view class="form-item">
+                    <text class="label">上架状态</text>
+                    <view class="switch-row">
+                        <text class="switch-label">{{ form.status == 'on_sale' ? '立即上架' : '暂不上架' }}</text>
+                        <switch :checked="form.status == 'on_sale'" @change="onStatusChange" color="#FF6B35" />
+                    </view>
+                </view>
+            </view>
+
+            <view class="form-card" v-if="productId > 0">
+                <view class="form-title-row">
+                    <text class="form-title">商品数据</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">销量</text>
+                    <text class="value-text">{{ form.sales_count }}</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">浏览数</text>
+                    <text class="value-text">{{ form.view_count }}</text>
+                </view>
+            </view>
+        </scroll-view>
+
+        <!-- 底部操作 -->
+        <view class="footer">
+            <view class="btn-cancel" @click="onCancel">
+                <text class="btn-cancel-text">取消</text>
+            </view>
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">{{ productId > 0 ? '保存' : '发布' }}</text>
+            </view>
+        </view>
+
+        <!-- 分类选择器 -->
+        <view class="picker-mask" v-if="showCategoryPicker" @click="showCategoryPicker = false">
+            <view class="picker-content" @click.stop="">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showCategoryPicker = false">取消</text>
+                    <text class="picker-title">选择分类</text>
+                    <text class="picker-confirm" @click="showCategoryPicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="c in categories" :key="c.id" @click="selectCategory(c)">
+                        <text :class="c.id == form.category_id ? 'option-text option-active' : 'option-text'">{{ c.name }}</text>
+                        <text class="option-check" v-if="c.id == form.category_id">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+
+        <shop-loading :text="'加载中...'" v-if="loading" />
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { getMerchantProductDetail, createMerchantProduct, updateMerchantProduct, listMerchantCategories } from '@/api/business/merchant.uts'
+
+    type Category = {
+        id: number
+        name: string
+    }
+
+    type Form = {
+        id: number
+        title: string
+        cover_image: string
+        price: string
+        origin_price: string
+        stock: string
+        unit: string
+        description: string
+        category_id: number
+        status: string
+        sales_count: number
+        view_count: number
+    }
+
+    const productId = ref(0)
+    const form = ref({
+        id: 0,
+        title: '',
+        cover_image: '',
+        price: '',
+        origin_price: '',
+        stock: '',
+        unit: '件',
+        description: '',
+        category_id: 0,
+        status: 'on_sale',
+        sales_count: 0,
+        view_count: 0
+    } as Form)
+    const categories = ref([] as Category[])
+    const categoryName = ref('')
+    const showCategoryPicker = ref(false)
+    const loading = ref(false)
+    const submitting = ref(false)
+
+    const loadDetail = (id: number) => {
+        loading.value = true
+        getMerchantProductDetail(id).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    title: (d['title'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    price: ((d['price'] as number) ?? 0).toString(),
+                    origin_price: ((d['origin_price'] as number) ?? 0).toString(),
+                    stock: ((d['stock'] as number) ?? 0).toString(),
+                    unit: (d['unit'] as string) ?? '件',
+                    description: (d['description'] as string) ?? '',
+                    category_id: (d['category_id'] as number) ?? 0,
+                    status: (d['status'] as string) ?? 'on_sale',
+                    sales_count: (d['sales_count'] as number) ?? 0,
+                    view_count: (d['view_count'] as number) ?? 0
+                } as Form
+                categoryName.value = (d['category_name'] as string) ?? ''
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const loadCategories = () => {
+        listMerchantCategories({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                categories.value = (d['list'] as Category[]) ?? ([] as Category[])
+            }
+        }).catch(() => {})
+    }
+
+    const selectCategory = (c: Category) => {
+        form.value.category_id = c.id
+        categoryName.value = c.name
+        showCategoryPicker.value = false
+    }
+
+    const chooseImage = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    const tempPath = res.tempFilePaths[0]
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: tempPath,
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + (uni.getStorageSync('wctc_token') as string) },
+                        success: (r: UploadFileSuccessCallbackResult) => {
+                            try {
+                                const data = JSON.parse(r.data) as UTSJSONObject
+                                const code = (data['code'] as number) ?? 0
+                                if (code == 200 || code == 0) {
+                                    const d = (data['data'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+                                    form.value.cover_image = (d['url'] as string) ?? ''
+                                } else {
+                                    uni.showToast({ title: (data['message'] as string) ?? '上传失败', icon: 'none' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onStatusChange = (e: SwitchChangeEvent) => {
+        form.value.status = e.detail.value ? 'on_sale' : 'off_sale'
+    }
+
+    const validate = () : boolean => {
+        if (form.value.title.length == 0) {
+            uni.showToast({ title: '请输入商品名称', icon: 'none' })
+            return false
+        }
+        if (form.value.category_id == 0) {
+            uni.showToast({ title: '请选择商品分类', icon: 'none' })
+            return false
+        }
+        if (form.value.price.length == 0 || parseFloat(form.value.price) <= 0) {
+            uni.showToast({ title: '请输入正确的售价', icon: 'none' })
+            return false
+        }
+        if (form.value.stock.length == 0 || parseInt(form.value.stock) < 0) {
+            uni.showToast({ title: '请输入正确的库存', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!validate()) return
+        if (submitting.value) return
+        submitting.value = true
+
+        const data: UTSJSONObject = {
+            title: form.value.title,
+            cover_image: form.value.cover_image,
+            price: parseFloat(form.value.price),
+            origin_price: form.value.origin_price.length > 0 ? parseFloat(form.value.origin_price) : 0,
+            stock: parseInt(form.value.stock),
+            unit: form.value.unit,
+            description: form.value.description,
+            category_id: form.value.category_id,
+            status: form.value.status
+        } as UTSJSONObject
+
+        const api = productId.value > 0
+            ? updateMerchantProduct(productId.value, data)
+            : createMerchantProduct(data)
+
+        api.then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showToast({ title: productId.value > 0 ? '保存成功' : '发布成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    const onCancel = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: UTSJSONObject) => {
+        if (!guardMerchant()) return
+        if (options != null && options!['id'] != null) {
+            productId.value = parseInt(options!['id'] as string)
+        }
+        loadCategories()
+        if (productId.value > 0) {
+            loadDetail(productId.value)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .form-title-row {
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .form-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .form-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .textarea {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+        height: 100px;
+    }
+
+    .picker {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .image-row {
+        flex: 1;
+        flex-direction: row;
+    }
+
+    .product-image {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        margin-right: 10px;
+    }
+
+    .image-add {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+        border: 1px dashed #CCCCCC;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-add-icon {
+        font-size: 28px;
+        color: #CCCCCC;
+    }
+
+    .image-add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .switch-row {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .switch-label {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .value-text {
+        flex: 1;
+        font-size: 14px;
+        color: #999;
+    }
+
+    .footer {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+        margin-right: 10px;
+    }
+
+    .btn-cancel-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .btn-submit {
+        flex: 2;
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 500;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 400px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 16px;
+        color: #FF6B35;
+    }
+</style>

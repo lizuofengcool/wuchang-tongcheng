@@ -1,0 +1,516 @@
+<template>
+    <view class="page">
+        <scroll-view class="form-scroll" scroll-y>
+            <shop-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading">
+                <!-- 店铺 LOGO + 名称 -->
+                <view class="logo-card">
+                    <image class="shop-logo" :src="form.logo" mode="aspectFill" lazy-load="true" v-if="form.logo.length > 0" />
+                    <view class="shop-logo-placeholder" v-else>
+                        <text class="shop-logo-text">{{ form.name.length > 0 ? form.name.charAt(0) : '商' }}</text>
+                    </view>
+                    <view class="logo-edit" @click="chooseLogo">
+                        <text class="logo-edit-text">更换 LOGO</text>
+                    </view>
+                </view>
+
+                <!-- 基本信息 -->
+                <view class="card">
+                    <text class="card-title">基本信息</text>
+                    <view class="form-item">
+                        <text class="label">店铺名称</text>
+                        <input class="input" placeholder="请输入店铺名称" v-model="form.name" maxlength="30" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">联系电话</text>
+                        <input class="input" type="number" placeholder="请输入联系电话" v-model="form.phone" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">店铺分类</text>
+                        <view class="picker" @click="showCategoryPicker = true">
+                            <text :class="form.category_id > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.category_id > 0 ? categoryName : '请选择分类' }}</text>
+                            <text class="picker-arrow">›</text>
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">店铺简介</text>
+                        <textarea class="textarea" placeholder="请输入店铺简介" v-model="form.description" maxlength="200" />
+                    </view>
+                </view>
+
+                <!-- 营业时间 -->
+                <view class="card">
+                    <text class="card-title">营业时间</text>
+                    <view class="form-item">
+                        <text class="label">营业状态</text>
+                        <view class="switch-row">
+                            <text class="switch-label">{{ form.is_open ? '营业中' : '已打烊' }}</text>
+                            <switch :checked="form.is_open" @change="onOpenChange" color="#FF6B35" />
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">营业开始</text>
+                        <view class="picker" @click="pickTime('start')">
+                            <text class="picker-text">{{ form.open_time }}</text>
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">营业结束</text>
+                        <view class="picker" @click="pickTime('end')">
+                            <text class="picker-text">{{ form.close_time }}</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 地址信息 -->
+                <view class="card">
+                    <text class="card-title">地址信息</text>
+                    <view class="form-item">
+                        <text class="label">详细地址</text>
+                        <input class="input" placeholder="请输入详细地址" v-model="form.address" />
+                    </view>
+                </view>
+
+                <!-- 其他信息 -->
+                <view class="card">
+                    <text class="card-title">其他设置</text>
+                    <view class="form-item">
+                        <text class="label">起送价（元）</text>
+                        <input class="input" type="digit" placeholder="0.00" v-model="form.min_price" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">配送费（元）</text>
+                        <input class="input" type="digit" placeholder="0.00" v-model="form.delivery_fee" />
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="footer">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">保存</text>
+            </view>
+        </view>
+
+        <view class="picker-mask" v-if="showCategoryPicker" @click="showCategoryPicker = false">
+            <view class="picker-content" @click.stop="">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showCategoryPicker = false">取消</text>
+                    <text class="picker-title">选择分类</text>
+                    <text class="picker-confirm" @click="showCategoryPicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="c in categories" :key="c.id" @click="selectCategory(c)">
+                        <text :class="c.id == form.category_id ? 'option-text option-active' : 'option-text'">{{ c.name }}</text>
+                        <text class="option-check" v-if="c.id == form.category_id">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { getMyMerchantShop, updateMerchantShop, listMerchantCategories } from '@/api/business/merchant.uts'
+
+    type Category = {
+        id: number
+        name: string
+    }
+
+    type Form = {
+        id: number
+        name: string
+        logo: string
+        phone: string
+        category_id: number
+        description: string
+        is_open: boolean
+        open_time: string
+        close_time: string
+        address: string
+        min_price: string
+        delivery_fee: string
+    }
+
+    const form = ref({
+        id: 0,
+        name: '',
+        logo: '',
+        phone: '',
+        category_id: 0,
+        description: '',
+        is_open: true,
+        open_time: '08:00',
+        close_time: '22:00',
+        address: '',
+        min_price: '0.00',
+        delivery_fee: '0.00'
+    } as Form)
+    const categories = ref([] as Category[])
+    const categoryName = ref('')
+    const showCategoryPicker = ref(false)
+    const loading = ref(false)
+    const submitting = ref(false)
+
+    const loadShop = () => {
+        loading.value = true
+        getMyMerchantShop().then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    logo: (d['logo'] as string) ?? '',
+                    phone: (d['phone'] as string) ?? '',
+                    category_id: (d['category_id'] as number) ?? 0,
+                    description: (d['description'] as string) ?? '',
+                    is_open: (d['is_open'] as boolean) ?? true,
+                    open_time: (d['open_time'] as string) ?? '08:00',
+                    close_time: (d['close_time'] as string) ?? '22:00',
+                    address: (d['address'] as string) ?? '',
+                    min_price: ((d['min_price'] as number) ?? 0).toString(),
+                    delivery_fee: ((d['delivery_fee'] as number) ?? 0).toString()
+                } as Form
+                categoryName.value = (d['category_name'] as string) ?? ''
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const loadCategories = () => {
+        listMerchantCategories({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                categories.value = (d['list'] as Category[]) ?? ([] as Category[])
+            }
+        }).catch(() => {})
+    }
+
+    const selectCategory = (c: Category) => {
+        form.value.category_id = c.id
+        categoryName.value = c.name
+        showCategoryPicker.value = false
+    }
+
+    const chooseLogo = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: res.tempFilePaths[0],
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + (uni.getStorageSync('wctc_token') as string) },
+                        success: (r: UploadFileSuccessCallbackResult) => {
+                            try {
+                                const data = JSON.parse(r.data) as UTSJSONObject
+                                const code = (data['code'] as number) ?? 0
+                                if (code == 200 || code == 0) {
+                                    const d = (data['data'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+                                    form.value.logo = (d['url'] as string) ?? ''
+                                } else {
+                                    uni.showToast({ title: (data['message'] as string) ?? '上传失败', icon: 'none' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onOpenChange = (e: SwitchChangeEvent) => {
+        form.value.is_open = e.detail.value
+    }
+
+    const pickTime = (type: string) => {
+        uni.showActionSheet({
+            itemList: ['06:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00', '22:00', '23:00'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const items = ['06:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00', '22:00', '23:00']
+                const t = items[r.tapIndex]
+                if (type == 'start') {
+                    form.value.open_time = t
+                } else {
+                    form.value.close_time = t
+                }
+            }
+        })
+    }
+
+    const validate = () : boolean => {
+        if (form.value.name.length == 0) {
+            uni.showToast({ title: '请输入店铺名称', icon: 'none' })
+            return false
+        }
+        if (form.value.phone.length == 0) {
+            uni.showToast({ title: '请输入联系电话', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!validate()) return
+        if (submitting.value) return
+        submitting.value = true
+
+        const data: UTSJSONObject = {
+            name: form.value.name,
+            logo: form.value.logo,
+            phone: form.value.phone,
+            category_id: form.value.category_id,
+            description: form.value.description,
+            is_open: form.value.is_open,
+            open_time: form.value.open_time,
+            close_time: form.value.close_time,
+            address: form.value.address,
+            min_price: parseFloat(form.value.min_price),
+            delivery_fee: parseFloat(form.value.delivery_fee)
+        } as UTSJSONObject
+
+        updateMerchantShop(form.value.id, data).then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showToast({ title: '保存成功', icon: 'success' })
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadShop()
+        loadCategories()
+    })
+
+    onPullDownRefresh(() => {
+        loadShop()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .logo-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 16px;
+        align-items: center;
+    }
+
+    .shop-logo {
+        width: 72px;
+        height: 72px;
+        border-radius: 36px;
+        background-color: #F5F5F5;
+    }
+
+    .shop-logo-placeholder {
+        width: 72px;
+        height: 72px;
+        border-radius: 36px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .shop-logo-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .logo-edit {
+        margin-top: 10px;
+        background-color: #FFF5F0;
+        border-radius: 16px;
+        padding: 6px 14px;
+    }
+
+    .logo-edit-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .form-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .input {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+        height: 80px;
+    }
+
+    .picker {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .switch-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .switch-label {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .footer {
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-submit {
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 500;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 400px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 16px;
+        color: #FF6B35;
+    }
+</style>

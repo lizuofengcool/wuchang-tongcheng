@@ -1,0 +1,81 @@
+<template>
+    <view class="earning-item" @click="onClick">
+        <view class="left">
+            <text class="title">{{ item.title }}</text>
+            <text class="time">{{ item.created_at }}</text>
+        </view>
+        <view class="right">
+            <text class="amount" :class="{ income: item.type == 'income', expense: item.type == 'expense' }">{{ item.type == 'income' ? '+' : '-' }}¥{{ item.amount }}</text>
+            <rider-status-tag v-if="item.status.length > 0" :status="item.status" :text="item.status_text" />
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type EarningItem = {
+        id: number
+        title: string
+        type: string          // 'income' | 'expense'
+        amount: string
+        status: string
+        status_text: string
+        created_at: string
+    }
+
+    const props = defineProps<{
+        item: EarningItem
+    }>()
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const onClick = () => {
+        emit('click', props.item.id)
+    }
+</script>
+
+<style>
+    .earning-item {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .left {
+        flex: 1;
+    }
+
+    .title {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .right {
+        align-items: flex-end;
+    }
+
+    .amount {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .amount.income {
+        color: #FF6B35;
+    }
+
+    .amount.expense {
+        color: #4CAF50;
+    }
+</style>

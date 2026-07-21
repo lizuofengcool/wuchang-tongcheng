@@ -1,31 +1,177 @@
 <template>
     <view class="page">
-        <!-- 顶部数据卡片 -->
-        <view class="cards">
-            <view class="card">
-                <text class="card-label">今日订单</text>
-                <text class="card-value">{{ todayOrders }}</text>
-            </view>
-            <view class="card">
-                <text class="card-label">今日收入</text>
-                <text class="card-value">¥{{ todayIncome }}</text>
-            </view>
-            <view class="card">
-                <text class="card-label">本月收入</text>
-                <text class="card-value">¥{{ monthIncome }}</text>
+        <!-- 时间筛选 -->
+        <view class="period-bar">
+            <view class="period-item" v-for="p in periods" :key="p.id" @click="switchPeriod(p.id)">
+                <text :class="p.id == activePeriod ? 'period-text period-active' : 'period-text'">{{ p.name }}</text>
             </view>
         </view>
-        <!-- 占位图表区 -->
-        <view class="chart-area">
-            <text class="chart-placeholder">图表区域开发中</text>
+
+        <!-- 概览数据 -->
+        <view class="overview-card">
+            <view class="stat-row">
+                <shop-stat-card label="订单数" :value="overview.order_count" icon="📋" type="primary" />
+                <shop-stat-card label="销售额" :value="overview.sales_amount" prefix="¥" icon="💰" />
+            </view>
+            <view class="stat-row">
+                <shop-stat-card label="客单价" :value="overview.avg_amount" prefix="¥" icon="📈" />
+                <shop-stat-card label="退款额" :value="overview.refund_amount" prefix="¥" icon="↩️" />
+            </view>
+        </view>
+
+        <!-- 销售趋势 -->
+        <view class="card">
+            <text class="card-title">销售趋势</text>
+            <shop-loading :text="'加载中...'" v-if="salesLoading" />
+            <view class="chart-area" v-if="!salesLoading && salesData.length > 0">
+                <view class="bar-row" v-for="(d, idx) in salesData" :key="idx">
+                    <text class="bar-label">{{ d.label }}</text>
+                    <view class="bar-track">
+                        <view class="bar-fill" :style="{ width: getBarWidth(d.value) + '%' }"></view>
+                    </view>
+                    <text class="bar-value">¥{{ d.value }}</text>
+                </view>
+            </view>
+            <shop-empty v-if="!salesLoading && salesData.length == 0" icon="📊" text="暂无销售数据" :padding-top="40" :padding-bottom="40" />
+        </view>
+
+        <!-- 商品销量 TOP -->
+        <view class="card">
+            <text class="card-title">商品销量 TOP 10</text>
+            <shop-loading :text="'加载中...'" v-if="productsLoading" />
+            <view class="rank-list" v-if="!productsLoading && productsData.length > 0">
+                <view class="rank-item" v-for="(p, idx) in productsData" :key="idx">
+                    <text class="rank-num" :class="{ top: idx < 3 }">{{ idx + 1 }}</text>
+                    <view class="rank-info">
+                        <text class="rank-title">{{ p.title }}</text>
+                        <text class="rank-meta">销量 {{ p.sales_count }} · 销售额 ¥{{ p.sales_amount }}</text>
+                    </view>
+                </view>
+            </view>
+            <shop-empty v-if="!productsLoading && productsData.length == 0" icon="🏆" text="暂无销量数据" :padding-top="40" :padding-bottom="40" />
         </view>
     </view>
 </template>
 
 <script setup lang="uts">
-    const todayOrders = ref(0)
-    const todayIncome = ref(0)
-    const monthIncome = ref(0)
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { getMerchantStatisticsOverview, getMerchantStatisticsSales, getMerchantStatisticsProducts } from '@/api/business/merchant.uts'
+
+    type Period = { id: number, name: string, value: string }
+
+    type Overview = {
+        order_count: number
+        sales_amount: string
+        avg_amount: string
+        refund_amount: string
+    }
+
+    type SalesItem = {
+        label: string
+        value: string
+    }
+
+    type ProductItem = {
+        title: string
+        sales_count: number
+        sales_amount: string
+    }
+
+    const periods = ref([
+        { id: 1, name: '今日', value: 'today' },
+        { id: 2, name: '本周', value: 'week' },
+        { id: 3, name: '本月', value: 'month' },
+        { id: 4, name: '本年', value: 'year' }
+    ] as Period[])
+
+    const activePeriod = ref(1)
+    const overview = ref({
+        order_count: 0,
+        sales_amount: '0.00',
+        avg_amount: '0.00',
+        refund_amount: '0.00'
+    } as Overview)
+    const salesData = ref([] as SalesItem[])
+    const productsData = ref([] as ProductItem[])
+    const salesLoading = ref(false)
+    const productsLoading = ref(false)
+    const maxValue = ref(0.0)
+
+    const switchPeriod = (id: number) => {
+        if (activePeriod.value == id) return
+        activePeriod.value = id
+        loadAll()
+    }
+
+    const getBarWidth = (value: string) : number => {
+        const v = parseFloat(value)
+        if (maxValue.value == 0) return 0
+        return Math.round(v / maxValue.value * 100)
+    }
+
+    const loadOverview = () => {
+        const p = periods.value[activePeriod.value - 1]
+        getMerchantStatisticsOverview({ period: p.value } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                overview.value = {
+                    order_count: (d['order_count'] as number) ?? 0,
+                    sales_amount: (d['sales_amount'] as string) ?? '0.00',
+                    avg_amount: (d['avg_amount'] as string) ?? '0.00',
+                    refund_amount: (d['refund_amount'] as string) ?? '0.00'
+                } as Overview
+            }
+        }).catch(() => {})
+    }
+
+    const loadSales = () => {
+        salesLoading.value = true
+        const p = periods.value[activePeriod.value - 1]
+        getMerchantStatisticsSales({ period: p.value } as UTSJSONObject).then((res: ApiResult) => {
+            salesLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                salesData.value = (d['list'] as SalesItem[]) ?? ([] as SalesItem[])
+                let max = 0.0
+                for (let i = 0; i < salesData.value.length; i++) {
+                    const v = parseFloat(salesData.value[i].value)
+                    if (v > max) max = v
+                }
+                maxValue.value = max
+            }
+        }).catch(() => {
+            salesLoading.value = false
+        })
+    }
+
+    const loadProducts = () => {
+        productsLoading.value = true
+        const p = periods.value[activePeriod.value - 1]
+        getMerchantStatisticsProducts({ period: p.value, page: 1, page_size: 10 } as UTSJSONObject).then((res: ApiResult) => {
+            productsLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                productsData.value = (d['list'] as ProductItem[]) ?? ([] as ProductItem[])
+            }
+        }).catch(() => {
+            productsLoading.value = false
+        })
+    }
+
+    const loadAll = () => {
+        loadOverview()
+        loadSales()
+        loadProducts()
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadAll()
+    })
+
+    onPullDownRefresh(() => {
+        loadAll()
+    })
 </script>
 
 <style>
@@ -34,41 +180,128 @@
         background-color: #F5F5F5;
     }
 
-    .cards {
-        flex-direction: row;
-        padding: 12px;
+    .period-bar {
         background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 0 8px;
+        border-bottom: 1px solid #F0F0F0;
     }
 
-    .card {
-        flex: 1;
+    .period-item {
+        padding: 12px 16px;
         align-items: center;
-        padding: 16px 0;
     }
 
-    .card-label {
-        font-size: 12px;
-        color: #999;
-        margin-bottom: 8px;
+    .period-text {
+        font-size: 14px;
+        color: #666;
     }
 
-    .card-value {
-        font-size: 18px;
+    .period-active {
         color: #FF6B35;
         font-weight: 600;
     }
 
-    .chart-area {
-        flex: 1;
-        margin: 12px;
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        align-items: center;
-        justify-content: center;
+    .overview-card {
+        padding: 8px 8px;
     }
 
-    .chart-placeholder {
+    .stat-row {
+        flex-direction: row;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 10px;
+    }
+
+    .chart-area {
+        padding: 4px 0;
+    }
+
+    .bar-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    .bar-label {
+        font-size: 11px;
+        color: #999;
+        width: 60px;
+    }
+
+    .bar-track {
+        flex: 1;
+        height: 12px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        margin: 0 8px;
+    }
+
+    .bar-fill {
+        height: 12px;
+        background-color: #FF6B35;
+        border-radius: 6px;
+    }
+
+    .bar-value {
+        font-size: 11px;
+        color: #FF6B35;
+        font-weight: 600;
+        width: 60px;
+        text-align: right;
+    }
+
+    .rank-list {
+        padding: 4px 0;
+    }
+
+    .rank-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .rank-num {
         font-size: 14px;
         color: #999;
+        font-weight: 600;
+        width: 28px;
+        text-align: center;
+    }
+
+    .rank-num.top {
+        color: #FF6B35;
+        font-size: 16px;
+    }
+
+    .rank-info {
+        flex: 1;
+        margin-left: 8px;
+    }
+
+    .rank-title {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .rank-meta {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
     }
 </style>

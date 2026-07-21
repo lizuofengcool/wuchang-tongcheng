@@ -1,31 +1,172 @@
 <template>
     <view class="page">
-        <view class="grid">
-            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="onTap(item.name)">
-                <text class="grid-icon">{{ item.icon }}</text>
-                <text class="grid-name">{{ item.name }}</text>
+        <!-- 顶部入口 -->
+        <view class="top-card">
+            <view class="entry-row">
+                <view class="entry-item" @click="goCoupons">
+                    <text class="entry-icon">🎫</text>
+                    <text class="entry-name">优惠券</text>
+                </view>
+                <view class="entry-item" @click="goActivities">
+                    <text class="entry-icon">🎉</text>
+                    <text class="entry-name">营销活动</text>
+                </view>
+                <view class="entry-item" @click="createActivity">
+                    <text class="entry-icon">➕</text>
+                    <text class="entry-name">新建活动</text>
+                </view>
             </view>
+        </view>
+
+        <!-- 活动列表 -->
+        <view class="section">
+            <view class="section-header">
+                <text class="section-title">进行中的活动</text>
+                <text class="section-more" @click="goActivities">查看全部 ›</text>
+            </view>
+            <shop-loading :text="'加载中...'" v-if="loading && activities.length == 0" />
+            <view class="card-wrap" v-if="activities.length > 0">
+                <view class="activity-card" v-for="item in activities" :key="item.id" @click="goActivityDetail(item.id)">
+                    <view class="activity-header">
+                        <text class="activity-title">{{ item.title }}</text>
+                        <shop-status-tag :status="item.status" :text="item.status_text" />
+                    </view>
+                    <text class="activity-desc">{{ item.description }}</text>
+                    <view class="activity-meta">
+                        <text class="meta-text">📅 {{ item.start_at }} ~ {{ item.end_at }}</text>
+                    </view>
+                    <view class="activity-meta">
+                        <text class="meta-text">参与：{{ item.join_count }} 人</text>
+                    </view>
+                </view>
+            </view>
+            <shop-empty v-if="activities.length == 0 && !loading" icon="🎉" text="暂无营销活动" btn-text="去创建" @click="createActivity" />
+        </view>
+
+        <!-- 优惠券列表 -->
+        <view class="section">
+            <view class="section-header">
+                <text class="section-title">优惠券</text>
+                <text class="section-more" @click="goCoupons">查看全部 ›</text>
+            </view>
+            <shop-loading :text="'加载中...'" v-if="couponLoading && coupons.length == 0" />
+            <view class="card-wrap" v-if="coupons.length > 0">
+                <shop-coupon-card
+                    v-for="item in coupons"
+                    :key="item.id"
+                    :coupon="transformCoupon(item)" />
+            </view>
+            <shop-empty v-if="coupons.length == 0 && !couponLoading" icon="🎫" text="暂无优惠券" btn-text="去创建" @click="goCoupons" />
         </view>
     </view>
 </template>
 
 <script setup lang="uts">
-    type MenuItem = {
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { listMerchantActivities, listMerchantCoupons } from '@/api/business/merchant.uts'
+
+    type Activity = {
         id: number
-        name: string
-        icon: string
+        title: string
+        description: string
+        status: string
+        status_text: string
+        start_at: string
+        end_at: string
+        join_count: number
     }
 
-    const menuList = ref([
-        { id: 1, name: '优惠券', icon: '🎫' },
-        { id: 2, name: '拼团', icon: '👥' },
-        { id: 3, name: '砍价', icon: '✂️' },
-        { id: 4, name: '抽奖', icon: '🎁' }
-    ] as MenuItem[])
-
-    const onTap = (name: string) => {
-        uni.showToast({ title: `${name}功能开发中`, icon: 'none' })
+    type CouponItem = {
+        id: number
+        title: string
+        amount: number
+        threshold_text: string
+        validity_text: string
+        status: string
+        status_text: string
     }
+
+    type CouponCard = {
+        id: number
+        title: string
+        amount: number
+        threshold_text: string
+        validity_text: string
+        status: string
+        status_text: string
+    }
+
+    const activities = ref([] as Activity[])
+    const coupons = ref([] as CouponItem[])
+    const loading = ref(false)
+    const couponLoading = ref(false)
+
+    const transformCoupon = (item: CouponItem) : CouponCard => {
+        return {
+            id: item.id,
+            title: item.title,
+            amount: item.amount,
+            threshold_text: item.threshold_text,
+            validity_text: item.validity_text,
+            status: item.status,
+            status_text: item.status_text
+        } as CouponCard
+    }
+
+    const loadActivities = () => {
+        loading.value = true
+        listMerchantActivities({ page: 1, page_size: 5, status: 'active' } as UTSJSONObject).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                activities.value = (d['list'] as Activity[]) ?? ([] as Activity[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadCoupons = () => {
+        couponLoading.value = true
+        listMerchantCoupons({ page: 1, page_size: 5 } as UTSJSONObject).then((res: ApiResult) => {
+            couponLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                coupons.value = (d['list'] as CouponItem[]) ?? ([] as CouponItem[])
+            }
+        }).catch(() => {
+            couponLoading.value = false
+        })
+    }
+
+    const goCoupons = () => {
+        uni.navigateTo({ url: '/pages/shop/coupons' })
+    }
+
+    const goActivities = () => {
+        uni.showToast({ title: '活动列表开发中', icon: 'none' })
+    }
+
+    const goActivityDetail = (id: number) => {
+        uni.showToast({ title: '活动详情开发中', icon: 'none' })
+    }
+
+    const createActivity = () => {
+        uni.showToast({ title: '创建活动开发中', icon: 'none' })
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadActivities()
+        loadCoupons()
+    })
+
+    onPullDownRefresh(() => {
+        loadActivities()
+        loadCoupons()
+    })
 </script>
 
 <style>
@@ -34,28 +175,96 @@
         background-color: #F5F5F5;
     }
 
-    .grid {
+    .top-card {
+        background-color: #FF6B35;
+        padding: 16px;
+    }
+
+    .entry-row {
         flex-direction: row;
-        flex-wrap: wrap;
-        padding: 12px;
+        justify-content: space-around;
+    }
+
+    .entry-item {
+        align-items: center;
+    }
+
+    .entry-icon {
+        font-size: 32px;
+    }
+
+    .entry-name {
+        font-size: 12px;
+        color: #FFFFFF;
+        margin-top: 4px;
+    }
+
+    .section {
         background-color: #FFFFFF;
         margin: 12px;
         border-radius: 12px;
+        padding: 12px;
     }
 
-    .grid-item {
-        width: 50%;
+    .section-header {
+        flex-direction: row;
         align-items: center;
-        padding: 24px 0;
-    }
-
-    .grid-icon {
-        font-size: 36px;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
         margin-bottom: 8px;
     }
 
-    .grid-name {
+    .section-title {
         font-size: 14px;
         color: #333;
+        font-weight: 600;
+    }
+
+    .section-more {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .card-wrap {
+        padding: 4px 0;
+    }
+
+    .activity-card {
+        background-color: #FAFAFA;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .activity-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .activity-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        margin-right: 8px;
+    }
+
+    .activity-desc {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .activity-meta {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .meta-text {
+        font-size: 11px;
+        color: #999;
     }
 </style>

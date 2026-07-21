@@ -1,0 +1,85 @@
+<template>
+    <view class="status-tag" :class="statusClass">
+        <text class="tag-text" :class="statusClass">{{ text }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        status: string  // 状态码：pending/grabbed/arrived/picked/delivering/completed/canceled
+        text: string    // 显示文字
+    }>(), {} as any)
+
+    // pending=待接单 grabbed=已接单 arrived=已到店 picked=已取货
+    // delivering=配送中 completed=已送达 canceled=已取消
+    const statusClass = computed(() : string => {
+        const s = props.status
+        if (s == 'pending') return 'warn'        // 待接单 - 黄色
+        if (s == 'grabbed' || s == 'arrived' || s == 'picked') return 'info'   // 进行中 - 蓝色
+        if (s == 'delivering') return 'primary'  // 配送中 - 主题色
+        if (s == 'completed') return 'success'   // 已送达 - 绿色
+        if (s == 'canceled' || s == 'failed') return 'danger'  // 已取消 - 红色
+        return 'default'
+    })
+</script>
+
+<style>
+    .status-tag {
+        padding: 2px 8px;
+        border-radius: 10px;
+        background-color: #F0F0F0;
+    }
+
+    .tag-text {
+        font-size: 11px;
+        color: #666;
+    }
+
+    .status-tag.warn {
+        background-color: #FFF4E5;
+    }
+
+    .tag-text.warn {
+        color: #FF9900;
+    }
+
+    .status-tag.info {
+        background-color: #E5F4FF;
+    }
+
+    .tag-text.info {
+        color: #1890FF;
+    }
+
+    .status-tag.primary {
+        background-color: #FFF5F0;
+    }
+
+    .tag-text.primary {
+        color: #FF6B35;
+    }
+
+    .status-tag.success {
+        background-color: #E8F8EE;
+    }
+
+    .tag-text.success {
+        color: #4CAF50;
+    }
+
+    .status-tag.danger {
+        background-color: #FFEBEE;
+    }
+
+    .tag-text.danger {
+        color: #F44336;
+    }
+
+    .status-tag.default {
+        background-color: #F0F0F0;
+    }
+
+    .tag-text.default {
+        color: #666;
+    }
+</style>

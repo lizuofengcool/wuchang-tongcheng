@@ -1,0 +1,409 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <shop-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading && order != null">
+                <!-- 订单状态头 -->
+                <view class="status-header">
+                    <text class="status-icon">{{ statusIcon }}</text>
+                    <text class="status-text">{{ order!.status_text }}</text>
+                    <text class="order-no">订单号：{{ order!.order_no }}</text>
+                </view>
+
+                <!-- 商品明细 -->
+                <view class="card">
+                    <text class="card-title">商品明细</text>
+                    <shop-order-item
+                        v-for="(p, idx) in order!.products"
+                        :key="idx"
+                        :item="p"
+                        :show-subtotal="true" />
+                    <view class="amount-row">
+                        <text class="amount-label">商品总价</text>
+                        <text class="amount-value">¥{{ order!.products_amount }}</text>
+                    </view>
+                    <view class="amount-row" v-if="order!.discount_amount > 0">
+                        <text class="amount-label">优惠抵扣</text>
+                        <text class="amount-value discount">-¥{{ order!.discount_amount }}</text>
+                    </view>
+                    <view class="amount-row total">
+                        <text class="amount-label">实付金额</text>
+                        <text class="amount-value primary">¥{{ order!.total_amount }}</text>
+                    </view>
+                </view>
+
+                <!-- 收货地址 -->
+                <view class="card" v-if="order!.address != null">
+                    <text class="card-title">收货信息</text>
+                    <view class="info-row">
+                        <text class="info-label">收货人</text>
+                        <text class="info-value">{{ order!.address!.name }}（{{ order!.address!.phone }}）</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">收货地址</text>
+                        <text class="info-value">{{ order!.address!.full_address }}</text>
+                    </view>
+                </view>
+
+                <!-- 物流信息 -->
+                <view class="card" v-if="order!.logistics != null">
+                    <text class="card-title">物流信息</text>
+                    <view class="info-row">
+                        <text class="info-label">物流公司</text>
+                        <text class="info-value">{{ order!.logistics!.company }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">运单号</text>
+                        <text class="info-value">{{ order!.logistics!.tracking_no }}</text>
+                    </view>
+                    <view class="info-row" v-if="order!.logistics!.status_text.length > 0">
+                        <text class="info-label">物流状态</text>
+                        <text class="info-value primary">{{ order!.logistics!.status_text }}</text>
+                    </view>
+                </view>
+
+                <!-- 订单信息 -->
+                <view class="card">
+                    <text class="card-title">订单信息</text>
+                    <view class="info-row">
+                        <text class="info-label">下单时间</text>
+                        <text class="info-value">{{ order!.created_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="order!.paid_at.length > 0">
+                        <text class="info-label">支付时间</text>
+                        <text class="info-value">{{ order!.paid_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="order!.shipped_at.length > 0">
+                        <text class="info-label">发货时间</text>
+                        <text class="info-value">{{ order!.shipped_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="order!.completed_at.length > 0">
+                        <text class="info-label">完成时间</text>
+                        <text class="info-value">{{ order!.completed_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="order!.remark.length > 0">
+                        <text class="info-label">买家备注</text>
+                        <text class="info-value">{{ order!.remark }}</text>
+                    </view>
+                </view>
+            </view>
+
+            <shop-empty
+                v-if="!loading && order == null"
+                icon="📋"
+                text="订单不存在或加载失败"
+                btn-text="返回"
+                @click="onBack" />
+        </scroll-view>
+
+        <!-- 底部操作 -->
+        <view class="footer" v-if="order != null && actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { getMerchantOrderDetail, updateMerchantOrderStatus } from '@/api/business/merchant.uts'
+
+    type Address = {
+        name: string
+        phone: string
+        full_address: string
+    }
+
+    type Logistics = {
+        company: string
+        tracking_no: string
+        status_text: string
+    }
+
+    type OrderProduct = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+
+    type Order = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        products_amount: number
+        discount_amount: number
+        total_amount: number
+        remark: string
+        created_at: string
+        paid_at: string
+        shipped_at: string
+        completed_at: string
+        products: OrderProduct[]
+        address: Address | null
+        logistics: Logistics | null
+    }
+
+    type Action = { text: string, type: string, primary: boolean }
+
+    const orderId = ref(0)
+    const order = ref<Order | null>(null)
+    const loading = ref(false)
+    const actions = ref([] as Action[])
+
+    const statusIcon = computed(() : string => {
+        if (order.value == null) return ''
+        const s = order.value!.status
+        if (s == 'pending') return '⏰'
+        if (s == 'paid') return '📦'
+        if (s == 'shipping') return '🚚'
+        if (s == 'completed') return '✅'
+        if (s == 'canceled') return '❌'
+        return '📋'
+    })
+
+    const loadDetail = () => {
+        loading.value = true
+        getMerchantOrderDetail(orderId.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                order.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    status: (d['status'] as string) ?? '',
+                    status_text: (d['status_text'] as string) ?? '',
+                    products_amount: (d['products_amount'] as number) ?? 0,
+                    discount_amount: (d['discount_amount'] as number) ?? 0,
+                    total_amount: (d['total_amount'] as number) ?? 0,
+                    remark: (d['remark'] as string) ?? '',
+                    created_at: (d['created_at'] as string) ?? '',
+                    paid_at: (d['paid_at'] as string) ?? '',
+                    shipped_at: (d['shipped_at'] as string) ?? '',
+                    completed_at: (d['completed_at'] as string) ?? '',
+                    products: (d['products'] as OrderProduct[]) ?? ([] as OrderProduct[]),
+                    address: null,
+                    logistics: null
+                } as Order
+                // 解析地址
+                const addrData = d['address'] as UTSJSONObject
+                if (addrData != null) {
+                    order.value.address = {
+                        name: (addrData['name'] as string) ?? '',
+                        phone: (addrData['phone'] as string) ?? '',
+                        full_address: (addrData['full_address'] as string) ?? ''
+                    } as Address
+                }
+                // 解析物流
+                const logData = d['logistics'] as UTSJSONObject
+                if (logData != null) {
+                    order.value.logistics = {
+                        company: (logData['company'] as string) ?? '',
+                        tracking_no: (logData['tracking_no'] as string) ?? '',
+                        status_text: (logData['status_text'] as string) ?? ''
+                    } as Logistics
+                }
+                updateActions()
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const updateActions = () => {
+        const arr = [] as Action[]
+        if (order.value != null) {
+            const s = order.value!.status
+            if (s == 'pending') {
+                arr.push({ text: '取消订单', type: 'cancel', primary: false } as Action)
+            }
+            if (s == 'paid') {
+                arr.push({ text: '发货', type: 'ship', primary: true } as Action)
+            }
+            if (s == 'shipping') {
+                arr.push({ text: '完成', type: 'complete', primary: true } as Action)
+            }
+        }
+        actions.value = arr
+    }
+
+    const onAction = (a: Action) => {
+        const statusMap: UTSJSONObject = {
+            cancel: 'canceled',
+            ship: 'shipping',
+            complete: 'completed'
+        } as UTSJSONObject
+        const status = (statusMap[a.type] as string) ?? ''
+        if (status.length == 0) return
+        const text = a.type == 'cancel' ? '取消' : (a.type == 'ship' ? '发货' : '完成')
+        uni.showModal({
+            title: '提示',
+            content: '确定要' + text + '此订单吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    updateMerchantOrderStatus(orderId.value, { status: status } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: text + '成功', icon: 'success' })
+                            loadDetail()
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
+    }
+
+    const onBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: UTSJSONObject) => {
+        if (!guardMerchant()) return
+        if (options != null && options!['id'] != null) {
+            orderId.value = parseInt(options!['id'] as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        if (orderId.value > 0) loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .status-header {
+        background-color: #FF6B35;
+        padding: 24px 16px;
+        align-items: center;
+    }
+
+    .status-icon {
+        font-size: 40px;
+    }
+
+    .status-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .order-no {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+    }
+
+    .amount-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .amount-value {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .amount-value.discount {
+        color: #FF6B35;
+    }
+
+    .amount-value.primary {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .amount-row.total {
+        border-top: 1px solid #F5F5F5;
+        margin-top: 4px;
+        padding-top: 10px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .info-value.primary {
+        color: #FF6B35;
+    }
+
+    .footer {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+        justify-content: flex-end;
+    }
+
+    .action-btn {
+        padding: 8px 18px;
+        border-radius: 18px;
+        border: 1px solid #DDDDDD;
+        margin-left: 10px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

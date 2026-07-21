@@ -1,0 +1,570 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <rider-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading && delivery != null">
+                <!-- 配送状态头 -->
+                <view class="status-header">
+                    <text class="status-icon">{{ statusIcon }}</text>
+                    <text class="status-text">{{ delivery!.status_text }}</text>
+                    <text class="order-no">单号：{{ delivery!.order_no }}</text>
+                </view>
+
+                <!-- 配送费信息 -->
+                <view class="fee-card">
+                    <view class="fee-row">
+                        <text class="fee-label">配送费</text>
+                        <text class="fee-value primary">¥{{ delivery!.delivery_fee }}</text>
+                    </view>
+                    <view class="fee-row">
+                        <text class="fee-label">配送距离</text>
+                        <text class="fee-value">{{ delivery!.distance }}km</text>
+                    </view>
+                    <view class="fee-row" v-if="delivery!.tip > 0">
+                        <text class="fee-label">小费</text>
+                        <text class="fee-value primary">¥{{ delivery!.tip }}</text>
+                    </view>
+                </view>
+
+                <!-- 取货地址 -->
+                <rider-address-card
+                    :address="pickupAddress"
+                    type="pickup"
+                    @navigate="onNavigatePickup"
+                    @call="onCall" />
+
+                <!-- 收货地址 -->
+                <rider-address-card
+                    :address="dropoffAddress"
+                    type="dropoff"
+                    @navigate="onNavigateDropoff"
+                    @call="onCall" />
+
+                <!-- 订单信息 -->
+                <view class="card">
+                    <text class="card-title">订单信息</text>
+                    <view class="info-row" v-if="delivery!.shop_name.length > 0">
+                        <text class="info-label">商家</text>
+                        <text class="info-value">{{ delivery!.shop_name }}</text>
+                    </view>
+                    <view class="info-row" v-if="delivery!.order_remark.length > 0">
+                        <text class="info-label">订单备注</text>
+                        <text class="info-value">{{ delivery!.order_remark }}</text>
+                    </view>
+                    <view class="info-row">
+                        <text class="info-label">下单时间</text>
+                        <text class="info-value">{{ delivery!.created_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="delivery!.grabbed_at.length > 0">
+                        <text class="info-label">接单时间</text>
+                        <text class="info-value">{{ delivery!.grabbed_at }}</text>
+                    </view>
+                    <view class="info-row" v-if="delivery!.completed_at.length > 0">
+                        <text class="info-label">送达时间</text>
+                        <text class="info-value">{{ delivery!.completed_at }}</text>
+                    </view>
+                </view>
+
+                <!-- 配送流程 -->
+                <view class="card">
+                    <text class="card-title">配送流程</text>
+                    <view class="step-list">
+                        <view class="step-item" v-for="(s, idx) in steps" :key="idx">
+                            <view class="step-dot" :class="{ active: s.active, done: s.done }"></view>
+                            <view class="step-info">
+                                <text class="step-title" :class="{ active: s.active, done: s.done }">{{ s.title }}</text>
+                                <text class="step-time" v-if="s.time.length > 0">{{ s.time }}</text>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <rider-empty
+                v-if="!loading && delivery == null"
+                icon="📋"
+                text="配送单不存在或加载失败"
+                btn-text="返回"
+                @click="onBack" />
+        </scroll-view>
+
+        <!-- 底部操作 -->
+        <view class="footer" v-if="delivery != null && actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+    import { getDeliveryDetail, grabDelivery, arriveShop, pickupDelivery, startDeliver, completeDelivery, cancelDelivery } from '@/api/business/rider.uts'
+
+    type Address = {
+        name: string
+        phone: string
+        address: string
+        lat: number
+        lng: number
+    }
+
+    type Delivery = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        shop_name: string
+        shop_address: string
+        shop_phone: string
+        shop_lat: number
+        shop_lng: number
+        customer_name: string
+        customer_address: string
+        customer_phone: string
+        customer_lat: number
+        customer_lng: number
+        distance: number
+        delivery_fee: number
+        tip: number
+        order_remark: string
+        created_at: string
+        grabbed_at: string
+        arrived_at: string
+        picked_at: string
+        delivering_at: string
+        completed_at: string
+    }
+
+    type Step = {
+        title: string
+        time: string
+        active: boolean
+        done: boolean
+    }
+
+    type Action = { text: string, type: string, primary: boolean }
+
+    const deliveryId = ref(0)
+    const delivery = ref<Delivery | null>(null)
+    const loading = ref(false)
+    const actions = ref([] as Action[])
+
+    const pickupAddress = computed(() : Address => {
+        if (delivery.value == null) {
+            return { name: '', phone: '', address: '', lat: 0, lng: 0 } as Address
+        }
+        const d = delivery.value!
+        return {
+            name: d.shop_name,
+            phone: d.shop_phone,
+            address: d.shop_address,
+            lat: d.shop_lat,
+            lng: d.shop_lng
+        } as Address
+    })
+
+    const dropoffAddress = computed(() : Address => {
+        if (delivery.value == null) {
+            return { name: '', phone: '', address: '', lat: 0, lng: 0 } as Address
+        }
+        const d = delivery.value!
+        return {
+            name: d.customer_name,
+            phone: d.customer_phone,
+            address: d.customer_address,
+            lat: d.customer_lat,
+            lng: d.customer_lng
+        } as Address
+    })
+
+    const statusIcon = computed(() : string => {
+        if (delivery.value == null) return ''
+        const s = delivery.value!.status
+        if (s == 'pending') return '🎯'
+        if (s == 'grabbed') return '📋'
+        if (s == 'arrived') return '🏪'
+        if (s == 'picked') return '📦'
+        if (s == 'delivering') return '🛵'
+        if (s == 'completed') return '✅'
+        if (s == 'canceled') return '❌'
+        return '📋'
+    })
+
+    const steps = computed(() : Step[] => {
+        const arr = [] as Step[]
+        if (delivery.value == null) return arr
+        const d = delivery.value!
+        const s = d.status
+        arr.push({
+            title: '接单',
+            time: d.grabbed_at,
+            active: s == 'grabbed',
+            done: ['arrived', 'picked', 'delivering', 'completed'].includes(s)
+        } as Step)
+        arr.push({
+            title: '到店',
+            time: d.arrived_at,
+            active: s == 'arrived',
+            done: ['picked', 'delivering', 'completed'].includes(s)
+        } as Step)
+        arr.push({
+            title: '取货',
+            time: d.picked_at,
+            active: s == 'picked',
+            done: ['delivering', 'completed'].includes(s)
+        } as Step)
+        arr.push({
+            title: '配送',
+            time: d.delivering_at,
+            active: s == 'delivering',
+            done: ['completed'].includes(s)
+        } as Step)
+        arr.push({
+            title: '送达',
+            time: d.completed_at,
+            active: s == 'completed',
+            done: s == 'completed'
+        } as Step)
+        return arr
+    })
+
+    const loadDetail = () => {
+        loading.value = true
+        getDeliveryDetail(deliveryId.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                delivery.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    status: (d['status'] as string) ?? '',
+                    status_text: (d['status_text'] as string) ?? '',
+                    shop_name: (d['shop_name'] as string) ?? '',
+                    shop_address: (d['shop_address'] as string) ?? '',
+                    shop_phone: (d['shop_phone'] as string) ?? '',
+                    shop_lat: (d['shop_lat'] as number) ?? 0,
+                    shop_lng: (d['shop_lng'] as number) ?? 0,
+                    customer_name: (d['customer_name'] as string) ?? '',
+                    customer_address: (d['customer_address'] as string) ?? '',
+                    customer_phone: (d['customer_phone'] as string) ?? '',
+                    customer_lat: (d['customer_lat'] as number) ?? 0,
+                    customer_lng: (d['customer_lng'] as number) ?? 0,
+                    distance: (d['distance'] as number) ?? 0,
+                    delivery_fee: (d['delivery_fee'] as number) ?? 0,
+                    tip: (d['tip'] as number) ?? 0,
+                    order_remark: (d['order_remark'] as string) ?? '',
+                    created_at: (d['created_at'] as string) ?? '',
+                    grabbed_at: (d['grabbed_at'] as string) ?? '',
+                    arrived_at: (d['arrived_at'] as string) ?? '',
+                    picked_at: (d['picked_at'] as string) ?? '',
+                    delivering_at: (d['delivering_at'] as string) ?? '',
+                    completed_at: (d['completed_at'] as string) ?? ''
+                } as Delivery
+                updateActions()
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const updateActions = () => {
+        const arr = [] as Action[]
+        if (delivery.value != null) {
+            const s = delivery.value!.status
+            if (s == 'pending') {
+                arr.push({ text: '抢单', type: 'grab', primary: true } as Action)
+            }
+            if (s == 'grabbed') {
+                arr.push({ text: '到店', type: 'arrive-shop', primary: true } as Action)
+            }
+            if (s == 'arrived') {
+                arr.push({ text: '取货', type: 'pickup', primary: true } as Action)
+            }
+            if (s == 'picked') {
+                arr.push({ text: '开始配送', type: 'deliver', primary: true } as Action)
+            }
+            if (s == 'delivering') {
+                arr.push({ text: '送达', type: 'complete', primary: true } as Action)
+            }
+            if (s == 'grabbed' || s == 'arrived' || s == 'picked' || s == 'delivering') {
+                arr.push({ text: '取消', type: 'cancel', primary: false } as Action)
+            }
+        }
+        actions.value = arr
+    }
+
+    const onAction = (a: Action) => {
+        const actionMap: UTSJSONObject = {
+            'grab': '抢单',
+            'arrive-shop': '到店',
+            'pickup': '取货',
+            'deliver': '开始配送',
+            'complete': '送达',
+            'cancel': '取消'
+        } as UTSJSONObject
+        const actionText = (actionMap[a.type] as string) ?? ''
+        if (actionText.length == 0) return
+
+        uni.showModal({
+            title: '提示',
+            content: '确定要执行「' + actionText + '」操作吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    let api: Promise<ApiResult> | null = null
+                    if (a.type == 'grab') {
+                        api = grabDelivery(deliveryId.value)
+                    } else if (a.type == 'arrive-shop') {
+                        api = arriveShop(deliveryId.value)
+                    } else if (a.type == 'pickup') {
+                        api = pickupDelivery(deliveryId.value)
+                    } else if (a.type == 'deliver') {
+                        api = startDeliver(deliveryId.value)
+                    } else if (a.type == 'complete') {
+                        api = completeDelivery(deliveryId.value)
+                    } else if (a.type == 'cancel') {
+                        api = cancelDelivery(deliveryId.value)
+                    }
+                    if (api == null) return
+                    api!.then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: actionText + '成功', icon: 'success' })
+                            loadDetail()
+                        } else {
+                            uni.showToast({ title: res.message || actionText + '失败', icon: 'none' })
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
+    }
+
+    const onNavigatePickup = (address: Address) => {
+        if (address.lat == 0 || address.lng == 0) {
+            uni.showToast({ title: '地址坐标缺失', icon: 'none' })
+            return
+        }
+        uni.openLocation({
+            latitude: address.lat,
+            longitude: address.lng,
+            name: address.name,
+            address: address.address
+        })
+    }
+
+    const onNavigateDropoff = (address: Address) => {
+        if (address.lat == 0 || address.lng == 0) {
+            uni.showToast({ title: '地址坐标缺失', icon: 'none' })
+            return
+        }
+        uni.openLocation({
+            latitude: address.lat,
+            longitude: address.lng,
+            name: address.name,
+            address: address.address
+        })
+    }
+
+    const onCall = (phone: string) => {
+        if (phone.length == 0) {
+            uni.showToast({ title: '电话号码缺失', icon: 'none' })
+            return
+        }
+        uni.makePhoneCall({ phoneNumber: phone })
+    }
+
+    const onBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad((options: UTSJSONObject) => {
+        if (!guardRider()) return
+        if (options != null && options!['id'] != null) {
+            deliveryId.value = parseInt(options!['id'] as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        if (deliveryId.value > 0) loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .status-header {
+        background-color: #FF6B35;
+        padding: 24px 16px;
+        align-items: center;
+    }
+
+    .status-icon {
+        font-size: 40px;
+    }
+
+    .status-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .order-no {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .fee-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .fee-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 0;
+    }
+
+    .fee-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .fee-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .fee-value.primary {
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .step-list {
+        padding: 8px 0;
+    }
+
+    .step-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .step-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background-color: #DDDDDD;
+        margin-right: 12px;
+    }
+
+    .step-dot.active {
+        background-color: #FF6B35;
+    }
+
+    .step-dot.done {
+        background-color: #4CAF50;
+    }
+
+    .step-info {
+        flex: 1;
+    }
+
+    .step-title {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .step-title.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .step-title.done {
+        color: #4CAF50;
+    }
+
+    .step-time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .footer {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+        justify-content: flex-end;
+    }
+
+    .action-btn {
+        padding: 8px 18px;
+        border-radius: 18px;
+        border: 1px solid #DDDDDD;
+        margin-left: 10px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

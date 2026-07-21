@@ -1,0 +1,99 @@
+<template>
+    <view class="verify-status" :class="statusClass">
+        <text class="icon">{{ statusIcon }}</text>
+        <view class="info">
+            <text class="title" :class="statusClass">{{ statusText }}</text>
+            <text class="desc">{{ desc }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        status: string  // 'none' | 'pending' | 'approved' | 'rejected'
+        statusText?: string
+        desc?: string
+    }>(), {
+        statusText: '',
+        desc: ''
+    } as any)
+
+    const statusClass = computed(() : string => {
+        const s = props.status
+        if (s == 'pending') return 'pending'
+        if (s == 'approved') return 'approved'
+        if (s == 'rejected') return 'rejected'
+        return 'none'
+    })
+
+    const statusIcon = computed(() : string => {
+        const s = props.status
+        if (s == 'pending') return '⏰'
+        if (s == 'approved') return '✅'
+        if (s == 'rejected') return '❌'
+        return '📝'
+    })
+
+    const statusText = computed(() : string => {
+        if (props.statusText.length > 0) return props.statusText
+        const s = props.status
+        if (s == 'pending') return '审核中'
+        if (s == 'approved') return '已认证'
+        if (s == 'rejected') return '认证未通过'
+        return '未认证'
+    })
+
+    const desc = computed(() : string => {
+        if (props.desc.length > 0) return props.desc
+        const s = props.status
+        if (s == 'pending') return '认证审核中，请耐心等待'
+        if (s == 'approved') return '认证已通过，可正常接单'
+        if (s == 'rejected') return '认证未通过，请重新提交'
+        return '请尽快完成骑手认证'
+    })
+</script>
+
+<style>
+    .verify-status {
+        flex-direction: row;
+        align-items: center;
+        padding: 20px 16px;
+    }
+
+    .verify-status.none {
+        background-color: #FF6B35;
+    }
+
+    .verify-status.pending {
+        background-color: #FF9900;
+    }
+
+    .verify-status.approved {
+        background-color: #4CAF50;
+    }
+
+    .verify-status.rejected {
+        background-color: #F44336;
+    }
+
+    .icon {
+        font-size: 40px;
+        margin-right: 16px;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .desc {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+</style>

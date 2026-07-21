@@ -1,0 +1,772 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <!-- 步骤指示器 -->
+            <view class="steps">
+                <view class="step" v-for="(s, idx) in steps" :key="idx">
+                    <view class="step-circle" :class="{ active: idx <= currentStep, done: idx < currentStep }">
+                        <text class="step-num" v-if="idx >= currentStep">{{ idx + 1 }}</text>
+                        <text class="step-check" v-else>✓</text>
+                    </view>
+                    <text class="step-name" :class="{ active: idx <= currentStep }">{{ s }}</text>
+                    <view class="step-line" v-if="idx < steps.length - 1" :class="{ active: idx < currentStep }"></view>
+                </view>
+            </view>
+
+            <!-- 步骤 1：基本信息 -->
+            <view class="form-card" v-if="currentStep == 0">
+                <text class="card-title">基本信息</text>
+                <view class="form-item">
+                    <text class="label">店铺名称 <text class="required">*</text></text>
+                    <input class="input" placeholder="请输入店铺名称" v-model="form.name" maxlength="30" />
+                </view>
+                <view class="form-item">
+                    <text class="label">店铺分类 <text class="required">*</text></text>
+                    <view class="picker" @click="showCategoryPicker = true">
+                        <text :class="form.category_id > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.category_id > 0 ? categoryName : '请选择分类' }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">联系电话 <text class="required">*</text></text>
+                    <input class="input" type="number" placeholder="请输入联系电话" v-model="form.phone" />
+                </view>
+                <view class="form-item">
+                    <text class="label">店铺简介</text>
+                    <textarea class="textarea" placeholder="请输入店铺简介" v-model="form.description" maxlength="200" />
+                </view>
+            </view>
+
+            <!-- 步骤 2：资质信息 -->
+            <view class="form-card" v-if="currentStep == 1">
+                <text class="card-title">资质信息</text>
+                <view class="form-item">
+                    <text class="label">企业类型 <text class="required">*</text></text>
+                    <view class="picker-row">
+                        <text class="picker-text" v-for="t in typeOptions" :key="t.value" :class="{ active: form.type == t.value }" @click="form.type = t.value">{{ t.label }}</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">企业名称 <text class="required">*</text></text>
+                    <input class="input" placeholder="请输入企业名称" v-model="form.company_name" />
+                </view>
+                <view class="form-item">
+                    <text class="label">统一信用代码 <text class="required">*</text></text>
+                    <input class="input" placeholder="请输入统一社会信用代码" v-model="form.credit_code" />
+                </view>
+                <view class="form-item">
+                    <text class="label">法人姓名 <text class="required">*</text></text>
+                    <input class="input" placeholder="请输入法人姓名" v-model="form.legal_person" />
+                </view>
+                <view class="form-item">
+                    <text class="label">营业执照 <text class="required">*</text></text>
+                    <view class="image-row">
+                        <image class="license-image" :src="form.license_image" mode="aspectFill" v-if="form.license_image.length > 0" />
+                        <view class="image-add" @click="chooseLicense">
+                            <text class="image-add-icon">+</text>
+                            <text class="image-add-text">上传</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 步骤 3：店铺信息 -->
+            <view class="form-card" v-if="currentStep == 2">
+                <text class="card-title">店铺信息</text>
+                <view class="form-item">
+                    <text class="label">店铺 LOGO</text>
+                    <view class="image-row">
+                        <image class="logo-image" :src="form.logo" mode="aspectFill" v-if="form.logo.length > 0" />
+                        <view class="image-add" @click="chooseLogo">
+                            <text class="image-add-icon">+</text>
+                            <text class="image-add-text">上传</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">详细地址 <text class="required">*</text></text>
+                    <input class="input" placeholder="请输入详细地址" v-model="form.address" />
+                </view>
+                <view class="form-item">
+                    <text class="label">营业开始时间</text>
+                    <view class="picker" @click="pickTime('open')">
+                        <text class="picker-text">{{ form.open_time }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">营业结束时间</text>
+                    <view class="picker" @click="pickTime('close')">
+                        <text class="picker-text">{{ form.close_time }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+            </view>
+
+            <!-- 步骤 4：确认提交 -->
+            <view class="form-card" v-if="currentStep == 3">
+                <text class="card-title">确认信息</text>
+                <view class="confirm-row">
+                    <text class="confirm-label">店铺名称</text>
+                    <text class="confirm-value">{{ form.name }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">店铺分类</text>
+                    <text class="confirm-value">{{ categoryName }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">联系电话</text>
+                    <text class="confirm-value">{{ form.phone }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">企业名称</text>
+                    <text class="confirm-value">{{ form.company_name }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">信用代码</text>
+                    <text class="confirm-value">{{ form.credit_code }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">法人姓名</text>
+                    <text class="confirm-value">{{ form.legal_person }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">详细地址</text>
+                    <text class="confirm-value">{{ form.address }}</text>
+                </view>
+                <view class="confirm-row">
+                    <text class="confirm-label">营业时间</text>
+                    <text class="confirm-value">{{ form.open_time }} - {{ form.close_time }}</text>
+                </view>
+
+                <view class="agreement-row">
+                    <view class="checkbox" @click="agreed = !agreed">
+                        <text class="check-icon" v-if="agreed">✓</text>
+                    </view>
+                    <text class="agreement-text">我已阅读并同意《商家入驻协议》《平台服务条款》</text>
+                </view>
+            </view>
+        </scroll-view>
+
+        <!-- 底部按钮 -->
+        <view class="footer">
+            <view class="btn-prev" v-if="currentStep > 0" @click="prevStep">
+                <text class="btn-prev-text">上一步</text>
+            </view>
+            <view class="btn-next" v-if="currentStep < steps.length - 1" @click="nextStep">
+                <text class="btn-next-text">下一步</text>
+            </view>
+            <view class="btn-submit" v-if="currentStep == steps.length - 1" @click="onSubmit">
+                <text class="btn-submit-text">提交申请</text>
+            </view>
+        </view>
+
+        <!-- 分类选择器 -->
+        <view class="picker-mask" v-if="showCategoryPicker" @click="showCategoryPicker = false">
+            <view class="picker-content" @click.stop="">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showCategoryPicker = false">取消</text>
+                    <text class="picker-title">选择分类</text>
+                    <text class="picker-confirm" @click="showCategoryPicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="c in categories" :key="c.id" @click="selectCategory(c)">
+                        <text :class="c.id == form.category_id ? 'option-text option-active' : 'option-text'">{{ c.name }}</text>
+                        <text class="option-check" v-if="c.id == form.category_id">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+
+        <shop-loading :text="'提交中...'" v-if="submitting" />
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { applyMerchantShop, listMerchantCategories } from '@/api/business/merchant.uts'
+
+    type Category = {
+        id: number
+        name: string
+    }
+
+    type TypeOption = { label: string, value: string }
+
+    type Form = {
+        name: string
+        category_id: number
+        phone: string
+        description: string
+        type: string
+        company_name: string
+        credit_code: string
+        legal_person: string
+        license_image: string
+        logo: string
+        address: string
+        open_time: string
+        close_time: string
+    }
+
+    const steps = ['基本信息', '资质信息', '店铺信息', '确认提交']
+    const currentStep = ref(0)
+    const form = ref({
+        name: '',
+        category_id: 0,
+        phone: '',
+        description: '',
+        type: 'enterprise',
+        company_name: '',
+        credit_code: '',
+        legal_person: '',
+        license_image: '',
+        logo: '',
+        address: '',
+        open_time: '08:00',
+        close_time: '22:00'
+    } as Form)
+    const categories = ref([] as Category[])
+    const categoryName = ref('')
+    const showCategoryPicker = ref(false)
+    const agreed = ref(false)
+    const submitting = ref(false)
+
+    const typeOptions = ref([
+        { label: '个体工商户', value: 'individual' },
+        { label: '企业', value: 'enterprise' },
+        { label: '其他组织', value: 'other' }
+    ] as TypeOption[])
+
+    const loadCategories = () => {
+        listMerchantCategories({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                categories.value = (d['list'] as Category[]) ?? ([] as Category[])
+            }
+        }).catch(() => {})
+    }
+
+    const selectCategory = (c: Category) => {
+        form.value.category_id = c.id
+        categoryName.value = c.name
+        showCategoryPicker.value = false
+    }
+
+    const uploadFile = (filePath: string, callback: (url: string) => void) => {
+        uni.uploadFile({
+            url: 'http://localhost:8088/api/v1/file/upload',
+            filePath: filePath,
+            name: 'file',
+            header: { Authorization: 'Bearer ' + (uni.getStorageSync('wctc_token') as string) },
+            success: (r: UploadFileSuccessCallbackResult) => {
+                try {
+                    const data = JSON.parse(r.data) as UTSJSONObject
+                    const code = (data['code'] as number) ?? 0
+                    if (code == 200 || code == 0) {
+                        const d = (data['data'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+                        callback((d['url'] as string) ?? '')
+                    } else {
+                        uni.showToast({ title: (data['message'] as string) ?? '上传失败', icon: 'none' })
+                    }
+                } catch (e) {
+                    uni.showToast({ title: '上传失败', icon: 'none' })
+                }
+            },
+            fail: () => {
+                uni.showToast({ title: '上传失败', icon: 'none' })
+            }
+        })
+    }
+
+    const chooseLogo = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uploadFile(res.tempFilePaths[0], (url: string) => {
+                        form.value.logo = url
+                    })
+                }
+            }
+        })
+    }
+
+    const chooseLicense = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uploadFile(res.tempFilePaths[0], (url: string) => {
+                        form.value.license_image = url
+                    })
+                }
+            }
+        })
+    }
+
+    const pickTime = (type: string) => {
+        uni.showActionSheet({
+            itemList: ['06:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00', '22:00', '23:00'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const items = ['06:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00', '22:00', '23:00']
+                const t = items[r.tapIndex]
+                if (type == 'open') {
+                    form.value.open_time = t
+                } else {
+                    form.value.close_time = t
+                }
+            }
+        })
+    }
+
+    const validateStep = () : boolean => {
+        if (currentStep.value == 0) {
+            if (form.value.name.length == 0) {
+                uni.showToast({ title: '请输入店铺名称', icon: 'none' })
+                return false
+            }
+            if (form.value.category_id == 0) {
+                uni.showToast({ title: '请选择店铺分类', icon: 'none' })
+                return false
+            }
+            if (form.value.phone.length == 0) {
+                uni.showToast({ title: '请输入联系电话', icon: 'none' })
+                return false
+            }
+        }
+        if (currentStep.value == 1) {
+            if (form.value.company_name.length == 0) {
+                uni.showToast({ title: '请输入企业名称', icon: 'none' })
+                return false
+            }
+            if (form.value.credit_code.length == 0) {
+                uni.showToast({ title: '请输入信用代码', icon: 'none' })
+                return false
+            }
+            if (form.value.legal_person.length == 0) {
+                uni.showToast({ title: '请输入法人姓名', icon: 'none' })
+                return false
+            }
+            if (form.value.license_image.length == 0) {
+                uni.showToast({ title: '请上传营业执照', icon: 'none' })
+                return false
+            }
+        }
+        if (currentStep.value == 2) {
+            if (form.value.address.length == 0) {
+                uni.showToast({ title: '请输入详细地址', icon: 'none' })
+                return false
+            }
+        }
+        if (currentStep.value == 3) {
+            if (!agreed.value) {
+                uni.showToast({ title: '请阅读并同意协议', icon: 'none' })
+                return false
+            }
+        }
+        return true
+    }
+
+    const nextStep = () => {
+        if (!validateStep()) return
+        if (currentStep.value < steps.length - 1) {
+            currentStep.value++
+        }
+    }
+
+    const prevStep = () => {
+        if (currentStep.value > 0) {
+            currentStep.value--
+        }
+    }
+
+    const onSubmit = () => {
+        if (!validateStep()) return
+        if (submitting.value) return
+        submitting.value = true
+
+        const data: UTSJSONObject = {
+            name: form.value.name,
+            category_id: form.value.category_id,
+            phone: form.value.phone,
+            description: form.value.description,
+            type: form.value.type,
+            company_name: form.value.company_name,
+            credit_code: form.value.credit_code,
+            legal_person: form.value.legal_person,
+            license_image: form.value.license_image,
+            logo: form.value.logo,
+            address: form.value.address,
+            open_time: form.value.open_time,
+            close_time: form.value.close_time
+        } as UTSJSONObject
+
+        applyMerchantShop(data).then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showModal({
+                    title: '提交成功',
+                    content: '入驻申请已提交，我们将在 1-3 个工作日内完成审核',
+                    showCancel: false,
+                    success: () => {
+                        uni.navigateBack()
+                    }
+                })
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadCategories()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .steps {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 20px 16px;
+        justify-content: space-between;
+    }
+
+    .step {
+        align-items: center;
+        flex-direction: row;
+        flex: 1;
+    }
+
+    .step-circle {
+        width: 28px;
+        height: 28px;
+        border-radius: 14px;
+        background-color: #F0F0F0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .step-circle.active {
+        background-color: #FF6B35;
+    }
+
+    .step-circle.done {
+        background-color: #FF6B35;
+    }
+
+    .step-num {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .step-check {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .step-name {
+        font-size: 12px;
+        color: #999;
+        margin-left: 6px;
+    }
+
+    .step-name.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .step-line {
+        flex: 1;
+        height: 1px;
+        background-color: #EEEEEE;
+        margin: 0 6px;
+    }
+
+    .step-line.active {
+        background-color: #FF6B35;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .form-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .required {
+        color: #F44336;
+    }
+
+    .input {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+        height: 80px;
+    }
+
+    .picker {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .picker-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .picker-text {
+        font-size: 13px;
+        color: #666;
+        background-color: #F5F5F5;
+        border-radius: 14px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-bottom: 6px;
+    }
+
+    .picker-text.active {
+        background-color: #FF6B35;
+        color: #FFFFFF;
+    }
+
+    .image-row {
+        flex-direction: row;
+    }
+
+    .logo-image, .license-image {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        margin-right: 10px;
+    }
+
+    .image-add {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+        border: 1px dashed #CCCCCC;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-add-icon {
+        font-size: 24px;
+        color: #CCCCCC;
+    }
+
+    .image-add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .confirm-row {
+        flex-direction: row;
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .confirm-label {
+        font-size: 13px;
+        color: #999;
+        width: 100px;
+    }
+
+    .confirm-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .agreement-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 16px;
+    }
+
+    .checkbox {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        border: 1px solid #CCCCCC;
+        margin-right: 8px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .check-icon {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .checkbox:active {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .agreement-text {
+        flex: 1;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .footer {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-prev {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+        margin-right: 10px;
+    }
+
+    .btn-prev-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .btn-next, .btn-submit {
+        flex: 2;
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-next-text, .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 500;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 400px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 16px;
+        color: #FF6B35;
+    }
+</style>

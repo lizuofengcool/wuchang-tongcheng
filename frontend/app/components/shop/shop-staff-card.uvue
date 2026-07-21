@@ -1,0 +1,180 @@
+<template>
+    <view class="staff-card" @click="onClick">
+        <image class="avatar" :src="staff.avatar" mode="aspectFill" lazy-load="true" v-if="staff.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ staff.name.length > 0 ? staff.name.charAt(0) : '员' }}</text>
+        </view>
+        <view class="info">
+            <view class="title-row">
+                <text class="name">{{ staff.name }}</text>
+                <shop-status-tag :status="staff.status" :text="staff.status_text" />
+            </view>
+            <text class="phone" v-if="staff.phone.length > 0">📱 {{ staff.phone }}</text>
+            <view class="role-row">
+                <text class="role-label">角色：</text>
+                <text class="role-value">{{ staff.role_text }}</text>
+            </view>
+            <view class="permission-row" v-if="staff.permissions.length > 0">
+                <text class="perm-label">权限：</text>
+                <text class="perm-value">{{ staff.permissions.length }} 项</text>
+            </view>
+        </view>
+        <view class="action-col" v-if="actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click.stop="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Action = { text: string, type: string, primary: boolean }
+
+    type Staff = {
+        id: number
+        name: string
+        avatar: string
+        phone: string
+        role_text: string
+        status: string
+        status_text: string
+        permissions: string[]
+    }
+
+    const props = withDefaults(defineProps<{
+        staff: Staff
+        actions?: Action[]
+    }>(), {
+        actions: [] as Action[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', staffId: number, actionType: string): void
+    }>()
+
+    const actions = computed(() : Action[] => {
+        return props.actions ?? ([] as Action[])
+    })
+
+    const onClick = () => {
+        emit('click', props.staff.id)
+    }
+
+    const onAction = (a: Action) => {
+        emit('action', props.staff.id, a.type)
+    }
+</script>
+
+<style>
+    .staff-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #F5F5F5;
+    }
+
+    .avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .info {
+        flex: 1;
+        margin-left: 12px;
+    }
+
+    .title-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .phone {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .role-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .role-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .role-value {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .permission-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 2px;
+    }
+
+    .perm-label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .perm-value {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-col {
+        align-items: flex-end;
+    }
+
+    .action-btn {
+        padding: 4px 12px;
+        border-radius: 14px;
+        border: 1px solid #DDDDDD;
+        margin-bottom: 6px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

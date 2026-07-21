@@ -1,0 +1,153 @@
+<template>
+    <view class="coupon-card" @click="onClick">
+        <view class="left" :class="statusClass">
+            <view class="amount-row">
+                <text class="currency" :class="statusClass">¥</text>
+                <text class="amount" :class="statusClass">{{ coupon.amount }}</text>
+            </view>
+            <text class="threshold" :class="statusClass">{{ coupon.threshold_text }}</text>
+        </view>
+        <view class="right">
+            <text class="title">{{ coupon.title }}</text>
+            <text class="validity">{{ coupon.validity_text }}</text>
+            <text class="status-text" :class="statusClass">{{ coupon.status_text }}</text>
+            <view class="action-btn" v-if="actionText.length > 0" @click.stop="onAction">
+                <text class="action-text">{{ actionText }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Coupon = {
+        id: number
+        title: string
+        amount: number
+        threshold_text: string
+        validity_text: string
+        status: string
+        status_text: string
+    }
+
+    const props = withDefaults(defineProps<{
+        coupon: Coupon
+        actionText?: string
+    }>(), {
+        actionText: ''
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', id: number): void
+    }>()
+
+    const statusClass = computed(() : string => {
+        const s = props.coupon.status
+        if (s == 'expired' || s == 'disabled') return 'disabled'
+        if (s == 'used') return 'used'
+        return 'active'
+    })
+
+    const onClick = () => {
+        emit('click', props.coupon.id)
+    }
+
+    const onAction = () => {
+        emit('action', props.coupon.id)
+    }
+</script>
+
+<style>
+    .coupon-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+        overflow: hidden;
+    }
+
+    .left {
+        width: 110px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 0;
+    }
+
+    .left.disabled {
+        background-color: #CCCCCC;
+    }
+
+    .left.used {
+        background-color: #999999;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .currency {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .amount {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .threshold {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .right {
+        flex: 1;
+        padding: 14px;
+        justify-content: center;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .validity {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .status-text {
+        font-size: 11px;
+        color: #FF6B35;
+        margin-top: 4px;
+    }
+
+    .status-text.disabled {
+        color: #999;
+    }
+
+    .status-text.used {
+        color: #666;
+    }
+
+    .action-btn {
+        position: absolute;
+        right: 14px;
+        top: 14px;
+        background-color: #FF6B35;
+        border-radius: 14px;
+        padding: 4px 12px;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+</style>

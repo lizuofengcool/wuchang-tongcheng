@@ -1,0 +1,698 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <rider-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading && delivery != null">
+                <!-- 配送单基本信息 -->
+                <view class="status-header">
+                    <text class="status-icon">{{ statusIcon }}</text>
+                    <text class="status-text">{{ delivery!.status_text }}</text>
+                    <text class="order-no">配送单号：{{ delivery!.order_no }}</text>
+                </view>
+
+                <!-- 路线总览 -->
+                <view class="route-card">
+                    <text class="card-title">路线总览</text>
+                    <view class="route-flow">
+                        <view class="route-point">
+                            <view class="dot pickup"></view>
+                            <view class="point-info">
+                                <text class="point-label">取货地</text>
+                                <text class="point-name">{{ delivery!.pickup_name }}</text>
+                                <text class="point-addr">{{ delivery!.pickup_address }}</text>
+                            </view>
+                        </view>
+                        <view class="route-line">
+                            <text class="route-distance">{{ pickupToDropoff }}km</text>
+                            <text class="route-arrow">↓</text>
+                        </view>
+                        <view class="route-point">
+                            <view class="dot dropoff"></view>
+                            <view class="point-info">
+                                <text class="point-label">收货地</text>
+                                <text class="point-name">{{ delivery!.dropoff_name }}</text>
+                                <text class="point-addr">{{ delivery!.dropoff_address }}</text>
+                            </view>
+                        </view>
+                    </view>
+                    <view class="route-stats">
+                        <view class="stat-item">
+                            <text class="stat-label">总里程</text>
+                            <text class="stat-value">{{ totalDistance }}km</text>
+                        </view>
+                        <view class="stat-divider"></view>
+                        <view class="stat-item">
+                            <text class="stat-label">预计耗时</text>
+                            <text class="stat-value">{{ estimatedTime }}分钟</text>
+                        </view>
+                        <view class="stat-divider"></view>
+                        <view class="stat-item">
+                            <text class="stat-label">配送费</text>
+                            <text class="stat-value">¥{{ delivery!.delivery_fee }}</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 取货地导航 -->
+                <view class="card">
+                    <view class="card-header">
+                        <text class="card-title">取货地导航</text>
+                        <text class="card-distance" v-if="distanceToPickup > 0">距您 {{ distanceToPickup }}km</text>
+                    </view>
+                    <rider-address-card :address="pickupAddress" type="pickup" @navigate="onNavigatePickup" @call="onCall" />
+                    <view class="action-row">
+                        <view class="action-btn primary" @click="onNavigatePickup(pickupAddress)">
+                            <text class="action-icon">🧭</text>
+                            <text class="action-text-light">开始导航</text>
+                        </view>
+                        <view class="action-btn" @click="copyAddress(delivery!.pickup_address)">
+                            <text class="action-icon">📋</text>
+                            <text class="action-text">复制地址</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 收货地导航 -->
+                <view class="card">
+                    <view class="card-header">
+                        <text class="card-title">收货地导航</text>
+                        <text class="card-distance" v-if="distanceToDropoff > 0">距取货地 {{ distanceToDropoff }}km</text>
+                    </view>
+                    <rider-address-card :address="dropoffAddress" type="dropoff" @navigate="onNavigateDropoff" @call="onCall" />
+                    <view class="action-row">
+                        <view class="action-btn primary" @click="onNavigateDropoff(dropoffAddress)">
+                            <text class="action-icon">🧭</text>
+                            <text class="action-text-light">开始导航</text>
+                        </view>
+                        <view class="action-btn" @click="copyAddress(delivery!.dropoff_address)">
+                            <text class="action-icon">📋</text>
+                            <text class="action-text">复制地址</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 联系人快捷操作 -->
+                <view class="card">
+                    <text class="card-title">快捷联系</text>
+                    <view class="contact-row">
+                        <view class="contact-item" @click="callPickup">
+                            <view class="contact-icon pickup">
+                                <text class="icon-text">店</text>
+                            </view>
+                            <text class="contact-label">联系商家</text>
+                        </view>
+                        <view class="contact-item" @click="callDropoff">
+                            <view class="contact-icon dropoff">
+                                <text class="icon-text">客</text>
+                            </view>
+                            <text class="contact-label">联系客户</text>
+                        </view>
+                        <view class="contact-item" @click="reportIssue">
+                            <view class="contact-icon report">
+                                <text class="icon-text">报</text>
+                            </view>
+                            <text class="contact-label">异常上报</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 温馨提示 -->
+                <view class="tips-card">
+                    <text class="tips-title">温馨提示</text>
+                    <text class="tips-line">1. 到达取货地请点击"到店"按钮</text>
+                    <text class="tips-line">2. 取货后请点击"取货"按钮</text>
+                    <text class="tips-line">3. 送达后请点击"送达"按钮完成订单</text>
+                    <text class="tips-line">4. 异常情况请及时上报客服</text>
+                </view>
+            </view>
+
+            <rider-empty
+                v-if="!loading && delivery == null"
+                icon="🗺️"
+                text="配送单不存在"
+                btn-text="返回"
+                @click="onBack" />
+        </scroll-view>
+
+        <view class="footer" v-if="delivery != null">
+            <view class="footer-btn" @click="onBack">
+                <text class="footer-btn-text">返回</text>
+            </view>
+            <view class="footer-btn primary" @click="goDetail">
+                <text class="footer-btn-text primary">查看详情</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+    import { getDeliveryDetail } from '@/api/business/rider.uts'
+    import { get } from '@/utils/request.uts'
+
+    type Address = {
+        name: string
+        phone: string
+        address: string
+        lat: number
+        lng: number
+    }
+
+    type Delivery = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        pickup_name: string
+        pickup_address: string
+        pickup_lat: number
+        pickup_lng: number
+        pickup_phone: string
+        dropoff_name: string
+        dropoff_address: string
+        dropoff_lat: number
+        dropoff_lng: number
+        dropoff_phone: string
+        delivery_fee: string
+        distance: string
+    }
+
+    const deliveryId = ref(0)
+    const delivery = ref<Delivery | null>(null)
+    const loading = ref(false)
+    const distanceToPickup = ref('0.0')
+    const distanceToDropoff = ref('0.0')
+
+    const statusIcon = computed(() : string => {
+        if (delivery.value == null) return '🗺️'
+        const s = delivery.value!.status
+        if (s == 'pending') return '⏰'
+        if (s == 'grabbed') return '✅'
+        if (s == 'arrived') return '📍'
+        if (s == 'picked') return '📦'
+        if (s == 'delivering') return '🛵'
+        if (s == 'completed') return '🎉'
+        if (s == 'canceled') return '❌'
+        return '🗺️'
+    })
+
+    const pickupAddress = computed(() : Address => {
+        if (delivery.value == null) {
+            return { name: '', phone: '', address: '', lat: 0, lng: 0 } as Address
+        }
+        return {
+            name: delivery.value!.pickup_name,
+            phone: delivery.value!.pickup_phone,
+            address: delivery.value!.pickup_address,
+            lat: delivery.value!.pickup_lat,
+            lng: delivery.value!.pickup_lng
+        } as Address
+    })
+
+    const dropoffAddress = computed(() : Address => {
+        if (delivery.value == null) {
+            return { name: '', phone: '', address: '', lat: 0, lng: 0 } as Address
+        }
+        return {
+            name: delivery.value!.dropoff_name,
+            phone: delivery.value!.dropoff_phone,
+            address: delivery.value!.dropoff_address,
+            lat: delivery.value!.dropoff_lat,
+            lng: delivery.value!.dropoff_lng
+        } as Address
+    })
+
+    const pickupToDropoff = computed(() : string => {
+        if (delivery.value == null) return '0.0'
+        return delivery.value!.distance
+    })
+
+    const totalDistance = computed(() : string => {
+        if (delivery.value == null) return '0.0'
+        return delivery.value!.distance
+    })
+
+    const estimatedTime = computed(() : number => {
+        if (delivery.value == null) return 0
+        const d = parseFloat(delivery.value!.distance)
+        return Math.ceil(d / 30 * 60)
+    })
+
+    const loadDetail = () => {
+        loading.value = true
+        getDeliveryDetail(deliveryId.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                delivery.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    status: (d['status'] as string) ?? '',
+                    status_text: (d['status_text'] as string) ?? '',
+                    pickup_name: (d['pickup_name'] as string) ?? '',
+                    pickup_address: (d['pickup_address'] as string) ?? '',
+                    pickup_lat: (d['pickup_lat'] as number) ?? 0,
+                    pickup_lng: (d['pickup_lng'] as number) ?? 0,
+                    pickup_phone: (d['pickup_phone'] as string) ?? '',
+                    dropoff_name: (d['dropoff_name'] as string) ?? '',
+                    dropoff_address: (d['dropoff_address'] as string) ?? '',
+                    dropoff_lat: (d['dropoff_lat'] as number) ?? 0,
+                    dropoff_lng: (d['dropoff_lng'] as number) ?? 0,
+                    dropoff_phone: (d['dropoff_phone'] as string) ?? '',
+                    delivery_fee: (d['delivery_fee'] as string) ?? '0.00',
+                    distance: (d['distance'] as string) ?? '0.0'
+                } as Delivery
+                loadDistances()
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadDistances = () => {
+        if (delivery.value == null) return
+        // 调用 /lbs/distance 接口计算距离
+        get('/lbs/distance', {
+            from_lat: 0,
+            from_lng: 0,
+            to_lat: delivery.value!.pickup_lat,
+            to_lng: delivery.value!.pickup_lng
+        } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                distanceToPickup.value = (d['distance'] as string) ?? '0.0'
+            }
+        }).catch(() => {})
+
+        get('/lbs/distance', {
+            from_lat: delivery.value!.pickup_lat,
+            from_lng: delivery.value!.pickup_lng,
+            to_lat: delivery.value!.dropoff_lat,
+            to_lng: delivery.value!.dropoff_lng
+        } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                distanceToDropoff.value = (d['distance'] as string) ?? '0.0'
+            }
+        }).catch(() => {})
+    }
+
+    const onNavigatePickup = (addr: Address) => {
+        uni.openLocation({
+            latitude: addr.lat,
+            longitude: addr.lng,
+            name: addr.name,
+            address: addr.address,
+            scale: 18,
+            fail: () => {
+                uni.showToast({ title: '导航打开失败', icon: 'none' })
+            }
+        })
+    }
+
+    const onNavigateDropoff = (addr: Address) => {
+        uni.openLocation({
+            latitude: addr.lat,
+            longitude: addr.lng,
+            name: addr.name,
+            address: addr.address,
+            scale: 18,
+            fail: () => {
+                uni.showToast({ title: '导航打开失败', icon: 'none' })
+            }
+        })
+    }
+
+    const onCall = (phone: string) => {
+        if (phone.length == 0) {
+            uni.showToast({ title: '电话号码为空', icon: 'none' })
+            return
+        }
+        uni.makePhoneCall({ phoneNumber: phone })
+    }
+
+    const callPickup = () => {
+        if (delivery.value == null) return
+        onCall(delivery.value!.pickup_phone)
+    }
+
+    const callDropoff = () => {
+        if (delivery.value == null) return
+        onCall(delivery.value!.dropoff_phone)
+    }
+
+    const reportIssue = () => {
+        uni.showActionSheet({
+            itemList: ['商家未出餐', '客户联系不上', '车辆故障', '天气原因', '其他问题'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const arr = ['商家未出餐', '客户联系不上', '车辆故障', '天气原因', '其他问题']
+                if (r.tapIndex < arr.length) {
+                    uni.showToast({ title: '已上报：' + arr[r.tapIndex], icon: 'none' })
+                }
+            }
+        })
+    }
+
+    const copyAddress = (addr: string) => {
+        uni.setClipboardData({
+            data: addr,
+            success: () => {
+                uni.showToast({ title: '已复制', icon: 'success' })
+            }
+        })
+    }
+
+    const onBack = () => {
+        uni.navigateBack()
+    }
+
+    const goDetail = () => {
+        uni.redirectTo({ url: '/pages/rider/order/detail?id=' + deliveryId.value })
+    }
+
+    onLoad((options: UTSJSONObject) => {
+        if (!guardRider()) return
+        if (options != null && options!['id'] != null) {
+            deliveryId.value = parseInt(options!['id'] as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        if (deliveryId.value > 0) loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .status-header {
+        background-color: #FF6B35;
+        padding: 24px 16px;
+        align-items: center;
+    }
+
+    .status-icon {
+        font-size: 40px;
+    }
+
+    .status-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .order-no {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+    }
+
+    .route-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 10px;
+    }
+
+    .route-flow {
+        padding: 4px 0;
+    }
+
+    .route-point {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        margin-top: 4px;
+        margin-right: 10px;
+    }
+
+    .dot.pickup {
+        background-color: #FF6B35;
+    }
+
+    .dot.dropoff {
+        background-color: #1890FF;
+    }
+
+    .point-info {
+        flex: 1;
+    }
+
+    .point-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .point-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .point-addr {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+        line-height: 18px;
+    }
+
+    .route-line {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0 8px 22px;
+    }
+
+    .route-distance {
+        font-size: 11px;
+        color: #FF6B35;
+        background-color: #FFF5F0;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-right: 8px;
+    }
+
+    .route-arrow {
+        font-size: 14px;
+        color: #CCCCCC;
+    }
+
+    .route-stats {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #F5F5F5;
+    }
+
+    .stat-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .stat-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 20px;
+        background-color: #F0F0F0;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 10px;
+    }
+
+    .card-distance {
+        font-size: 11px;
+        color: #FF6B35;
+        background-color: #FFF5F0;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        padding-top: 12px;
+    }
+
+    .action-btn {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 0;
+        border-radius: 22px;
+        border: 1px solid #DDDDDD;
+        margin-right: 10px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-btn:last-child {
+        margin-right: 0;
+    }
+
+    .action-icon {
+        font-size: 14px;
+        margin-right: 6px;
+    }
+
+    .action-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .action-text-light {
+        font-size: 13px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .contact-row {
+        flex-direction: row;
+        padding: 12px 0 4px;
+    }
+
+    .contact-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .contact-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .contact-icon.pickup {
+        background-color: #FFF5F0;
+    }
+
+    .contact-icon.dropoff {
+        background-color: #E6F4FF;
+    }
+
+    .contact-icon.report {
+        background-color: #FFF4E6;
+    }
+
+    .icon-text {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .contact-label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+    }
+
+    .tips-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .tips-title {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .tips-line {
+        font-size: 12px;
+        color: #999;
+        line-height: 20px;
+    }
+
+    .footer {
+        flex-direction: row;
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .footer-btn {
+        flex: 1;
+        padding: 12px 0;
+        border-radius: 22px;
+        border: 1px solid #DDDDDD;
+        margin-right: 10px;
+        align-items: center;
+    }
+
+    .footer-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .footer-btn:last-child {
+        margin-right: 0;
+    }
+
+    .footer-btn-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .footer-btn-text.primary {
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

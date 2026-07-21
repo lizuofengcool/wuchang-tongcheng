@@ -39,6 +39,11 @@ type Plugin struct {
 	shopHandler       *handler.ShopHandler
 	skuHandler        *handler.SkuHandler
 	statisticHandler  *handler.StatisticHandler
+
+	// 骑手端扩展 Handler（3 个）
+	riderHandler           *handler.RiderHandler
+	deliveryHandler        *handler.DeliveryHandler
+	riderSettlementHandler *handler.RiderSettlementHandler
 }
 
 // NewPlugin 创建同城商城模块插件
@@ -94,6 +99,11 @@ func (p *Plugin) Init(ctx context.Context) error {
 	skuRepo := repository.NewSkuRepository(db)
 	statisticRepo := repository.NewStatisticRepository(db)
 
+	// ===== 依赖注入：Repository 层（骑手端扩展 3 个） =====
+	riderRepo := repository.NewRiderRepository(db)
+	deliveryRepo := repository.NewDeliveryRepository(db)
+	riderSettlementRepo := repository.NewRiderSettlementRepository(db)
+
 	// ===== 依赖注入：Service 层（15 个） =====
 	addressSvc := service.NewAddressService(addressRepo)
 	auditRuleSvc := service.NewAuditRuleService(auditRuleRepo)
@@ -111,6 +121,11 @@ func (p *Plugin) Init(ctx context.Context) error {
 	skuSvc := service.NewSkuService(skuRepo, productRepo)
 	statisticSvc := service.NewStatisticService(statisticRepo)
 
+	// ===== 依赖注入：Service 层（骑手端扩展 3 个） =====
+	riderSvc := service.NewRiderService(riderRepo, deliveryRepo)
+	deliverySvc := service.NewDeliveryService(deliveryRepo, riderRepo)
+	riderSettlementSvc := service.NewRiderSettlementService(riderSettlementRepo, riderRepo, deliveryRepo)
+
 	// ===== 依赖注入：Handler 层（15 个） =====
 	p.addressHandler = handler.NewAddressHandler(addressSvc)
 	p.auditRuleHandler = handler.NewAuditRuleHandler(auditRuleSvc)
@@ -127,6 +142,11 @@ func (p *Plugin) Init(ctx context.Context) error {
 	p.shopHandler = handler.NewShopHandler(shopSvc)
 	p.skuHandler = handler.NewSkuHandler(skuSvc)
 	p.statisticHandler = handler.NewStatisticHandler(statisticSvc)
+
+	// ===== 依赖注入：Handler 层（骑手端扩展 3 个） =====
+	p.riderHandler = handler.NewRiderHandler(riderSvc)
+	p.deliveryHandler = handler.NewDeliveryHandler(deliverySvc)
+	p.riderSettlementHandler = handler.NewRiderSettlementHandler(riderSettlementSvc)
 
 	return nil
 }
@@ -240,6 +260,10 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.GET("/reports/stats", readLimiter, p.reportHandler.Stats)
 	router.GET("/reports/:id", readLimiter, p.reportHandler.GetByID)
 
+	// 配送单（deliveries）- 公开只读（抢单大厅）
+	router.GET("/deliveries", readLimiter, p.deliveryHandler.List)
+	router.GET("/deliveries/:id", readLimiter, p.deliveryHandler.GetByID)
+
 	// ==================== 需登录路由（C 端发布/交易） ====================
 
 	// 店铺 CRUD
@@ -334,6 +358,26 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	router.GET("/logistics/mine", auth, readLimiter, p.logisticsHandler.ListByUser)
 	router.PUT("/logistics/:id/status", auth, writeLimiter, p.logisticsHandler.UpdateStatus)
 
+	// 骑手申请 / 资料 / 上线下线 / 收益（固定路径必须在 /:id 之前）
+	router.POST("/riders/apply", auth, writeLimiter, p.riderHandler.Apply)
+	router.GET("/riders/mine", auth, readLimiter, p.riderHandler.GetByUserID)
+	router.GET("/riders/earnings", auth, readLimiter, p.riderHandler.Earnings)
+	router.GET("/riders/deliveries", auth, readLimiter, p.deliveryHandler.ListByRider)
+	router.GET("/riders/settlements", auth, readLimiter, p.riderSettlementHandler.ListByUser)
+	router.POST("/riders/settlements/withdraw", auth, writeLimiter, p.riderSettlementHandler.Withdraw)
+	// 骑手资料操作
+	router.PUT("/riders/:id", auth, writeLimiter, p.riderHandler.Update)
+	router.PUT("/riders/:id/online", auth, writeLimiter, p.riderHandler.Online)
+	router.PUT("/riders/:id/offline", auth, writeLimiter, p.riderHandler.Offline)
+
+	// 配送单状态流转（骑手 C 端操作）
+	router.POST("/deliveries/:id/grab", auth, writeLimiter, p.deliveryHandler.Grab)
+	router.PUT("/deliveries/:id/arrive-shop", auth, writeLimiter, p.deliveryHandler.ArriveShop)
+	router.PUT("/deliveries/:id/pickup", auth, writeLimiter, p.deliveryHandler.Pickup)
+	router.PUT("/deliveries/:id/deliver", auth, writeLimiter, p.deliveryHandler.Deliver)
+	router.PUT("/deliveries/:id/complete", auth, writeLimiter, p.deliveryHandler.Complete)
+	router.PUT("/deliveries/:id/cancel", auth, writeLimiter, p.deliveryHandler.Cancel)
+
 	// ==================== 管理后台路由（需 mall:audit 权限） ====================
 
 	admin := router.Group("/admin")
@@ -402,6 +446,19 @@ func (p *Plugin) RegisterRoutes(router plugin.RouterGroup) {
 	admin.GET("/statistics", auditPerm, p.statisticHandler.List)
 	admin.POST("/statistics", auditPerm, p.statisticHandler.Upsert)
 	admin.GET("/statistics/overview", auditPerm, p.statisticHandler.Overview)
+
+	// 骑手管理（骑手端扩展）
+	admin.GET("/riders", auditPerm, p.riderHandler.AdminList)
+	admin.GET("/riders/:id", auditPerm, p.riderHandler.AdminGetByID)
+	admin.PUT("/riders/:id/audit", auditPerm, p.riderHandler.AdminAudit)
+	admin.PUT("/riders/:id/status", auditPerm, p.riderHandler.AdminUpdateStatus)
+
+	// 配送单管理
+	admin.GET("/deliveries", auditPerm, p.deliveryHandler.AdminList)
+
+	// 骑手结算管理
+	admin.GET("/rider-settlements", auditPerm, p.riderSettlementHandler.AdminList)
+	admin.PUT("/rider-settlements/:id/audit", auditPerm, p.riderSettlementHandler.AdminAudit)
 }
 
 // Close 关闭插件

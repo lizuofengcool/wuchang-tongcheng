@@ -1,0 +1,124 @@
+<template>
+    <view class="order-item">
+        <image class="cover" :src="item.cover_image" mode="aspectFill" lazy-load="true" v-if="item.cover_image.length > 0" />
+        <view class="cover-placeholder" v-else>
+            <text class="cover-text">{{ item.title.length > 0 ? item.title.charAt(0) : '商' }}</text>
+        </view>
+        <view class="info">
+            <text class="title">{{ item.title }}</text>
+            <text class="sku" v-if="item.sku_name.length > 0">{{ item.sku_name }}</text>
+            <view class="meta-row">
+                <text class="price">¥{{ item.price }}</text>
+                <text class="qty">x{{ item.quantity }}</text>
+            </view>
+        </view>
+        <view class="subtotal" v-if="showSubtotal">
+            <text class="subtotal-text">小计</text>
+            <text class="subtotal-value">¥{{ subtotal }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Item = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+
+    const props = withDefaults(defineProps<{
+        item: Item
+        showSubtotal?: boolean
+    }>(), {
+        showSubtotal: false
+    } as any)
+
+    const subtotal = computed(() : number => {
+        return props.item.price * props.item.quantity
+    })
+</script>
+
+<style>
+    .order-item {
+        flex-direction: row;
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .cover {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        background-color: #F5F5F5;
+    }
+
+    .cover-placeholder {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cover-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .info {
+        flex: 1;
+        margin-left: 10px;
+    }
+
+    .title {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .sku {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 4px;
+    }
+
+    .price {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .qty {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .subtotal {
+        align-items: flex-end;
+        justify-content: center;
+        margin-left: 10px;
+    }
+
+    .subtotal-text {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .subtotal-value {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+</style>

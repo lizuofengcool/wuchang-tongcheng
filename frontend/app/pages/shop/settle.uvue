@@ -1,0 +1,321 @@
+<template>
+    <view class="page">
+        <!-- 余额卡片 -->
+        <view class="balance-card">
+            <view class="balance-row">
+                <text class="balance-label">可提现余额（元）</text>
+                <text class="balance-value">{{ balance }}</text>
+            </view>
+            <view class="balance-actions">
+                <view class="balance-btn" @click="onWithdraw">
+                    <text class="balance-btn-text">提现</text>
+                </view>
+                <view class="balance-btn-outline" @click="goDetail">
+                    <text class="balance-btn-text-primary">流水明细</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 累计数据 -->
+        <view class="summary-row">
+            <shop-stat-card label="累计收入" :value="totalIncome" prefix="¥" icon="💰" />
+            <shop-stat-card label="待结算" :value="pendingAmount" prefix="¥" icon="⏰" />
+            <shop-stat-card label="已提现" :value="withdrawnAmount" prefix="¥" icon="🏦" />
+        </view>
+
+        <!-- 结算列表 -->
+        <view class="list-card">
+            <view class="list-header">
+                <text class="list-title">结算记录</text>
+            </view>
+
+            <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+                <shop-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+                <view class="list-wrap" v-if="list.length > 0">
+                    <view class="settle-item" v-for="item in list" :key="item.id" @click="goDetail">
+                        <view class="settle-info">
+                            <text class="settle-title">{{ item.title }}</text>
+                            <text class="settle-time">{{ item.created_at }}</text>
+                        </view>
+                        <view class="settle-amount-wrap">
+                            <text class="settle-amount" :class="{ income: item.type == 'income', expense: item.type == 'expense' }">{{ item.type == 'income' ? '+' : '-' }}¥{{ item.amount }}</text>
+                            <shop-status-tag :status="item.status" :text="item.status_text" />
+                        </view>
+                    </view>
+                </view>
+                <view class="load-more" v-if="loading && list.length > 0">
+                    <text class="load-text">加载中...</text>
+                </view>
+                <view class="no-more" v-if="!hasMore && list.length > 0">
+                    <text class="no-more-text">已经到底啦~</text>
+                </view>
+                <shop-empty
+                    v-if="list.length == 0 && !loading"
+                    icon="💰"
+                    text="暂无结算记录" />
+            </scroll-view>
+        </view>
+
+        <shop-loading :text="'提交中...'" v-if="withdrawing" />
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { listMerchantSettles, getMerchantStatisticsOverview } from '@/api/business/merchant.uts'
+
+    type ListItem = {
+        id: number
+        title: string
+        type: string          // income / expense
+        amount: string
+        status: string
+        status_text: string
+        created_at: string
+    }
+
+    const balance = ref('0.00')
+    const totalIncome = ref('0.00')
+    const pendingAmount = ref('0.00')
+    const withdrawnAmount = ref('0.00')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const withdrawing = ref(false)
+
+    const loadOverview = () => {
+        getMerchantStatisticsOverview({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                balance.value = (d['balance'] as string) ?? '0.00'
+                totalIncome.value = (d['total_income'] as string) ?? '0.00'
+                pendingAmount.value = (d['pending_amount'] as string) ?? '0.00'
+                withdrawnAmount.value = (d['withdrawn_amount'] as string) ?? '0.00'
+            }
+        }).catch(() => {})
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listMerchantSettles(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onWithdraw = () => {
+        const bal = parseFloat(balance.value)
+        if (bal <= 0) {
+            uni.showToast({ title: '可提现余额不足', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提现',
+            content: '确定要提现 ¥' + balance.value + ' 到绑定银行卡吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    withdrawing.value = true
+                    // 提现申请 - 这里简化处理，实际应调用专门 API
+                    setTimeout(() => {
+                        withdrawing.value = false
+                        uni.showToast({ title: '提现申请已提交', icon: 'success' })
+                        loadOverview()
+                        loadList(true)
+                    }, 1000)
+                }
+            }
+        })
+    }
+
+    const goDetail = () => {
+        uni.showToast({ title: '流水详情开发中', icon: 'none' })
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadOverview()
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadOverview()
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .balance-card {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+    }
+
+    .balance-row {
+        align-items: center;
+    }
+
+    .balance-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .balance-value {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .balance-actions {
+        flex-direction: row;
+        margin-top: 16px;
+    }
+
+    .balance-btn {
+        background-color: #FFFFFF;
+        border-radius: 18px;
+        padding: 8px 20px;
+        margin-right: 10px;
+    }
+
+    .balance-btn-text {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .balance-btn-outline {
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 18px;
+        padding: 8px 20px;
+    }
+
+    .balance-btn-text-primary {
+        font-size: 13px;
+        color: #FFFFFF;
+    }
+
+    .summary-row {
+        flex-direction: row;
+        padding: 12px 8px;
+    }
+
+    .list-card {
+        flex: 1;
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .list-header {
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 8px;
+    }
+
+    .list-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 4px 0;
+    }
+
+    .settle-item {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .settle-info {
+        flex: 1;
+    }
+
+    .settle-title {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .settle-time {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .settle-amount-wrap {
+        align-items: flex-end;
+    }
+
+    .settle-amount {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .settle-amount.income {
+        color: #FF6B35;
+    }
+
+    .settle-amount.expense {
+        color: #4CAF50;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

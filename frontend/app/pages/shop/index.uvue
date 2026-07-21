@@ -1,26 +1,66 @@
 <template>
     <view class="page">
-        <!-- 店铺信息 -->
+        <!-- 店铺头部 -->
         <view class="shop-header">
             <view class="shop-info">
-                <text class="shop-name">{{ shopName }}</text>
+                <image class="shop-logo" :src="shopInfo.logo" mode="aspectFill" lazy-load="true" v-if="shopInfo.logo.length > 0" />
+                <view class="shop-logo-placeholder" v-else>
+                    <text class="shop-logo-text">{{ shopInfo.name.length > 0 ? shopInfo.name.charAt(0) : '商' }}</text>
+                </view>
+                <view class="shop-text">
+                    <text class="shop-name">{{ shopInfo.name }}</text>
+                    <text class="shop-desc">{{ isOpen ? '营业中' : '已打烊' }} · {{ shopInfo.category_text }}</text>
+                </view>
                 <view class="status-switch" @click="toggleStatus">
-                    <text class="status-text">{{ isOpen ? '营业中' : '已打烊' }}</text>
+                    <text class="status-text">{{ isOpen ? '打烊' : '营业' }}</text>
                 </view>
             </view>
         </view>
-        <!-- 功能入口 -->
-        <view class="grid">
-            <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
-                <text class="grid-icon">{{ item.icon }}</text>
-                <text class="grid-name">{{ item.name }}</text>
+
+        <!-- 今日数据卡片 -->
+        <view class="stat-row">
+            <shop-stat-card label="今日订单" :value="todayOrders" icon="📦" type="primary" />
+            <shop-stat-card label="今日收入" :value="todayIncome" prefix="¥" icon="💰" />
+            <shop-stat-card label="待处理" :value="pendingCount" icon="⏰" />
+        </view>
+
+        <!-- 待办提醒 -->
+        <view class="todo-card" v-if="todoList.length > 0">
+            <view class="todo-header">
+                <text class="todo-title">待办事项</text>
+                <text class="todo-count">{{ todoList.length }}</text>
+            </view>
+            <view class="todo-list">
+                <view class="todo-item" v-for="(t, idx) in todoList" :key="idx" @click="goTodo(t.url)">
+                    <text class="todo-icon">{{ t.icon }}</text>
+                    <text class="todo-text">{{ t.text }}</text>
+                    <text class="todo-arrow">›</text>
+                </view>
             </view>
         </view>
+
+        <!-- 快捷入口 8 项 -->
+        <view class="grid-card">
+            <text class="grid-title">功能入口</text>
+            <view class="grid">
+                <view class="grid-item" v-for="item in menuList" :key="item.id" @click="goPage(item.url)">
+                    <view class="grid-icon-wrap">
+                        <text class="grid-icon">{{ item.icon }}</text>
+                    </view>
+                    <text class="grid-name">{{ item.name }}</text>
+                </view>
+            </view>
+        </view>
+
+        <shop-loading :text="'加载中...'" v-if="loading" />
     </view>
 </template>
 
 <script setup lang="uts">
     import { guardMerchant } from '@/utils/auth.uts'
+    import { getMyMerchantShop, updateMerchantShop } from '@/api/business/merchant.uts'
+    import { getMerchantStatisticsOverview, listMerchantOrders } from '@/api/business/merchant.uts'
+    import { state } from '@/store/index.uts'
 
     type MenuItem = {
         id: number
@@ -29,27 +69,130 @@
         url: string
     }
 
-    const shopName = ref('我的店铺')
+    type ShopInfo = {
+        id: number
+        name: string
+        logo: string
+        category_text: string
+        is_open: boolean
+    }
+
+    type Todo = {
+        icon: string
+        text: string
+        url: string
+    }
+
+    const shopInfo = ref({
+        id: 0,
+        name: '我的店铺',
+        logo: '',
+        category_text: '未分类',
+        is_open: true
+    } as ShopInfo)
     const isOpen = ref(true)
+    const todayOrders = ref(0)
+    const todayIncome = ref('0.00')
+    const pendingCount = ref(0)
+    const loading = ref(false)
+    const todoList = ref([] as Todo[])
 
     const menuList = ref([
         { id: 1, name: '商品管理', icon: '📦', url: '/pages/shop/products' },
         { id: 2, name: '订单管理', icon: '📋', url: '/pages/shop/orders' },
         { id: 3, name: '营销活动', icon: '🎉', url: '/pages/shop/marketing' },
-        { id: 4, name: '营业数据', icon: '📊', url: '/pages/shop/stats' }
+        { id: 4, name: '营业数据', icon: '📊', url: '/pages/shop/stats' },
+        { id: 5, name: '退款管理', icon: '↩️', url: '/pages/shop/refunds' },
+        { id: 6, name: '评价管理', icon: '⭐', url: '/pages/shop/reviews' },
+        { id: 7, name: '员工管理', icon: '👥', url: '/pages/shop/staff' },
+        { id: 8, name: '店铺设置', icon: '⚙️', url: '/pages/shop/profile' }
     ] as MenuItem[])
 
+    const loadShopInfo = () => {
+        loading.value = true
+        getMyMerchantShop().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                shopInfo.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '我的店铺',
+                    logo: (d['logo'] as string) ?? '',
+                    category_text: (d['category_text'] as string) ?? '未分类',
+                    is_open: (d['is_open'] as boolean) ?? true
+                } as ShopInfo
+                isOpen.value = shopInfo.value.is_open
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadStats = () => {
+        getMerchantStatisticsOverview({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                todayOrders.value = (d['today_orders'] as number) ?? 0
+                todayIncome.value = (d['today_income'] as string) ?? '0.00'
+                pendingCount.value = (d['pending_count'] as number) ?? 0
+            }
+        }).catch(() => {})
+        // 待处理订单
+        listMerchantOrders({ status: 'pending', page: 1, page_size: 5 } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const cnt = (d['total'] as number) ?? 0
+                if (cnt > 0) {
+                    todoList.value = [{
+                        icon: '📋',
+                        text: '有 ' + cnt + ' 笔订单待处理',
+                        url: '/pages/shop/orders?status=pending'
+                    } as Todo]
+                }
+            }
+        }).catch(() => {})
+    }
+
     const toggleStatus = () => {
-        isOpen.value = !isOpen.value
-        uni.showToast({ title: isOpen.value ? '已开始营业' : '已打烊', icon: 'none' })
+        if (shopInfo.value.id == 0) {
+            uni.showToast({ title: '店铺信息加载中', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提示',
+            content: isOpen.value ? '确定要打烊吗？打烊后用户将无法下单' : '确定要开始营业吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    updateMerchantShop(shopInfo.value.id, { is_open: !isOpen.value } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            isOpen.value = !isOpen.value
+                            uni.showToast({ title: isOpen.value ? '已开始营业' : '已打烊', icon: 'none' })
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
     }
 
     const goPage = (url: string) => {
         uni.navigateTo({ url: url })
     }
 
+    const goTodo = (url: string) => {
+        uni.navigateTo({ url: url })
+    }
+
     onLoad(() => {
-        guardMerchant()
+        if (!guardMerchant()) return
+        loadShopInfo()
+        loadStats()
+    })
+
+    onPullDownRefresh(() => {
+        loadShopInfo()
+        loadStats()
     })
 </script>
 
@@ -61,13 +204,39 @@
 
     .shop-header {
         background-color: #FF6B35;
-        padding: 20px 16px;
+        padding: 16px;
     }
 
     .shop-info {
         flex-direction: row;
         align-items: center;
-        justify-content: space-between;
+    }
+
+    .shop-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .shop-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background-color: rgba(255, 255, 255, 0.3);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .shop-logo-text {
+        font-size: 20px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .shop-text {
+        flex: 1;
+        margin-left: 12px;
     }
 
     .shop-name {
@@ -76,39 +245,129 @@
         font-weight: 600;
     }
 
+    .shop-desc {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 2px;
+    }
+
     .status-switch {
-        background-color: rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 255, 255, 0.25);
         border-radius: 16px;
-        padding: 4px 12px;
+        padding: 6px 14px;
     }
 
     .status-text {
-        font-size: 12px;
+        font-size: 13px;
         color: #FFFFFF;
+        font-weight: 500;
     }
 
-    .grid {
+    .stat-row {
         flex-direction: row;
-        flex-wrap: wrap;
-        padding: 12px;
+        padding: 12px 8px;
         background-color: #FFFFFF;
         margin: 12px;
         border-radius: 12px;
     }
 
-    .grid-item {
-        width: 25%;
-        align-items: center;
-        padding: 16px 0;
+    .todo-card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
-    .grid-icon {
-        font-size: 32px;
+    .todo-header {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .todo-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .todo-count {
+        font-size: 12px;
+        color: #FFFFFF;
+        background-color: #FF6B35;
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+
+    .todo-list {
+        padding: 0 12px;
+    }
+
+    .todo-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .todo-icon {
+        font-size: 16px;
+        margin-right: 8px;
+    }
+
+    .todo-text {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .todo-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .grid-card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .grid-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
         margin-bottom: 8px;
     }
 
+    .grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .grid-item {
+        width: 25%;
+        align-items: center;
+        padding: 12px 0;
+    }
+
+    .grid-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 6px;
+    }
+
+    .grid-icon {
+        font-size: 22px;
+    }
+
     .grid-name {
-        font-size: 13px;
+        font-size: 12px;
         color: #333;
     }
 </style>

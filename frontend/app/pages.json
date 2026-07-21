@@ -12,7 +12,9 @@
             "^pinche-(.*)": "@/components/pinche/pinche-$1.uvue",
             "^linggong-(.*)": "@/components/linggong/linggong-$1.uvue",
             "^dh114-(.*)": "@/components/dh114/dh114-$1.uvue",
-            "^mall-(.*)": "@/components/mall/mall-$1.uvue"
+            "^mall-(.*)": "@/components/mall/mall-$1.uvue",
+            "^shop-(.*)": "@/components/shop/shop-$1.uvue",
+            "^rider-(.*)": "@/components/rider/rider-$1.uvue"
         }
     },
     "pages": [
@@ -103,27 +105,136 @@
             }
         },
         {
+            "path": "pages/shop/product/edit",
+            "style": {
+                "navigationBarTitleText": "商品编辑"
+            }
+        },
+        {
+            "path": "pages/shop/order/detail",
+            "style": {
+                "navigationBarTitleText": "订单详情"
+            }
+        },
+        {
+            "path": "pages/shop/coupons",
+            "style": {
+                "navigationBarTitleText": "优惠券管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/shop/settle",
+            "style": {
+                "navigationBarTitleText": "结算管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/shop/refunds",
+            "style": {
+                "navigationBarTitleText": "退款管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/shop/reviews",
+            "style": {
+                "navigationBarTitleText": "评价管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/shop/staff",
+            "style": {
+                "navigationBarTitleText": "员工管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/shop/verify",
+            "style": {
+                "navigationBarTitleText": "认证管理"
+            }
+        },
+        {
+            "path": "pages/shop/profile",
+            "style": {
+                "navigationBarTitleText": "店铺设置"
+            }
+        },
+        {
+            "path": "pages/shop/apply",
+            "style": {
+                "navigationBarTitleText": "商家入驻"
+            }
+        },
+        {
             "path": "pages/rider/index",
             "style": {
-                "navigationBarTitleText": "骑手工作台"
+                "navigationBarTitleText": "骑手工作台",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/rider/grab",
+            "style": {
+                "navigationBarTitleText": "抢单大厅",
+                "enablePullDownRefresh": true
             }
         },
         {
             "path": "pages/rider/delivering",
             "style": {
-                "navigationBarTitleText": "配送中"
+                "navigationBarTitleText": "配送中",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/rider/order/detail",
+            "style": {
+                "navigationBarTitleText": "配送单详情",
+                "enablePullDownRefresh": true
             }
         },
         {
             "path": "pages/rider/history",
             "style": {
-                "navigationBarTitleText": "历史订单"
+                "navigationBarTitleText": "历史订单",
+                "enablePullDownRefresh": true
             }
         },
         {
             "path": "pages/rider/earnings",
             "style": {
-                "navigationBarTitleText": "我的收益"
+                "navigationBarTitleText": "我的收益",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/rider/settle",
+            "style": {
+                "navigationBarTitleText": "结算管理",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/rider/verify",
+            "style": {
+                "navigationBarTitleText": "骑手认证"
+            }
+        },
+        {
+            "path": "pages/rider/profile",
+            "style": {
+                "navigationBarTitleText": "骑手设置"
+            }
+        },
+        {
+            "path": "pages/rider/navigation",
+            "style": {
+                "navigationBarTitleText": "导航",
+                "enablePullDownRefresh": true
             }
         },
         {

@@ -412,6 +412,22 @@ const (
 	CodeMallSkuNotFound      = 5429 // SKU不存在
 	CodeMallStatisticError   = 5430 // 统计错误
 
+	// ===== mall 骑手扩展错误 5431-5450 =====
+	CodeMallRiderError              = 5431 // 骑手通用错误
+	CodeMallRiderNotFound           = 5432 // 骑手不存在
+	CodeMallRiderNotVerified        = 5433 // 骑手未认证
+	CodeMallRiderFrozen             = 5434 // 骑手已冻结
+	CodeMallRiderOnline             = 5435 // 骑手已上线
+	CodeMallRiderOffline            = 5436 // 骑手已下线
+	CodeMallRiderBusy               = 5437 // 骑手配送中
+	CodeMallDeliveryNotFound        = 5438 // 配送单不存在
+	CodeMallDeliveryGrabbed         = 5439 // 配送单已被抢
+	CodeMallDeliveryStatusInvalid   = 5440 // 配送状态不允许此操作
+	CodeMallRiderSettlementNotFound = 5441 // 结算单不存在
+	CodeMallRiderSettlementAudited  = 5442 // 结算单已审核
+	CodeMallRiderInsufficientCredit = 5443 // 信用分不足
+	CodeMallRiderSettlementError    = 5444 // 结算错误
+
 	// ===== lbs 地图中台错误 5501-5530 =====
 	CodeLbsError           = 5501 // LBS通用错误
 	CodeLbsPoiNotFound     = 5502 // POI不存在
@@ -883,6 +899,22 @@ var codeMessages = map[int]string{
 	CodeMallSkuError:          "SKU错误",
 	CodeMallSkuNotFound:       "SKU不存在",
 	CodeMallStatisticError:    "统计错误",
+
+	// mall 骑手扩展错误
+	CodeMallRiderError:              "骑手错误",
+	CodeMallRiderNotFound:           "骑手不存在",
+	CodeMallRiderNotVerified:        "骑手未认证",
+	CodeMallRiderFrozen:             "骑手已冻结",
+	CodeMallRiderOnline:             "骑手已上线",
+	CodeMallRiderOffline:            "骑手已下线",
+	CodeMallRiderBusy:               "骑手配送中",
+	CodeMallDeliveryNotFound:        "配送单不存在",
+	CodeMallDeliveryGrabbed:         "配送单已被抢",
+	CodeMallDeliveryStatusInvalid:   "配送状态不允许此操作",
+	CodeMallRiderSettlementNotFound: "结算单不存在",
+	CodeMallRiderSettlementAudited:  "结算单已审核",
+	CodeMallRiderInsufficientCredit: "信用分不足",
+	CodeMallRiderSettlementError:    "结算错误",
 }
 
 // GetMessage 获取错误码对应的消息

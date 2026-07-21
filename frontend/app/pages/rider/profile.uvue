@@ -1,0 +1,687 @@
+<template>
+    <view class="page">
+        <scroll-view class="form-scroll" scroll-y>
+            <rider-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading">
+                <!-- 头像 -->
+                <view class="avatar-card">
+                    <image class="avatar" :src="form.avatar" mode="aspectFill" lazy-load="true" v-if="form.avatar.length > 0" />
+                    <view class="avatar-placeholder" v-else>
+                        <text class="avatar-text">{{ form.nick_name.length > 0 ? form.nick_name.charAt(0) : '骑' }}</text>
+                    </view>
+                    <view class="avatar-edit" @click="chooseAvatar">
+                        <text class="avatar-edit-text">更换头像</text>
+                    </view>
+                </view>
+
+                <!-- 骑手等级 / 信用分 -->
+                <view class="card">
+                    <text class="card-title">骑手等级</text>
+                    <view class="level-row">
+                        <view class="level-item">
+                            <text class="level-label">当前等级</text>
+                            <text class="level-value">{{ form.level || 'LV.1' }}</text>
+                        </view>
+                        <view class="level-divider"></view>
+                        <view class="level-item">
+                            <text class="level-label">信用分</text>
+                            <text class="level-value">{{ form.credit_score }}</text>
+                        </view>
+                        <view class="level-divider"></view>
+                        <view class="level-item">
+                            <text class="level-label">总单量</text>
+                            <text class="level-value">{{ form.total_orders }}</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 基本信息 -->
+                <view class="card">
+                    <text class="card-title">基本信息</text>
+                    <view class="form-item">
+                        <text class="label">昵称</text>
+                        <input class="input" placeholder="请输入昵称" v-model="form.nick_name" maxlength="20" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">真实姓名</text>
+                        <input class="input" placeholder="请输入真实姓名" v-model="form.real_name" maxlength="20" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">手机号</text>
+                        <input class="input" type="number" placeholder="请输入手机号" v-model="form.phone" maxlength="11" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">所在地</text>
+                        <input class="input" placeholder="请输入所在地" v-model="form.city" maxlength="30" />
+                    </view>
+                </view>
+
+                <!-- 车辆信息 -->
+                <view class="card">
+                    <text class="card-title">车辆信息</text>
+                    <view class="form-item">
+                        <text class="label">车辆类型</text>
+                        <view class="picker" @click="showVehiclePicker = true">
+                            <text :class="form.vehicle_type.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.vehicle_type.length > 0 ? form.vehicle_type_text : '请选择车辆类型' }}</text>
+                            <text class="picker-arrow">›</text>
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">车牌号</text>
+                        <input class="input" placeholder="请输入车牌号" v-model="form.plate_no" maxlength="10" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">车辆照片</text>
+                        <view class="upload-row">
+                            <view class="upload-box" @click="uploadImage('vehicle')">
+                                <image class="upload-img" :src="form.vehicle_image" mode="aspectFill" v-if="form.vehicle_image.length > 0" />
+                                <view class="upload-placeholder" v-else>
+                                    <text class="upload-icon">+</text>
+                                    <text class="upload-text">上传照片</text>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 工作设置 -->
+                <view class="card">
+                    <text class="card-title">工作设置</text>
+                    <view class="form-item">
+                        <text class="label">工作状态</text>
+                        <view class="switch-row">
+                            <text class="switch-label">{{ form.is_online ? '在线接单' : '已下线' }}</text>
+                            <switch :checked="form.is_online" @change="onOnlineChange" color="#FF6B35" />
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">接单上限（单/日）</text>
+                        <input class="input" type="number" placeholder="0 = 不限制" v-model="form.daily_limit" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">最大接单半径（km）</text>
+                        <input class="input" type="digit" placeholder="0 = 不限制" v-model="form.max_radius" />
+                    </view>
+                </view>
+
+                <!-- 收款账户 -->
+                <view class="card">
+                    <text class="card-title">收款账户</text>
+                    <view class="form-item" @click="pickAccountType">
+                        <text class="label">账户类型</text>
+                        <view class="picker">
+                            <text :class="form.account_type.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.account_type.length > 0 ? form.account_type_text : '请选择账户类型' }}</text>
+                            <text class="picker-arrow">›</text>
+                        </view>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">真实姓名</text>
+                        <input class="input" placeholder="收款账户姓名" v-model="form.account_name" maxlength="20" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">账号</text>
+                        <input class="input" placeholder="请输入账号" v-model="form.account_no" maxlength="30" />
+                    </view>
+                </view>
+
+                <view class="logout-row" @click="onLogout">
+                    <text class="logout-text">退出登录</text>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="footer" v-if="!loading">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">保存</text>
+            </view>
+        </view>
+
+        <!-- 车辆类型选择器 -->
+        <view class="picker-mask" v-if="showVehiclePicker" @click="showVehiclePicker = false">
+            <view class="picker-content" @click.stop="">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showVehiclePicker = false">取消</text>
+                    <text class="picker-title">选择车辆类型</text>
+                    <text class="picker-confirm" @click="showVehiclePicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="v in vehicleTypes" :key="v.value" @click="selectVehicle(v)">
+                        <text :class="v.value == form.vehicle_type ? 'option-text option-active' : 'option-text'">{{ v.label }}</text>
+                        <text class="option-check" v-if="v.value == form.vehicle_type">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+    import { getMyRider, updateRider } from '@/api/business/rider.uts'
+    import { logout } from '@/store/index.uts'
+
+    type VehicleType = { value: string, label: string }
+
+    type Form = {
+        id: number
+        avatar: string
+        nick_name: string
+        real_name: string
+        phone: string
+        city: string
+        level: string
+        credit_score: number
+        total_orders: number
+        vehicle_type: string
+        vehicle_type_text: string
+        plate_no: string
+        vehicle_image: string
+        is_online: boolean
+        daily_limit: string
+        max_radius: string
+        account_type: string
+        account_type_text: string
+        account_name: string
+        account_no: string
+    }
+
+    const loading = ref(false)
+    const submitting = ref(false)
+    const showVehiclePicker = ref(false)
+
+    const vehicleTypes = ref([
+        { value: 'electric', label: '电动车' },
+        { value: 'motorcycle', label: '摩托车' },
+        { value: 'bicycle', label: '自行车' },
+        { value: 'car', label: '小汽车' },
+        { value: 'tricycle', label: '三轮车' }
+    ] as VehicleType[])
+
+    const form = ref({
+        id: 0,
+        avatar: '',
+        nick_name: '',
+        real_name: '',
+        phone: '',
+        city: '',
+        level: '',
+        credit_score: 100,
+        total_orders: 0,
+        vehicle_type: '',
+        vehicle_type_text: '',
+        plate_no: '',
+        vehicle_image: '',
+        is_online: false,
+        daily_limit: '0',
+        max_radius: '0',
+        account_type: '',
+        account_type_text: '',
+        account_name: '',
+        account_no: ''
+    } as Form)
+
+    const loadRider = () => {
+        loading.value = true
+        getMyRider().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value.id = (d['id'] as number) ?? 0
+                form.value.avatar = (d['avatar'] as string) ?? ''
+                form.value.nick_name = (d['nick_name'] as string) ?? ''
+                form.value.real_name = (d['real_name'] as string) ?? ''
+                form.value.phone = (d['phone'] as string) ?? ''
+                form.value.city = (d['city'] as string) ?? ''
+                form.value.level = (d['level'] as string) ?? ''
+                form.value.credit_score = (d['credit_score'] as number) ?? 100
+                form.value.total_orders = (d['total_orders'] as number) ?? 0
+                form.value.vehicle_type = (d['vehicle_type'] as string) ?? ''
+                form.value.vehicle_type_text = (d['vehicle_type_text'] as string) ?? ''
+                form.value.plate_no = (d['plate_no'] as string) ?? ''
+                form.value.vehicle_image = (d['vehicle_image'] as string) ?? ''
+                form.value.is_online = (d['is_online'] as boolean) ?? false
+                form.value.daily_limit = ((d['daily_limit'] as number) ?? 0).toString()
+                form.value.max_radius = ((d['max_radius'] as number) ?? 0).toString()
+                form.value.account_type = (d['account_type'] as string) ?? ''
+                form.value.account_type_text = (d['account_type_text'] as string) ?? ''
+                form.value.account_name = (d['account_name'] as string) ?? ''
+                form.value.account_no = (d['account_no'] as string) ?? ''
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const selectVehicle = (v: VehicleType) => {
+        form.value.vehicle_type = v.value
+        form.value.vehicle_type_text = v.label
+        showVehiclePicker.value = false
+    }
+
+    const pickAccountType = () => {
+        uni.showActionSheet({
+            itemList: ['微信账户', '支付宝账户', '银行卡'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const arr = ['wechat', 'alipay', 'bank']
+                const arrText = ['微信账户', '支付宝账户', '银行卡']
+                if (r.tapIndex < arr.length) {
+                    form.value.account_type = arr[r.tapIndex]
+                    form.value.account_type_text = arrText[r.tapIndex]
+                }
+            }
+        })
+    }
+
+    const onOnlineChange = (e: SwitchChangeEvent) => {
+        form.value.is_online = e.detail.value
+    }
+
+    const chooseAvatar = () => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: res.tempFilePaths[0],
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + uni.getStorageSync('wctc_token') },
+                        success: (upRes: UploadFileSuccessCallback) => {
+                            try {
+                                const data = JSON.parse(upRes.data) as UTSJSONObject
+                                if ((data['code'] as number) == 200) {
+                                    const url = ((data['data'] as UTSJSONObject)['url'] as string) ?? ''
+                                    form.value.avatar = url
+                                    uni.showToast({ title: '上传成功', icon: 'success' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const uploadImage = (type: string) => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: res.tempFilePaths[0],
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + uni.getStorageSync('wctc_token') },
+                        success: (upRes: UploadFileSuccessCallback) => {
+                            try {
+                                const data = JSON.parse(upRes.data) as UTSJSONObject
+                                if ((data['code'] as number) == 200) {
+                                    const url = ((data['data'] as UTSJSONObject)['url'] as string) ?? ''
+                                    if (type == 'vehicle') form.value.vehicle_image = url
+                                    uni.showToast({ title: '上传成功', icon: 'success' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onSubmit = () => {
+        if (form.value.id == 0) {
+            uni.showToast({ title: '骑手信息加载失败', icon: 'none' })
+            return
+        }
+        if (submitting.value) return
+        submitting.value = true
+        uni.showLoading({ title: '保存中...' })
+        updateRider(form.value.id, {
+            avatar: form.value.avatar,
+            nick_name: form.value.nick_name,
+            real_name: form.value.real_name,
+            phone: form.value.phone,
+            city: form.value.city,
+            vehicle_type: form.value.vehicle_type,
+            plate_no: form.value.plate_no,
+            vehicle_image: form.value.vehicle_image,
+            is_online: form.value.is_online,
+            daily_limit: parseInt(form.value.daily_limit),
+            max_radius: parseFloat(form.value.max_radius),
+            account_type: form.value.account_type,
+            account_name: form.value.account_name,
+            account_no: form.value.account_no
+        } as UTSJSONObject).then((res: ApiResult) => {
+            submitting.value = false
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '保存成功', icon: 'success' })
+                uni.navigateBack()
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+            uni.hideLoading()
+        })
+    }
+
+    const onLogout = () => {
+        uni.showModal({
+            title: '提示',
+            content: '确定要退出登录吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    logout()
+                }
+            }
+        })
+    }
+
+    onLoad(() => {
+        if (!guardRider()) return
+        loadRider()
+    })
+
+    onPullDownRefresh(() => {
+        loadRider()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .avatar-card {
+        background-color: #FFFFFF;
+        padding: 20px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 40px;
+        background-color: #F5F5F5;
+    }
+
+    .avatar-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 40px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .avatar-edit {
+        margin-top: 10px;
+        padding: 6px 16px;
+        border: 1px solid #FF6B35;
+        border-radius: 16px;
+    }
+
+    .avatar-edit-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .level-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 0;
+    }
+
+    .level-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .level-label {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .level-value {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .level-divider {
+        width: 1px;
+        height: 24px;
+        background-color: #F0F0F0;
+    }
+
+    .form-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .input {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .picker {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .switch-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .switch-label {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .upload-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .upload-box {
+        width: 120px;
+        height: 90px;
+        border-radius: 8px;
+        border: 1px dashed #DDDDDD;
+        background-color: #FAFAFA;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .upload-img {
+        width: 120px;
+        height: 90px;
+    }
+
+    .upload-placeholder {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .upload-icon {
+        font-size: 24px;
+        color: #CCCCCC;
+    }
+
+    .upload-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .logout-row {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 14px;
+        align-items: center;
+    }
+
+    .logout-text {
+        font-size: 14px;
+        color: #F44336;
+    }
+
+    .footer {
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-submit {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 16px;
+        max-height: 400px;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 300px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+</style>

@@ -1,0 +1,638 @@
+<template>
+    <view class="page">
+        <scroll-view class="content-scroll" scroll-y>
+            <rider-loading :text="'加载中...'" v-if="loading" />
+
+            <view v-if="!loading">
+                <!-- 认证状态 -->
+                <rider-verify-status :status="verifyStatus" :status-text="customStatusText" :desc="customDesc" />
+
+                <!-- 已通过：显示认证信息 -->
+                <view v-if="verifyStatus == 'approved'">
+                    <view class="card">
+                        <text class="card-title">认证信息</text>
+                        <view class="info-row">
+                            <text class="info-label">真实姓名</text>
+                            <text class="info-value">{{ form.real_name }}</text>
+                        </view>
+                        <view class="info-row">
+                            <text class="info-label">身份证号</text>
+                            <text class="info-value">{{ maskedIdCard }}</text>
+                        </view>
+                        <view class="info-row">
+                            <text class="info-label">手机号</text>
+                            <text class="info-value">{{ form.phone }}</text>
+                        </view>
+                        <view class="info-row">
+                            <text class="info-label">车辆类型</text>
+                            <text class="info-value">{{ form.vehicle_type_text }}</text>
+                        </view>
+                        <view class="info-row">
+                            <text class="info-label">车牌号</text>
+                            <text class="info-value">{{ form.plate_no }}</text>
+                        </view>
+                        <view class="info-row">
+                            <text class="info-label">认证时间</text>
+                            <text class="info-value">{{ form.approved_at }}</text>
+                        </view>
+                    </view>
+                </view>
+
+                <!-- 待审核 / 已驳回 / 未认证：显示申请表单 -->
+                <view v-if="verifyStatus != 'approved'">
+                    <view class="reject-tip" v-if="verifyStatus == 'rejected'">
+                        <text class="reject-icon">⚠️</text>
+                        <text class="reject-text">{{ form.reject_reason || '认证未通过，请补充资料重新提交' }}</text>
+                    </view>
+
+                    <!-- 基本信息 -->
+                    <view class="card">
+                        <text class="card-title">基本信息</text>
+                        <view class="form-item">
+                            <text class="label">真实姓名<text class="required">*</text></text>
+                            <input class="input" placeholder="请输入真实姓名" v-model="form.real_name" maxlength="20" />
+                        </view>
+                        <view class="form-item">
+                            <text class="label">身份证号<text class="required">*</text></text>
+                            <input class="input" placeholder="请输入18位身份证号" v-model="form.id_card" maxlength="18" />
+                        </view>
+                        <view class="form-item">
+                            <text class="label">手机号<text class="required">*</text></text>
+                            <input class="input" type="number" placeholder="请输入手机号" v-model="form.phone" maxlength="11" />
+                        </view>
+                    </view>
+
+                    <!-- 车辆信息 -->
+                    <view class="card">
+                        <text class="card-title">车辆信息</text>
+                        <view class="form-item">
+                            <text class="label">车辆类型<text class="required">*</text></text>
+                            <view class="picker" @click="showVehiclePicker = true">
+                                <text :class="form.vehicle_type.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.vehicle_type.length > 0 ? form.vehicle_type_text : '请选择车辆类型' }}</text>
+                                <text class="picker-arrow">›</text>
+                            </view>
+                        </view>
+                        <view class="form-item">
+                            <text class="label">车牌号</text>
+                            <input class="input" placeholder="请输入车牌号（选填）" v-model="form.plate_no" maxlength="10" />
+                        </view>
+                        <view class="form-item">
+                            <text class="label">车辆照片</text>
+                            <view class="upload-row">
+                                <view class="upload-box" @click="uploadImage('vehicle')">
+                                    <image class="upload-img" :src="form.vehicle_image" mode="aspectFill" v-if="form.vehicle_image.length > 0" />
+                                    <view class="upload-placeholder" v-else>
+                                        <text class="upload-icon">+</text>
+                                        <text class="upload-text">上传照片</text>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+
+                    <!-- 证件照片 -->
+                    <view class="card">
+                        <text class="card-title">证件照片</text>
+                        <view class="form-item">
+                            <text class="label">身份证正面<text class="required">*</text></text>
+                            <view class="upload-row">
+                                <view class="upload-box" @click="uploadImage('id_front')">
+                                    <image class="upload-img" :src="form.id_front_image" mode="aspectFill" v-if="form.id_front_image.length > 0" />
+                                    <view class="upload-placeholder" v-else>
+                                        <text class="upload-icon">+</text>
+                                        <text class="upload-text">身份证正面</text>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="form-item">
+                            <text class="label">身份证反面<text class="required">*</text></text>
+                            <view class="upload-row">
+                                <view class="upload-box" @click="uploadImage('id_back')">
+                                    <image class="upload-img" :src="form.id_back_image" mode="aspectFill" v-if="form.id_back_image.length > 0" />
+                                    <view class="upload-placeholder" v-else>
+                                        <text class="upload-icon">+</text>
+                                        <text class="upload-text">身份证反面</text>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="form-item">
+                            <text class="label">驾照照片</text>
+                            <view class="upload-row">
+                                <view class="upload-box" @click="uploadImage('license')">
+                                    <image class="upload-img" :src="form.license_image" mode="aspectFill" v-if="form.license_image.length > 0" />
+                                    <view class="upload-placeholder" v-else>
+                                        <text class="upload-icon">+</text>
+                                        <text class="upload-text">驾照照片</text>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+
+                    <!-- 紧急联系 -->
+                    <view class="card">
+                        <text class="card-title">紧急联系人</text>
+                        <view class="form-item">
+                            <text class="label">联系人姓名</text>
+                            <input class="input" placeholder="请输入紧急联系人姓名" v-model="form.emergency_contact" maxlength="20" />
+                        </view>
+                        <view class="form-item">
+                            <text class="label">联系人电话</text>
+                            <input class="input" type="number" placeholder="请输入紧急联系人电话" v-model="form.emergency_phone" maxlength="11" />
+                        </view>
+                    </view>
+
+                    <view class="tips-card">
+                        <text class="tips-title">温馨提示</text>
+                        <text class="tips-line">1. 请确保提交资料真实有效</text>
+                        <text class="tips-line">2. 身份证信息仅用于身份核验</text>
+                        <text class="tips-line">3. 认证审核一般 1-3 个工作日</text>
+                        <text class="tips-line">4. 如有疑问请联系客服</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <!-- 底部按钮 -->
+        <view class="footer" v-if="!loading && verifyStatus != 'approved'">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">{{ verifyStatus == 'rejected' ? '重新提交' : '提交认证' }}</text>
+            </view>
+        </view>
+
+        <!-- 车辆类型选择器 -->
+        <view class="picker-mask" v-if="showVehiclePicker" @click="showVehiclePicker = false">
+            <view class="picker-content" @click.stop="">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showVehiclePicker = false">取消</text>
+                    <text class="picker-title">选择车辆类型</text>
+                    <text class="picker-confirm" @click="showVehiclePicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="v in vehicleTypes" :key="v.value" @click="selectVehicle(v)">
+                        <text :class="v.value == form.vehicle_type ? 'option-text option-active' : 'option-text'">{{ v.label }}</text>
+                        <text class="option-check" v-if="v.value == form.vehicle_type">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+    import { applyRider, getMyRider } from '@/api/business/rider.uts'
+
+    type VehicleType = { value: string, label: string }
+
+    type Form = {
+        real_name: string
+        id_card: string
+        phone: string
+        vehicle_type: string
+        vehicle_type_text: string
+        plate_no: string
+        vehicle_image: string
+        id_front_image: string
+        id_back_image: string
+        license_image: string
+        emergency_contact: string
+        emergency_phone: string
+        approved_at: string
+        reject_reason: string
+    }
+
+    const loading = ref(false)
+    const submitting = ref(false)
+    const verifyStatus = ref('none')  // 'none' | 'pending' | 'approved' | 'rejected'
+    const customStatusText = ref('')
+    const customDesc = ref('')
+    const showVehiclePicker = ref(false)
+
+    const vehicleTypes = ref([
+        { value: 'electric', label: '电动车' },
+        { value: 'motorcycle', label: '摩托车' },
+        { value: 'bicycle', label: '自行车' },
+        { value: 'car', label: '小汽车' },
+        { value: 'tricycle', label: '三轮车' }
+    ] as VehicleType[])
+
+    const form = ref({
+        real_name: '',
+        id_card: '',
+        phone: '',
+        vehicle_type: '',
+        vehicle_type_text: '',
+        plate_no: '',
+        vehicle_image: '',
+        id_front_image: '',
+        id_back_image: '',
+        license_image: '',
+        emergency_contact: '',
+        emergency_phone: '',
+        approved_at: '',
+        reject_reason: ''
+    } as Form)
+
+    const maskedIdCard = computed(() : string => {
+        const id = form.value.id_card
+        if (id.length < 11) return id
+        return id.substring(0, 6) + '********' + id.substring(14)
+    })
+
+    const loadRider = () => {
+        loading.value = true
+        getMyRider().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value.real_name = (d['real_name'] as string) ?? ''
+                form.value.id_card = (d['id_card'] as string) ?? ''
+                form.value.phone = (d['phone'] as string) ?? ''
+                form.value.vehicle_type = (d['vehicle_type'] as string) ?? ''
+                form.value.vehicle_type_text = (d['vehicle_type_text'] as string) ?? ''
+                form.value.plate_no = (d['plate_no'] as string) ?? ''
+                form.value.vehicle_image = (d['vehicle_image'] as string) ?? ''
+                form.value.id_front_image = (d['id_front_image'] as string) ?? ''
+                form.value.id_back_image = (d['id_back_image'] as string) ?? ''
+                form.value.license_image = (d['license_image'] as string) ?? ''
+                form.value.emergency_contact = (d['emergency_contact'] as string) ?? ''
+                form.value.emergency_phone = (d['emergency_phone'] as string) ?? ''
+                form.value.approved_at = (d['approved_at'] as string) ?? ''
+                form.value.reject_reason = (d['reject_reason'] as string) ?? ''
+
+                const status = (d['verify_status'] as string) ?? 'none'
+                verifyStatus.value = status
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const selectVehicle = (v: VehicleType) => {
+        form.value.vehicle_type = v.value
+        form.value.vehicle_type_text = v.label
+        showVehiclePicker.value = false
+    }
+
+    const uploadImage = (type: string) => {
+        uni.chooseImage({
+            count: 1,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                if (res.tempFilePaths.length > 0) {
+                    uni.uploadFile({
+                        url: 'http://localhost:8088/api/v1/file/upload',
+                        filePath: res.tempFilePaths[0],
+                        name: 'file',
+                        header: { Authorization: 'Bearer ' + uni.getStorageSync('wctc_token') },
+                        success: (upRes: UploadFileSuccessCallback) => {
+                            try {
+                                const data = JSON.parse(upRes.data) as UTSJSONObject
+                                if ((data['code'] as number) == 200) {
+                                    const url = ((data['data'] as UTSJSONObject)['url'] as string) ?? ''
+                                    if (type == 'vehicle') form.value.vehicle_image = url
+                                    else if (type == 'id_front') form.value.id_front_image = url
+                                    else if (type == 'id_back') form.value.id_back_image = url
+                                    else if (type == 'license') form.value.license_image = url
+                                    uni.showToast({ title: '上传成功', icon: 'success' })
+                                }
+                            } catch (e) {
+                                uni.showToast({ title: '上传失败', icon: 'none' })
+                            }
+                        },
+                        fail: () => {
+                            uni.showToast({ title: '上传失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const validate = () : boolean => {
+        if (form.value.real_name.length == 0) {
+            uni.showToast({ title: '请输入真实姓名', icon: 'none' })
+            return false
+        }
+        if (form.value.id_card.length != 18) {
+            uni.showToast({ title: '身份证号需18位', icon: 'none' })
+            return false
+        }
+        if (form.value.phone.length != 11) {
+            uni.showToast({ title: '手机号需11位', icon: 'none' })
+            return false
+        }
+        if (form.value.vehicle_type.length == 0) {
+            uni.showToast({ title: '请选择车辆类型', icon: 'none' })
+            return false
+        }
+        if (form.value.id_front_image.length == 0) {
+            uni.showToast({ title: '请上传身份证正面', icon: 'none' })
+            return false
+        }
+        if (form.value.id_back_image.length == 0) {
+            uni.showToast({ title: '请上传身份证反面', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!validate()) return
+        if (submitting.value) return
+        submitting.value = true
+        uni.showLoading({ title: '提交中...' })
+        applyRider({
+            real_name: form.value.real_name,
+            id_card: form.value.id_card,
+            phone: form.value.phone,
+            vehicle_type: form.value.vehicle_type,
+            plate_no: form.value.plate_no,
+            vehicle_image: form.value.vehicle_image,
+            id_front_image: form.value.id_front_image,
+            id_back_image: form.value.id_back_image,
+            license_image: form.value.license_image,
+            emergency_contact: form.value.emergency_contact,
+            emergency_phone: form.value.emergency_phone
+        } as UTSJSONObject).then((res: ApiResult) => {
+            submitting.value = false
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '认证申请已提交', icon: 'success' })
+                verifyStatus.value = 'pending'
+                loadRider()
+            } else {
+                uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+            uni.hideLoading()
+        })
+    }
+
+    onLoad(() => {
+        if (!guardRider()) return
+        loadRider()
+    })
+
+    onPullDownRefresh(() => {
+        loadRider()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content-scroll {
+        flex: 1;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 10px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 90px;
+    }
+
+    .info-value {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .reject-tip {
+        background-color: #FFF5F0;
+        margin: 12px;
+        border-radius: 8px;
+        padding: 12px;
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .reject-icon {
+        font-size: 14px;
+        margin-right: 6px;
+    }
+
+    .reject-text {
+        flex: 1;
+        font-size: 12px;
+        color: #FF6B35;
+        line-height: 18px;
+    }
+
+    .form-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    .required {
+        color: #FF6B35;
+    }
+
+    .input {
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .picker {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .upload-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .upload-box {
+        width: 120px;
+        height: 90px;
+        border-radius: 8px;
+        border: 1px dashed #DDDDDD;
+        background-color: #FAFAFA;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .upload-img {
+        width: 120px;
+        height: 90px;
+    }
+
+    .upload-placeholder {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .upload-icon {
+        font-size: 24px;
+        color: #CCCCCC;
+    }
+
+    .upload-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .tips-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .tips-title {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .tips-line {
+        font-size: 12px;
+        color: #999;
+        line-height: 20px;
+    }
+
+    .footer {
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .btn-submit {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 16px;
+        max-height: 400px;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 300px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+</style>

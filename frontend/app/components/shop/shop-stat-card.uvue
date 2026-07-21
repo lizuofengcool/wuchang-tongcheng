@@ -1,0 +1,121 @@
+<template>
+    <view class="stat-card" :class="type">
+        <view class="icon-row" v-if="icon.length > 0">
+            <text class="icon">{{ icon }}</text>
+        </view>
+        <view class="content">
+            <text class="label">{{ label }}</text>
+            <view class="value-row">
+                <text class="prefix" v-if="prefix.length > 0">{{ prefix }}</text>
+                <text class="value">{{ value }}</text>
+                <text class="suffix" v-if="suffix.length > 0">{{ suffix }}</text>
+            </view>
+            <text class="trend" v-if="trend.length > 0" :class="trendType">{{ trend }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        label: string
+        value: string | number
+        prefix?: string
+        suffix?: string
+        icon?: string
+        trend?: string
+        trendType?: string  // 'up' | 'down' | ''
+        type?: string       // 'primary' | 'default'
+    }>(), {
+        prefix: '',
+        suffix: '',
+        icon: '',
+        trend: '',
+        trendType: '',
+        type: 'default'
+    } as any)
+</script>
+
+<style>
+    .stat-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 14px;
+        flex: 1;
+        margin: 4px;
+    }
+
+    .stat-card.primary {
+        background-color: #FF6B35;
+    }
+
+    .icon-row {
+        margin-bottom: 6px;
+    }
+
+    .icon {
+        font-size: 20px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .stat-card.primary .label {
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .value-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 6px;
+    }
+
+    .prefix {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-right: 2px;
+    }
+
+    .stat-card.primary .prefix {
+        color: #FFFFFF;
+    }
+
+    .value {
+        font-size: 20px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .stat-card.primary .value {
+        color: #FFFFFF;
+    }
+
+    .suffix {
+        font-size: 12px;
+        color: #999;
+        margin-left: 2px;
+    }
+
+    .stat-card.primary .suffix {
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .trend {
+        font-size: 11px;
+        color: #999;
+        margin-top: 6px;
+    }
+
+    .trend.up {
+        color: #FF6B35;
+    }
+
+    .trend.down {
+        color: #4CAF50;
+    }
+</style>

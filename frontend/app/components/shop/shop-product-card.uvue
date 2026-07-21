@@ -1,0 +1,165 @@
+<template>
+    <view class="product-card" @click="onClick">
+        <image class="cover" :src="product.cover_image" mode="aspectFill" lazy-load="true" v-if="product.cover_image.length > 0" />
+        <view class="cover-placeholder" v-else>
+            <text class="cover-text">{{ product.title.length > 0 ? product.title.charAt(0) : '商' }}</text>
+        </view>
+        <view class="card-main">
+            <view class="title-row">
+                <text class="title">{{ product.title }}</text>
+                <shop-status-tag :status="product.status" :text="product.status_text" />
+            </view>
+            <view class="meta-row">
+                <text class="price">¥{{ product.price }}</text>
+                <text class="stock">库存 {{ product.stock }}</text>
+                <text class="sales">已售 {{ product.sales_count }}</text>
+            </view>
+            <view class="action-row" v-if="actions.length > 0">
+                <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click.stop="onAction(a)">
+                    <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Action = { text: string, type: string, primary: boolean }
+
+    type Product = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        stock: number
+        sales_count: number
+        status: string
+        status_text: string
+    }
+
+    const props = withDefaults(defineProps<{
+        product: Product
+        actions?: Action[]
+    }>(), {
+        actions: [] as Action[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', productId: number, actionType: string): void
+    }>()
+
+    const actions = computed(() : Action[] => {
+        return props.actions ?? ([] as Action[])
+    })
+
+    const onClick = () => {
+        emit('click', props.product.id)
+    }
+
+    const onAction = (a: Action) => {
+        emit('action', props.product.id, a.type)
+    }
+</script>
+
+<style>
+    .product-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        flex-direction: row;
+    }
+
+    .cover {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .cover-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cover-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .card-main {
+        flex: 1;
+        margin-left: 10px;
+    }
+
+    .title-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        margin-right: 8px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .price {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+        margin-right: 12px;
+    }
+
+    .stock {
+        font-size: 12px;
+        color: #666;
+        margin-right: 12px;
+    }
+
+    .sales {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+
+    .action-btn {
+        padding: 4px 12px;
+        border-radius: 14px;
+        border: 1px solid #DDDDDD;
+        margin-left: 8px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

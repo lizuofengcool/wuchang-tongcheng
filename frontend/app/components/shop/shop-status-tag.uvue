@@ -1,0 +1,74 @@
+<template>
+    <view class="status-tag" :class="statusClass">
+        <text class="tag-text" :class="statusClass">{{ text }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        status: string  // 状态码：pending/paid/shipping/completed/canceled/refunded/approved/rejected/...
+        text: string   // 显示文字
+    }>(), {} as any)
+
+    const statusClass = computed(() : string => {
+        const s = props.status
+        if (s == 'pending' || s == 'unpaid' || s == 'processing' || s == 'reviewing') return 'warn'
+        if (s == 'paid' || s == 'shipping' || s == 'active' || s == 'on_sale') return 'info'
+        if (s == 'completed' || s == 'approved' || s == 'success' || s == 'verified') return 'success'
+        if (s == 'canceled' || s == 'rejected' || s == 'failed' || s == 'refunded' || s == 'off_sale') return 'danger'
+        return 'default'
+    })
+</script>
+
+<style>
+    .status-tag {
+        padding: 2px 8px;
+        border-radius: 10px;
+        background-color: #F0F0F0;
+    }
+
+    .tag-text {
+        font-size: 11px;
+        color: #666;
+    }
+
+    .status-tag.warn {
+        background-color: #FFF4E5;
+    }
+
+    .tag-text.warn {
+        color: #FF9900;
+    }
+
+    .status-tag.info {
+        background-color: #E5F4FF;
+    }
+
+    .tag-text.info {
+        color: #1890FF;
+    }
+
+    .status-tag.success {
+        background-color: #E8F8EE;
+    }
+
+    .tag-text.success {
+        color: #4CAF50;
+    }
+
+    .status-tag.danger {
+        background-color: #FFEBEE;
+    }
+
+    .tag-text.danger {
+        color: #F44336;
+    }
+
+    .status-tag.default {
+        background-color: #F0F0F0;
+    }
+
+    .tag-text.default {
+        color: #666;
+    }
+</style>

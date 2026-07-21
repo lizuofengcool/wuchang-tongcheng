@@ -1,0 +1,234 @@
+<template>
+    <view class="order-card" @click="onClick">
+        <view class="header-row">
+            <text class="order-no">订单号：{{ order.order_no }}</text>
+            <shop-status-tag :status="order.status" :text="order.status_text" />
+        </view>
+        <view class="product-list">
+            <view class="product-item" v-for="(p, idx) in order.products" :key="idx">
+                <image class="p-cover" :src="p.cover_image" mode="aspectFill" lazy-load="true" v-if="p.cover_image.length > 0" />
+                <view class="p-cover-placeholder" v-else>
+                    <text class="p-cover-text">{{ p.title.length > 0 ? p.title.charAt(0) : '商' }}</text>
+                </view>
+                <view class="p-info">
+                    <text class="p-title">{{ p.title }}</text>
+                    <text class="p-sku" v-if="p.sku_name.length > 0">{{ p.sku_name }}</text>
+                    <view class="p-meta-row">
+                        <text class="p-price">¥{{ p.price }}</text>
+                        <text class="p-qty">x{{ p.quantity }}</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+        <view class="footer">
+            <text class="count-text">共 {{ totalQuantity }} 件</text>
+            <view class="amount-row">
+                <text class="amount-label">实付：</text>
+                <text class="amount-value">¥{{ order.total_amount }}</text>
+            </view>
+        </view>
+        <view class="action-row" v-if="actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click.stop="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type OrderProduct = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+
+    type Action = { text: string, type: string, primary: boolean }
+
+    type Order = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        total_amount: number
+        products: OrderProduct[]
+    }
+
+    const props = withDefaults(defineProps<{
+        order: Order
+        actions?: Action[]
+    }>(), {
+        actions: [] as Action[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', orderId: number, actionType: string): void
+    }>()
+
+    const totalQuantity = computed(() : number => {
+        let total = 0
+        for (let i = 0; i < props.order.products.length; i++) {
+            total += props.order.products[i].quantity
+        }
+        return total
+    })
+
+    const actions = computed(() : Action[] => {
+        return props.actions ?? ([] as Action[])
+    })
+
+    const onClick = () => {
+        emit('click', props.order.id)
+    }
+
+    const onAction = (a: Action) => {
+        emit('action', props.order.id, a.type)
+    }
+</script>
+
+<style>
+    .order-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .order-no {
+        font-size: 12px;
+        color: #999;
+        flex: 1;
+    }
+
+    .product-list {
+        padding: 8px 0;
+    }
+
+    .product-item {
+        flex-direction: row;
+        padding: 6px 0;
+    }
+
+    .p-cover {
+        width: 56px;
+        height: 56px;
+        border-radius: 6px;
+        background-color: #F5F5F5;
+    }
+
+    .p-cover-placeholder {
+        width: 56px;
+        height: 56px;
+        border-radius: 6px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .p-cover-text {
+        font-size: 22px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .p-info {
+        flex: 1;
+        margin-left: 10px;
+    }
+
+    .p-title {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .p-sku {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .p-meta-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 4px;
+    }
+
+    .p-price {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .p-qty {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .footer {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .count-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .amount-label {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .amount-value {
+        font-size: 15px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+
+    .action-btn {
+        padding: 6px 14px;
+        border-radius: 16px;
+        border: 1px solid #DDDDDD;
+        margin-left: 8px;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

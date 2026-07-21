@@ -1,0 +1,164 @@
+<template>
+    <view class="review-card">
+        <view class="header-row">
+            <image class="avatar" :src="review.avatar" mode="aspectFill" lazy-load="true" v-if="review.avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ review.nickname.length > 0 ? review.nickname.charAt(0) : '匿' }}</text>
+            </view>
+            <view class="user-info">
+                <text class="nickname">{{ review.nickname }}</text>
+                <view class="star-row">
+                    <text class="star" v-for="n in 5" :key="n" :class="{ active: n <= review.rating }">★</text>
+                </view>
+            </view>
+            <text class="time">{{ review.created_at }}</text>
+        </view>
+        <text class="content" v-if="review.content.length > 0">{{ review.content }}</text>
+        <view class="reply-box" v-if="review.reply.length > 0">
+            <text class="reply-label">商家回复：</text>
+            <text class="reply-text">{{ review.reply }}</text>
+        </view>
+        <view class="action-row" v-if="showReplyBtn">
+            <view class="reply-btn" @click="onReply">
+                <text class="reply-btn-text">{{ review.reply.length > 0 ? '修改回复' : '回复' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Review = {
+        id: number
+        nickname: string
+        avatar: string
+        rating: number
+        content: string
+        reply: string
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        review: Review
+        showReplyBtn?: boolean
+    }>(), {
+        showReplyBtn: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'reply', id: number): void
+    }>()
+
+    const onReply = () => {
+        emit('reply', props.review.id)
+    }
+</script>
+
+<style>
+    .review-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+
+    .header-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #F5F5F5;
+    }
+
+    .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .user-info {
+        flex: 1;
+        margin-left: 8px;
+    }
+
+    .nickname {
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .star-row {
+        flex-direction: row;
+        margin-top: 2px;
+    }
+
+    .star {
+        font-size: 12px;
+        color: #DDDDDD;
+        margin-right: 1px;
+    }
+
+    .star.active {
+        color: #FF6B35;
+    }
+
+    .time {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .content {
+        font-size: 13px;
+        color: #333;
+        margin-top: 10px;
+        line-height: 20px;
+    }
+
+    .reply-box {
+        background-color: #FFF5F0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-top: 10px;
+    }
+
+    .reply-label {
+        font-size: 12px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .reply-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+
+    .reply-btn {
+        border: 1px solid #FF6B35;
+        border-radius: 14px;
+        padding: 4px 14px;
+    }
+
+    .reply-btn-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+</style>

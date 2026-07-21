@@ -1,0 +1,433 @@
+<template>
+    <view class="page">
+        <!-- 评分概览 -->
+        <view class="summary-card">
+            <view class="score-row">
+                <view class="score-left">
+                    <text class="score-value">{{ stats.avg_rating }}</text>
+                    <text class="score-label">综合评分</text>
+                    <view class="star-row">
+                        <text class="star" v-for="n in 5" :key="n" :class="{ active: n <= Math.round(stats.avg_rating) }">★</text>
+                    </view>
+                </view>
+                <view class="score-right">
+                    <view class="rating-row" v-for="r in stats.rating_distribution" :key="r.star">
+                        <text class="rating-star">{{ r.star }}星</text>
+                        <view class="rating-bar">
+                            <view class="rating-bar-fill" :style="{ width: r.percent + '%' }"></view>
+                        </view>
+                        <text class="rating-count">{{ r.count }}</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+
+        <!-- 评分筛选 -->
+        <scroll-view class="tabs" scroll-x>
+            <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
+                <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+            </view>
+        </scroll-view>
+
+        <!-- 评价列表 -->
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <shop-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <shop-review-card
+                    v-for="item in list"
+                    :key="item.id"
+                    :review="transformCard(item)"
+                    @reply="onReply" />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <shop-empty
+                v-if="list.length == 0 && !loading"
+                icon="⭐"
+                text="暂无评价" />
+        </scroll-view>
+
+        <!-- 回复弹窗 -->
+        <view class="reply-mask" v-if="showReplyBox" @click="showReplyBox = false">
+            <view class="reply-content" @click.stop="">
+                <text class="reply-title">回复评价</text>
+                <textarea class="reply-input" placeholder="请输入回复内容（最多 200 字）" v-model="replyContent" maxlength="200" />
+                <view class="reply-actions">
+                    <view class="reply-btn-cancel" @click="showReplyBox = false">
+                        <text class="reply-btn-cancel-text">取消</text>
+                    </view>
+                    <view class="reply-btn-submit" @click="submitReply">
+                        <text class="reply-btn-submit-text">提交</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { listMerchantReviews, replyMerchantReview } from '@/api/business/merchant.uts'
+
+    type Tab = { id: number, name: string, value: string }
+
+    type RatingItem = {
+        star: number
+        count: number
+        percent: number
+    }
+
+    type Stats = {
+        avg_rating: number
+        total_count: number
+        rating_distribution: RatingItem[]
+    }
+
+    type ListItem = {
+        id: number
+        nickname: string
+        avatar: string
+        rating: number
+        content: string
+        reply: string
+        created_at: string
+    }
+
+    type ReviewCard = {
+        id: number
+        nickname: string
+        avatar: string
+        rating: number
+        content: string
+        reply: string
+        created_at: string
+    }
+
+    const tabs = ref([
+        { id: 0, name: '全部', value: '' },
+        { id: 1, name: '好评', value: 'good' },
+        { id: 2, name: '中评', value: 'middle' },
+        { id: 3, name: '差评', value: 'bad' },
+        { id: 4, name: '待回复', value: 'unreplied' }
+    ] as Tab[])
+
+    const activeTab = ref(0)
+    const stats = ref({
+        avg_rating: 0.0,
+        total_count: 0,
+        rating_distribution: [] as RatingItem[]
+    } as Stats)
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const showReplyBox = ref(false)
+    const replyContent = ref('')
+    const currentReviewId = ref(0)
+
+    const transformCard = (item: ListItem) : ReviewCard => {
+        return {
+            id: item.id,
+            nickname: item.nickname,
+            avatar: item.avatar,
+            rating: item.rating,
+            content: item.content,
+            reply: item.reply,
+            created_at: item.created_at
+        } as ReviewCard
+    }
+
+    const switchTab = (id: number) => {
+        if (activeTab.value == id) return
+        activeTab.value = id
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const tab = tabs.value[activeTab.value]
+        if (tab.value.length > 0) {
+            params['rating_type'] = tab.value
+        }
+
+        listMerchantReviews(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+                // 评分统计
+                const s = d['stats'] as UTSJSONObject
+                if (s != null) {
+                    stats.value = {
+                        avg_rating: (s['avg_rating'] as number) ?? 0.0,
+                        total_count: (s['total_count'] as number) ?? 0,
+                        rating_distribution: (s['rating_distribution'] as RatingItem[]) ?? ([] as RatingItem[])
+                    } as Stats
+                }
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onReply = (id: number) => {
+        currentReviewId.value = id
+        replyContent.value = ''
+        showReplyBox.value = true
+    }
+
+    const submitReply = () => {
+        if (replyContent.value.length == 0) {
+            uni.showToast({ title: '请输入回复内容', icon: 'none' })
+            return
+        }
+        replyMerchantReview({
+            review_id: currentReviewId.value,
+            content: replyContent.value
+        } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '回复成功', icon: 'success' })
+                showReplyBox.value = false
+                loadList(true)
+            }
+        }).catch(() => {})
+    }
+
+    onLoad(() => {
+        if (!guardMerchant()) return
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .summary-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 14px;
+    }
+
+    .score-row {
+        flex-direction: row;
+    }
+
+    .score-left {
+        width: 100px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .score-value {
+        font-size: 32px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .score-label {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .star-row {
+        flex-direction: row;
+        margin-top: 4px;
+    }
+
+    .star {
+        font-size: 14px;
+        color: #DDDDDD;
+        margin: 0 1px;
+    }
+
+    .star.active {
+        color: #FF6B35;
+    }
+
+    .score-right {
+        flex: 1;
+        margin-left: 16px;
+        justify-content: center;
+    }
+
+    .rating-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 2px 0;
+    }
+
+    .rating-star {
+        font-size: 11px;
+        color: #999;
+        width: 30px;
+    }
+
+    .rating-bar {
+        flex: 1;
+        height: 6px;
+        background-color: #F5F5F5;
+        border-radius: 3px;
+        margin: 0 8px;
+    }
+
+    .rating-bar-fill {
+        height: 6px;
+        background-color: #FF6B35;
+        border-radius: 3px;
+    }
+
+    .rating-count {
+        font-size: 11px;
+        color: #999;
+        width: 30px;
+        text-align: right;
+    }
+
+    .tabs {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 0 8px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .tab-item {
+        padding: 12px 14px;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .reply-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        padding: 24px;
+    }
+
+    .reply-content {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px;
+        width: 100%;
+    }
+
+    .reply-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .reply-input {
+        width: 100%;
+        height: 100px;
+        font-size: 13px;
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .reply-actions {
+        flex-direction: row;
+        margin-top: 12px;
+    }
+
+    .reply-btn-cancel {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 8px;
+        padding: 10px 0;
+        align-items: center;
+        margin-right: 10px;
+    }
+
+    .reply-btn-cancel-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .reply-btn-submit {
+        flex: 1;
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 10px 0;
+        align-items: center;
+    }
+
+    .reply-btn-submit-text {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+</style>

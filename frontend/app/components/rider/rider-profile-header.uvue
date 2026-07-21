@@ -1,0 +1,156 @@
+<template>
+    <view class="profile-header">
+        <view class="avatar-wrap">
+            <image class="avatar" :src="rider.avatar" mode="aspectFill" lazy-load="true" v-if="rider.avatar.length > 0" />
+            <view class="avatar-placeholder" v-else>
+                <text class="avatar-text">{{ rider.name.length > 0 ? rider.name.charAt(0) : '骑' }}</text>
+            </view>
+        </view>
+        <view class="info">
+            <view class="name-row">
+                <text class="name">{{ rider.name }}</text>
+                <view class="level-badge" v-if="rider.level.length > 0">
+                    <text class="level-text">{{ rider.level }}</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="meta-text">信用分 {{ rider.credit_score }}</text>
+                <text class="meta-divider">|</text>
+                <text class="meta-text">已接 {{ rider.total_orders }} 单</text>
+            </view>
+            <view class="status-row" @click="onToggleStatus">
+                <view class="status-dot" :class="{ online: rider.is_online }"></view>
+                <text class="status-text">{{ rider.is_online ? '在线接单' : '已下线' }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Rider = {
+        name: string
+        avatar: string
+        level: string
+        credit_score: number
+        total_orders: number
+        is_online: boolean
+    }
+
+    const props = defineProps<{
+        rider: Rider
+    }>()
+
+    const emit = defineEmits<{
+        (e: 'toggle'): void
+    }>()
+
+    const onToggleStatus = () => {
+        emit('toggle')
+    }
+</script>
+
+<style>
+    .profile-header {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .avatar-wrap {
+        margin-right: 12px;
+    }
+
+    .avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 30px;
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .avatar-placeholder {
+        width: 60px;
+        height: 60px;
+        border-radius: 30px;
+        background-color: rgba(255, 255, 255, 0.3);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .level-badge {
+        background-color: rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+
+    .level-text {
+        font-size: 11px;
+        color: #FFFFFF;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .meta-text {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .meta-divider {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 0 8px;
+    }
+
+    .status-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 4px 10px;
+        align-self: flex-start;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background-color: #999999;
+        margin-right: 6px;
+    }
+
+    .status-dot.online {
+        background-color: #4CAF50;
+    }
+
+    .status-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+</style>

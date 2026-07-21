@@ -1,12 +1,5 @@
 <template>
     <view class="page">
-        <!-- 搜索栏 -->
-        <view class="search-bar">
-            <text class="search-icon">🔍</text>
-            <input class="search-input" placeholder="搜索商品名称" v-model="keyword" confirm-type="search" @confirm="onSearch" />
-            <text class="search-btn" @click="onSearch">搜索</text>
-        </view>
-
         <!-- 状态筛选 -->
         <scroll-view class="tabs" scroll-x>
             <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
@@ -14,17 +7,17 @@
             </view>
         </scroll-view>
 
-        <!-- 列表 -->
+        <!-- 优惠券列表 -->
         <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
             <shop-loading :text="'加载中...'" v-if="loading && list.length == 0" />
             <view class="list-wrap" v-if="list.length > 0">
-                <shop-product-card
+                <shop-coupon-card
                     v-for="item in list"
                     :key="item.id"
-                    :product="transformCard(item)"
-                    :actions="getActions(item)"
+                    :coupon="transformCard(item)"
+                    action-text="发放"
                     @click="goDetail"
-                    @action="onAction" />
+                    @action="onDistribute" />
             </view>
             <view class="load-more" v-if="loading && list.length > 0">
                 <text class="load-text">加载中...</text>
@@ -34,14 +27,14 @@
             </view>
             <shop-empty
                 v-if="list.length == 0 && !loading"
-                icon="📦"
-                text="暂无商品"
-                btn-text="去添加"
-                @click="goAdd" />
+                icon="🎫"
+                text="暂无优惠券"
+                btn-text="去创建"
+                @click="goCreate" />
         </scroll-view>
 
-        <!-- 添加按钮 -->
-        <view class="fab" @click="goAdd">
+        <!-- 创建按钮 -->
+        <view class="fab" @click="goCreate">
             <text class="fab-icon">+</text>
         </view>
     </view>
@@ -49,17 +42,16 @@
 
 <script setup lang="uts">
     import { guardMerchant } from '@/utils/auth.uts'
-    import { listMyMerchantProducts, updateMerchantProduct, deleteMerchantProduct } from '@/api/business/merchant.uts'
+    import { listMerchantCoupons, updateMerchantCoupon } from '@/api/business/merchant.uts'
 
     type Tab = { id: number, name: string, value: string }
 
     type ListItem = {
         id: number
         title: string
-        cover_image: string
-        price: number
-        stock: number
-        sales_count: number
+        amount: number
+        threshold_text: string
+        validity_text: string
         status: string
         status_text: string
     }
@@ -67,25 +59,21 @@
     type CardData = {
         id: number
         title: string
-        cover_image: string
-        price: number
-        stock: number
-        sales_count: number
+        amount: number
+        threshold_text: string
+        validity_text: string
         status: string
         status_text: string
     }
 
-    type Action = { text: string, type: string, primary: boolean }
-
     const tabs = ref([
         { id: 0, name: '全部', value: '' },
-        { id: 1, name: '在售', value: 'on_sale' },
-        { id: 2, name: '下架', value: 'off_sale' },
-        { id: 3, name: '缺货', value: 'out_of_stock' }
+        { id: 1, name: '进行中', value: 'active' },
+        { id: 2, name: '已过期', value: 'expired' },
+        { id: 3, name: '已停用', value: 'disabled' }
     ] as Tab[])
 
     const activeTab = ref(0)
-    const keyword = ref('')
     const list = ref([] as ListItem[])
     const loading = ref(false)
     const hasMore = ref(true)
@@ -96,34 +84,17 @@
         return {
             id: item.id,
             title: item.title,
-            cover_image: item.cover_image,
-            price: item.price,
-            stock: item.stock,
-            sales_count: item.sales_count,
+            amount: item.amount,
+            threshold_text: item.threshold_text,
+            validity_text: item.validity_text,
             status: item.status,
             status_text: item.status_text
         } as CardData
     }
 
-    const getActions = (item: ListItem) : Action[] => {
-        const arr = [] as Action[]
-        if (item.status == 'on_sale') {
-            arr.push({ text: '下架', type: 'off_sale', primary: false } as Action)
-        } else {
-            arr.push({ text: '上架', type: 'on_sale', primary: true } as Action)
-        }
-        arr.push({ text: '编辑', type: 'edit', primary: false } as Action)
-        arr.push({ text: '删除', type: 'delete', primary: false } as Action)
-        return arr
-    }
-
     const switchTab = (id: number) => {
         if (activeTab.value == id) return
         activeTab.value = id
-        loadList(true)
-    }
-
-    const onSearch = () => {
         loadList(true)
     }
 
@@ -144,11 +115,8 @@
         if (tab.value.length > 0) {
             params['status'] = tab.value
         }
-        if (keyword.value.length > 0) {
-            params['keyword'] = keyword.value
-        }
 
-        listMyMerchantProducts(params).then((res: ApiResult) => {
+        listMerchantCoupons(params).then((res: ApiResult) => {
             loading.value = false
             uni.stopPullDownRefresh()
             if (res.code == 200 && res.data) {
@@ -176,53 +144,27 @@
     }
 
     const goDetail = (id: number) => {
-        uni.navigateTo({ url: '/pages/shop/product/edit?id=' + id })
+        uni.showToast({ title: '优惠券详情开发中', icon: 'none' })
     }
 
-    const goAdd = () => {
-        uni.navigateTo({ url: '/pages/shop/product/edit' })
+    const goCreate = () => {
+        uni.showToast({ title: '创建优惠券开发中', icon: 'none' })
     }
 
-    const onAction = (productId: number, actionType: string) => {
-        if (actionType == 'edit') {
-            uni.navigateTo({ url: '/pages/shop/product/edit?id=' + productId })
-            return
-        }
-        if (actionType == 'on_sale' || actionType == 'off_sale') {
-            const text = actionType == 'on_sale' ? '上架' : '下架'
-            uni.showModal({
-                title: '提示',
-                content: '确定要' + text + '此商品吗？',
-                success: (r: ShowModalRes) => {
-                    if (r.confirm) {
-                        updateMerchantProduct(productId, { status: actionType } as UTSJSONObject).then((res: ApiResult) => {
-                            if (res.code == 200) {
-                                uni.showToast({ title: text + '成功', icon: 'success' })
-                                loadList(true)
-                            }
-                        }).catch(() => {})
-                    }
+    const onDistribute = (id: number) => {
+        uni.showModal({
+            title: '发放优惠券',
+            content: '确定要发放此优惠券给关注店铺的用户吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    updateMerchantCoupon(id, { action: 'distribute' } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '发放成功', icon: 'success' })
+                        }
+                    }).catch(() => {})
                 }
-            })
-            return
-        }
-        if (actionType == 'delete') {
-            uni.showModal({
-                title: '提示',
-                content: '确定要删除此商品吗？删除后不可恢复',
-                confirmColor: '#F44336',
-                success: (r: ShowModalRes) => {
-                    if (r.confirm) {
-                        deleteMerchantProduct(productId).then((res: ApiResult) => {
-                            if (res.code == 200) {
-                                uni.showToast({ title: '删除成功', icon: 'success' })
-                                loadList(true)
-                            }
-                        }).catch(() => {})
-                    }
-                }
-            })
-        }
+            }
+        })
     }
 
     onLoad(() => {
@@ -239,33 +181,6 @@
     .page {
         flex: 1;
         background-color: #F5F5F5;
-    }
-
-    .search-bar {
-        background-color: #FFFFFF;
-        flex-direction: row;
-        align-items: center;
-        padding: 8px 12px;
-    }
-
-    .search-icon {
-        font-size: 14px;
-        color: #999;
-        margin-right: 6px;
-    }
-
-    .search-input {
-        flex: 1;
-        font-size: 13px;
-        background-color: #F5F5F5;
-        border-radius: 16px;
-        padding: 6px 12px;
-    }
-
-    .search-btn {
-        font-size: 14px;
-        color: #FF6B35;
-        margin-left: 10px;
     }
 
     .tabs {

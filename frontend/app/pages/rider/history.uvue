@@ -1,25 +1,227 @@
 <template>
     <view class="page">
-        <!-- 日期筛选 -->
+        <!-- 状态筛选 + 日期筛选 -->
         <view class="filter-bar">
-            <view class="date-btn" @click="pickDate">
-                <text class="date-text">{{ dateText }}</text>
-                <text class="arrow">▾</text>
+            <scroll-view class="tabs" scroll-x>
+                <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
+                    <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+                </view>
+            </scroll-view>
+            <view class="date-bar">
+                <view class="date-btn" @click="pickDate">
+                    <text class="date-text">{{ dateText }}</text>
+                    <text class="arrow">▾</text>
+                </view>
+                <view class="search-bar">
+                    <text class="search-icon">🔍</text>
+                    <input class="search-input" placeholder="搜索订单号" v-model="keyword" confirm-type="search" @confirm="onSearch" />
+                </view>
             </view>
         </view>
-        <!-- 订单列表占位 -->
-        <view class="content">
-            <text class="empty-text">暂无配送记录</text>
+
+        <!-- 统计 -->
+        <view class="stat-row">
+            <rider-stat-card label="订单数" :value="totalCount" icon="📋" type="primary" />
+            <rider-stat-card label="配送费" :value="totalFee" prefix="¥" icon="💰" />
+            <rider-stat-card label="里程" :value="totalDistance" suffix="km" icon="📏" />
         </view>
+
+        <!-- 订单列表 -->
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <rider-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <rider-delivery-card
+                    v-for="item in list"
+                    :key="item.id"
+                    :delivery="transformCard(item)"
+                    :actions="getActions(item)"
+                    @click="goDetail"
+                    @action="onAction" />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <rider-empty
+                v-if="list.length == 0 && !loading"
+                icon="📋"
+                text="暂无配送记录" />
+        </scroll-view>
     </view>
 </template>
 
 <script setup lang="uts">
-    const dateText = ref('2026-07-19')
+    import { guardRider } from '@/utils/auth.uts'
+    import { listMyDeliveries } from '@/api/business/rider.uts'
+
+    type Tab = { id: number, name: string, value: string }
+
+    type ListItem = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        shop_name: string
+        shop_address: string
+        customer_name: string
+        customer_address: string
+        distance: number
+        delivery_fee: number
+        created_at: string
+    }
+
+    type CardData = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        shop_name: string
+        shop_address: string
+        customer_name: string
+        customer_address: string
+        distance: number
+        delivery_fee: number
+        created_at: string
+    }
+
+    type Action = { text: string, type: string, primary: boolean }
+
+    const tabs = ref([
+        { id: 0, name: '全部', value: '' },
+        { id: 1, name: '已送达', value: 'completed' },
+        { id: 2, name: '已取消', value: 'canceled' }
+    ] as Tab[])
+
+    const activeTab = ref(0)
+    const keyword = ref('')
+    const dateText = ref('全部时间')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const totalCount = ref(0)
+    const totalFee = ref('0.00')
+    const totalDistance = ref('0.0')
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            order_no: item.order_no,
+            status: item.status,
+            status_text: item.status_text,
+            shop_name: item.shop_name,
+            shop_address: item.shop_address,
+            customer_name: item.customer_name,
+            customer_address: item.customer_address,
+            distance: item.distance,
+            delivery_fee: item.delivery_fee,
+            created_at: item.created_at
+        } as CardData
+    }
+
+    const getActions = (item: ListItem) : Action[] => {
+        const arr = [] as Action[]
+        arr.push({ text: '查看', type: 'detail', primary: false } as Action)
+        return arr
+    }
+
+    const switchTab = (id: number) => {
+        if (activeTab.value == id) return
+        activeTab.value = id
+        loadList(true)
+    }
+
+    const onSearch = () => {
+        loadList(true)
+    }
 
     const pickDate = () => {
-        uni.showToast({ title: '日期选择开发中', icon: 'none' })
+        uni.showActionSheet({
+            itemList: ['全部时间', '今日', '本周', '本月', '本年'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const items = ['全部时间', '今日', '本周', '本月', '本年']
+                dateText.value = items[r.tapIndex]
+                loadList(true)
+            }
+        })
     }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const tab = tabs.value[activeTab.value]
+        if (tab.value.length > 0) {
+            params['status'] = tab.value
+        }
+        if (keyword.value.length > 0) {
+            params['keyword'] = keyword.value
+        }
+        if (dateText.value != '全部时间') {
+            params['period'] = dateText.value
+        }
+
+        listMyDeliveries(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+                // 更新统计
+                totalCount.value = (d['total'] as number) ?? newList.length
+                totalFee.value = (d['total_fee'] as string) ?? '0.00'
+                totalDistance.value = (d['total_distance'] as string) ?? '0.0'
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/rider/order/detail?id=' + id })
+    }
+
+    const onAction = (deliveryId: number, actionType: string) => {
+        if (actionType == 'detail') {
+            goDetail(deliveryId)
+        }
+    }
+
+    onLoad(() => {
+        if (!guardRider()) return
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
 </script>
 
 <style>
@@ -30,8 +232,33 @@
 
     .filter-bar {
         background-color: #FFFFFF;
-        padding: 12px 16px;
+    }
+
+    .tabs {
         flex-direction: row;
+        padding: 0 8px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .tab-item {
+        padding: 12px 14px;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .date-bar {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
     }
 
     .date-btn {
@@ -40,6 +267,7 @@
         background-color: #F5F5F5;
         border-radius: 8px;
         padding: 6px 12px;
+        margin-right: 8px;
     }
 
     .date-text {
@@ -53,14 +281,49 @@
         margin-left: 4px;
     }
 
-    .content {
+    .search-bar {
         flex: 1;
+        flex-direction: row;
         align-items: center;
-        justify-content: center;
+        background-color: #F5F5F5;
+        border-radius: 16px;
+        padding: 6px 12px;
     }
 
-    .empty-text {
+    .search-icon {
         font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-input {
+        flex: 1;
+        font-size: 13px;
+    }
+
+    .stat-row {
+        flex-direction: row;
+        padding: 12px 8px;
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
         color: #999;
     }
 </style>

@@ -1,34 +1,276 @@
 <template>
     <view class="page">
-        <!-- 顶部收益卡片 -->
-        <view class="cards">
-            <view class="card">
-                <text class="card-label">今日收益</text>
-                <text class="card-value">¥{{ todayEarnings }}</text>
+        <!-- 顶部收益概览 -->
+        <view class="overview-card">
+            <view class="period-bar">
+                <view class="period-item" v-for="p in periods" :key="p.id" @click="switchPeriod(p.id)">
+                    <text :class="p.id == activePeriod ? 'period-text period-active' : 'period-text'">{{ p.name }}</text>
+                </view>
             </view>
-            <view class="card">
-                <text class="card-label">本月收益</text>
-                <text class="card-value">¥{{ monthEarnings }}</text>
+            <view class="amount-row">
+                <text class="amount-label">{{ periodName }}收益</text>
+                <text class="amount-value">¥{{ periodIncome }}</text>
             </view>
-            <view class="card">
-                <text class="card-label">累计收益</text>
-                <text class="card-value">¥{{ totalEarnings }}</text>
+            <view class="stat-row">
+                <view class="stat-item">
+                    <text class="stat-label">订单数</text>
+                    <text class="stat-value">{{ periodOrders }}</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item">
+                    <text class="stat-label">里程</text>
+                    <text class="stat-value">{{ periodDistance }}km</text>
+                </view>
+                <view class="stat-divider"></view>
+                <view class="stat-item">
+                    <text class="stat-label">客单价</text>
+                    <text class="stat-value">¥{{ avgIncome }}</text>
+                </view>
+            </view>
+            <view class="action-row">
+                <view class="action-btn" @click="goSettle">
+                    <text class="action-text">结算管理</text>
+                </view>
+                <view class="action-btn-outline" @click="onWithdraw">
+                    <text class="action-text-light">提现</text>
+                </view>
             </view>
         </view>
-        <!-- 收益明细列表占位 -->
-        <view class="list-area">
-            <text class="list-title">收益明细</text>
-            <view class="empty">
-                <text class="empty-text">暂无收益记录</text>
+
+        <!-- 累计数据 -->
+        <view class="summary-row">
+            <rider-stat-card label="今日收益" :value="todayIncome" prefix="¥" icon="📅" type="primary" />
+            <rider-stat-card label="本月收益" :value="monthIncome" prefix="¥" icon="📆" />
+            <rider-stat-card label="累计收益" :value="totalIncome" prefix="¥" icon="💰" />
+        </view>
+
+        <!-- 收益趋势 -->
+        <view class="card">
+            <text class="card-title">收益趋势</text>
+            <rider-loading :text="'加载中...'" v-if="trendLoading" />
+            <view class="chart-area" v-if="!trendLoading && trendData.length > 0">
+                <view class="bar-row" v-for="(d, idx) in trendData" :key="idx">
+                    <text class="bar-label">{{ d.label }}</text>
+                    <view class="bar-track">
+                        <view class="bar-fill" :style="{ width: getBarWidth(d.value) + '%' }"></view>
+                    </view>
+                    <text class="bar-value">¥{{ d.value }}</text>
+                </view>
             </view>
+            <rider-empty v-if="!trendLoading && trendData.length == 0" icon="📊" text="暂无趋势数据" :padding-top="40" :padding-bottom="40" />
+        </view>
+
+        <!-- 收益明细 -->
+        <view class="card">
+            <text class="card-title">收益明细</text>
+            <rider-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+            <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+                <view class="list-wrap" v-if="list.length > 0">
+                    <rider-earning-item v-for="item in list" :key="item.id" :item="item" @click="goDetail" />
+                </view>
+                <view class="load-more" v-if="loading && list.length > 0">
+                    <text class="load-text">加载中...</text>
+                </view>
+                <view class="no-more" v-if="!hasMore && list.length > 0">
+                    <text class="no-more-text">已经到底啦~</text>
+                </view>
+                <rider-empty
+                    v-if="list.length == 0 && !loading"
+                    icon="💰"
+                    text="暂无收益记录"
+                    :padding-top="40"
+                    :padding-bottom="40" />
+            </scroll-view>
         </view>
     </view>
 </template>
 
 <script setup lang="uts">
-    const todayEarnings = ref(0)
-    const monthEarnings = ref(0)
-    const totalEarnings = ref(0)
+    import { guardRider } from '@/utils/auth.uts'
+    import { getMyEarnings, listMySettlements, withdrawSettlement } from '@/api/business/rider.uts'
+
+    type Period = { id: number, name: string, value: string }
+
+    type EarningItem = {
+        id: number
+        title: string
+        type: string
+        amount: string
+        status: string
+        status_text: string
+        created_at: string
+    }
+
+    type TrendItem = {
+        label: string
+        value: string
+    }
+
+    const periods = ref([
+        { id: 1, name: '今日', value: 'today' },
+        { id: 2, name: '本周', value: 'week' },
+        { id: 3, name: '本月', value: 'month' },
+        { id: 4, name: '本年', value: 'year' }
+    ] as Period[])
+
+    const activePeriod = ref(1)
+    const periodName = ref('今日')
+    const periodIncome = ref('0.00')
+    const periodOrders = ref(0)
+    const periodDistance = ref('0.0')
+    const avgIncome = ref('0.00')
+    const todayIncome = ref('0.00')
+    const monthIncome = ref('0.00')
+    const totalIncome = ref('0.00')
+    const balance = ref('0.00')
+
+    const list = ref([] as EarningItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const trendData = ref([] as TrendItem[])
+    const trendLoading = ref(false)
+    const maxValue = ref(0.0)
+
+    const switchPeriod = (id: number) => {
+        if (activePeriod.value == id) return
+        activePeriod.value = id
+        const p = periods.value[id - 1]
+        periodName.value = p.name
+        loadOverview()
+        loadTrend()
+    }
+
+    const getBarWidth = (value: string) : number => {
+        const v = parseFloat(value)
+        if (maxValue.value == 0) return 0
+        return Math.round(v / maxValue.value * 100)
+    }
+
+    const loadOverview = () => {
+        const p = periods.value[activePeriod.value - 1]
+        getMyEarnings({ period: p.value } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                periodIncome.value = (d['period_income'] as string) ?? '0.00'
+                periodOrders.value = (d['period_orders'] as number) ?? 0
+                periodDistance.value = (d['period_distance'] as string) ?? '0.0'
+                avgIncome.value = (d['avg_income'] as string) ?? '0.00'
+                todayIncome.value = (d['today_income'] as string) ?? '0.00'
+                monthIncome.value = (d['month_income'] as string) ?? '0.00'
+                totalIncome.value = (d['total_income'] as string) ?? '0.00'
+                balance.value = (d['balance'] as string) ?? '0.00'
+            }
+        }).catch(() => {})
+    }
+
+    const loadTrend = () => {
+        trendLoading.value = true
+        const p = periods.value[activePeriod.value - 1]
+        getMyEarnings({ period: p.value, trend: 1 } as UTSJSONObject).then((res: ApiResult) => {
+            trendLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                trendData.value = (d['trend'] as TrendItem[]) ?? ([] as TrendItem[])
+                let max = 0.0
+                for (let i = 0; i < trendData.value.length; i++) {
+                    const v = parseFloat(trendData.value[i].value)
+                    if (v > max) max = v
+                }
+                maxValue.value = max
+            }
+        }).catch(() => {
+            trendLoading.value = false
+        })
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            type: 'income'
+        } as UTSJSONObject
+
+        listMySettlements(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as EarningItem[]) ?? ([] as EarningItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/rider/settle' })
+    }
+
+    const goSettle = () => {
+        uni.navigateTo({ url: '/pages/rider/settle' })
+    }
+
+    const onWithdraw = () => {
+        const bal = parseFloat(balance.value)
+        if (bal <= 0) {
+            uni.showToast({ title: '可提现余额不足', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '提现',
+            content: '确定要提现 ¥' + balance.value + ' 到绑定账户吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    withdrawSettlement({ amount: balance.value } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '提现申请已提交', icon: 'success' })
+                            loadOverview()
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: res.message || '提现失败', icon: 'none' })
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
+    }
+
+    onLoad(() => {
+        if (!guardRider()) return
+        loadOverview()
+        loadTrend()
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadOverview()
+        loadTrend()
+        loadList(true)
+    })
 </script>
 
 <style>
@@ -37,53 +279,179 @@
         background-color: #F5F5F5;
     }
 
-    .cards {
-        flex-direction: row;
+    .overview-card {
         background-color: #FF6B35;
-        padding: 20px 12px;
+        padding: 0 16px 20px;
     }
 
-    .card {
-        flex: 1;
-        align-items: center;
+    .period-bar {
+        flex-direction: row;
+        padding: 12px 0;
     }
 
-    .card-label {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.8);
-        margin-bottom: 8px;
+    .period-item {
+        padding: 4px 12px;
+        margin-right: 8px;
     }
 
-    .card-value {
-        font-size: 18px;
+    .period-text {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .period-active {
         color: #FFFFFF;
         font-weight: 600;
     }
 
-    .list-area {
+    .amount-row {
+        margin-top: 4px;
+    }
+
+    .amount-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .amount-value {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .stat-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 12px;
+    }
+
+    .stat-item {
         flex: 1;
-        margin: 12px;
+        align-items: center;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .stat-value {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 20px;
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .action-row {
+        flex-direction: row;
+        margin-top: 16px;
+    }
+
+    .action-btn {
         background-color: #FFFFFF;
+        border-radius: 18px;
+        padding: 8px 20px;
+        margin-right: 10px;
+    }
+
+    .action-text {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .action-btn-outline {
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 18px;
+        padding: 8px 20px;
+    }
+
+    .action-text-light {
+        font-size: 13px;
+        color: #FFFFFF;
+    }
+
+    .summary-row {
+        flex-direction: row;
+        padding: 12px 8px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        margin: 0 12px 12px;
         border-radius: 12px;
         padding: 12px;
     }
 
-    .list-title {
+    .card-title {
         font-size: 14px;
         color: #333;
         font-weight: 600;
-        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F5F5F5;
+        margin-bottom: 10px;
     }
 
-    .empty {
-        flex: 1;
+    .chart-area {
+        padding: 4px 0;
+    }
+
+    .bar-row {
+        flex-direction: row;
         align-items: center;
-        justify-content: center;
-        padding: 40px 0;
+        padding: 6px 0;
     }
 
-    .empty-text {
-        font-size: 14px;
+    .bar-label {
+        font-size: 11px;
+        color: #999;
+        width: 60px;
+    }
+
+    .bar-track {
+        flex: 1;
+        height: 12px;
+        background-color: #F5F5F5;
+        border-radius: 6px;
+        margin: 0 8px;
+    }
+
+    .bar-fill {
+        height: 12px;
+        background-color: #FF6B35;
+        border-radius: 6px;
+    }
+
+    .bar-value {
+        font-size: 11px;
+        color: #FF6B35;
+        font-weight: 600;
+        width: 60px;
+        text-align: right;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 4px 0;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
         color: #999;
     }
 </style>

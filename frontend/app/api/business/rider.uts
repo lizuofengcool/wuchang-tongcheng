@@ -1,0 +1,98 @@
+// 骑手端 API 封装
+// 对应后端 backend/internal/modules/mall/plugin.go 中骑手相关路由（22 条）
+// 路由前缀：/mall（由 request.uts 中 BASE_URL 拼接为 /api/v1/mall）
+// 按场景分组：配送单（抢单大厅/详情/状态流转）、骑手资料、收益结算
+// C 端骑手操作，不含 /admin 后台接口
+// 对标美团骑手版 / 饿了么骑手版
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 配送单（公开浏览）=====
+// 配送单列表 - 抢单大厅（公开，支持分页与状态筛选）
+export const listGrabDeliveries = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/deliveries', params)
+}
+
+// 配送单详情（公开）
+export const getDeliveryDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/deliveries/' + id)
+}
+
+// ===== 骑手资料（需登录）=====
+// 骑手申请认证
+export const applyRider = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/riders/apply', data)
+}
+
+// 我的骑手资料
+export const getMyRider = () : Promise<ApiResult> => {
+    return get('/mall/riders/mine')
+}
+
+// 更新骑手资料
+export const updateRider = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/riders/' + id, data)
+}
+
+// 上线
+export const riderOnline = (id: number) : Promise<ApiResult> => {
+    return put('/mall/riders/' + id + '/online', null)
+}
+
+// 下线
+export const riderOffline = (id: number) : Promise<ApiResult> => {
+    return put('/mall/riders/' + id + '/offline', null)
+}
+
+// ===== 我的配送单（需登录）=====
+// 我的配送单（支持 status 筛选）
+export const listMyDeliveries = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/riders/deliveries', params)
+}
+
+// ===== 配送单状态流转（需登录）=====
+// 抢单
+export const grabDelivery = (id: number) : Promise<ApiResult> => {
+    return post('/mall/deliveries/' + id + '/grab', null)
+}
+
+// 到店
+export const arriveShop = (id: number) : Promise<ApiResult> => {
+    return put('/mall/deliveries/' + id + '/arrive-shop', null)
+}
+
+// 取货
+export const pickupDelivery = (id: number) : Promise<ApiResult> => {
+    return put('/mall/deliveries/' + id + '/pickup', null)
+}
+
+// 开始配送
+export const startDeliver = (id: number) : Promise<ApiResult> => {
+    return put('/mall/deliveries/' + id + '/deliver', null)
+}
+
+// 送达
+export const completeDelivery = (id: number) : Promise<ApiResult> => {
+    return put('/mall/deliveries/' + id + '/complete', null)
+}
+
+// 取消
+export const cancelDelivery = (id: number) : Promise<ApiResult> => {
+    return put('/mall/deliveries/' + id + '/cancel', null)
+}
+
+// ===== 收益结算（需登录）=====
+// 我的收益统计
+export const getMyEarnings = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/riders/earnings', params)
+}
+
+// 我的结算列表
+export const listMySettlements = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/riders/settlements', params)
+}
+
+// 提现申请
+export const withdrawSettlement = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/riders/settlements/withdraw', data)
+}

@@ -1,0 +1,150 @@
+<template>
+    <view class="address-card" :class="type">
+        <view class="header">
+            <view class="dot" :class="type"></view>
+            <view class="info">
+                <view class="name-row">
+                    <text class="name">{{ address.name }}</text>
+                    <text class="phone">{{ address.phone }}</text>
+                </view>
+                <text class="addr">{{ address.address }}</text>
+            </view>
+        </view>
+        <view class="actions" v-if="showNav">
+            <view class="nav-btn" @click="onNavigate">
+                <text class="nav-icon">🧭</text>
+                <text class="nav-text">导航</text>
+            </view>
+            <view class="call-btn" @click="onCall" v-if="address.phone.length > 0">
+                <text class="call-icon">📞</text>
+                <text class="call-text">电话</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Address = {
+        name: string
+        phone: string
+        address: string
+        lat: number
+        lng: number
+    }
+
+    const props = withDefaults(defineProps<{
+        address: Address
+        type?: string  // 'pickup' | 'dropoff'
+        showNav?: boolean
+    }>(), {
+        type: 'pickup',
+        showNav: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'navigate', address: Address): void
+        (e: 'call', phone: string): void
+    }>()
+
+    const onNavigate = () => {
+        emit('navigate', props.address)
+    }
+
+    const onCall = () => {
+        emit('call', props.address.phone)
+    }
+</script>
+
+<style>
+    .address-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin: 12px;
+    }
+
+    .header {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        margin-top: 4px;
+        margin-right: 10px;
+    }
+
+    .dot.pickup {
+        background-color: #FF6B35;
+    }
+
+    .dot.dropoff {
+        background-color: #1890FF;
+    }
+
+    .info {
+        flex: 1;
+    }
+
+    .name-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .phone {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .addr {
+        font-size: 13px;
+        color: #666;
+        margin-top: 6px;
+        line-height: 18px;
+    }
+
+    .actions {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #F5F5F5;
+    }
+
+    .nav-btn, .call-btn {
+        flex-direction: row;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 16px;
+        border: 1px solid #FF6B35;
+        margin-left: 8px;
+    }
+
+    .call-btn {
+        border-color: #DDDDDD;
+    }
+
+    .nav-icon, .call-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .nav-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+
+    .call-text {
+        font-size: 12px;
+        color: #666;
+    }
+</style>

@@ -1,37 +1,230 @@
 <template>
     <view class="page">
-        <!-- 顶部 tabs -->
+        <!-- 状态筛选 -->
         <scroll-view class="tabs" scroll-x>
             <view class="tab-item" v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)">
                 <text :class="tab.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ tab.name }}</text>
+                <text class="tab-count" v-if="tab.count > 0">{{ tab.count }}</text>
             </view>
         </scroll-view>
-        <!-- 订单列表占位 -->
-        <view class="content">
-            <text class="empty-text">暂无订单</text>
+
+        <!-- 搜索栏 -->
+        <view class="search-bar">
+            <text class="search-icon">🔍</text>
+            <input class="search-input" placeholder="搜索订单号/收货人" v-model="keyword" confirm-type="search" @confirm="onSearch" />
         </view>
+
+        <!-- 订单列表 -->
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <shop-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <shop-order-card
+                    v-for="item in list"
+                    :key="item.id"
+                    :order="transformCard(item)"
+                    :actions="getActions(item)"
+                    @click="goDetail"
+                    @action="onAction" />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <shop-empty
+                v-if="list.length == 0 && !loading"
+                icon="📋"
+                text="暂无订单" />
+        </scroll-view>
     </view>
 </template>
 
 <script setup lang="uts">
-    type Tab = {
-        id: number
-        name: string
+    import { guardMerchant } from '@/utils/auth.uts'
+    import { listMerchantOrders, updateMerchantOrderStatus } from '@/api/business/merchant.uts'
+
+    type Tab = { id: number, name: string, value: string, count: number }
+
+    type OrderProduct = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
     }
+
+    type ListItem = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        total_amount: number
+        products: OrderProduct[]
+    }
+
+    type CardData = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        total_amount: number
+        products: OrderProduct[]
+    }
+
+    type Action = { text: string, type: string, primary: boolean }
 
     const tabs = ref([
-        { id: 1, name: '待处理' },
-        { id: 2, name: '已付款' },
-        { id: 3, name: '已发货' },
-        { id: 4, name: '已完成' },
-        { id: 5, name: '已取消' }
+        { id: 0, name: '全部', value: '', count: 0 },
+        { id: 1, name: '待付款', value: 'pending', count: 0 },
+        { id: 2, name: '待发货', value: 'paid', count: 0 },
+        { id: 3, name: '配送中', value: 'shipping', count: 0 },
+        { id: 4, name: '已完成', value: 'completed', count: 0 },
+        { id: 5, name: '已取消', value: 'canceled', count: 0 }
     ] as Tab[])
 
-    const activeTab = ref(1)
+    const activeTab = ref(0)
+    const keyword = ref('')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            order_no: item.order_no,
+            status: item.status,
+            status_text: item.status_text,
+            total_amount: item.total_amount,
+            products: item.products
+        } as CardData
+    }
+
+    const getActions = (item: ListItem) : Action[] => {
+        const arr = [] as Action[]
+        if (item.status == 'pending') {
+            arr.push({ text: '取消订单', type: 'cancel', primary: false } as Action)
+        }
+        if (item.status == 'paid') {
+            arr.push({ text: '发货', type: 'ship', primary: true } as Action)
+        }
+        if (item.status == 'shipping') {
+            arr.push({ text: '完成', type: 'complete', primary: true } as Action)
+        }
+        arr.push({ text: '查看', type: 'detail', primary: false } as Action)
+        return arr
+    }
 
     const switchTab = (id: number) => {
+        if (activeTab.value == id) return
         activeTab.value = id
+        loadList(true)
     }
+
+    const onSearch = () => {
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const tab = tabs.value[activeTab.value]
+        if (tab.value.length > 0) {
+            params['status'] = tab.value
+        }
+        if (keyword.value.length > 0) {
+            params['keyword'] = keyword.value
+        }
+
+        listMerchantOrders(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/shop/order/detail?id=' + id })
+    }
+
+    const onAction = (orderId: number, actionType: string) => {
+        if (actionType == 'detail') {
+            goDetail(orderId)
+            return
+        }
+        const statusMap: UTSJSONObject = {
+            cancel: 'canceled',
+            ship: 'shipping',
+            complete: 'completed'
+        } as UTSJSONObject
+        const status = (statusMap[actionType] as string) ?? ''
+        if (status.length == 0) return
+        const text = actionType == 'cancel' ? '取消' : (actionType == 'ship' ? '发货' : '完成')
+        uni.showModal({
+            title: '提示',
+            content: '确定要' + text + '此订单吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    updateMerchantOrderStatus(orderId, { status: status } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: text + '成功', icon: 'success' })
+                            loadList(true)
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
+    }
+
+    onLoad((options: UTSJSONObject) => {
+        if (!guardMerchant()) return
+        if (options != null && options!['status'] != null) {
+            const s = options!['status'] as string
+            for (let i = 0; i < tabs.value.length; i++) {
+                if (tabs.value[i].value == s) {
+                    activeTab.value = tabs.value[i].id
+                    break
+                }
+            }
+        }
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
 </script>
 
 <style>
@@ -44,11 +237,13 @@
         background-color: #FFFFFF;
         flex-direction: row;
         padding: 0 8px;
+        border-bottom: 1px solid #F0F0F0;
     }
 
     .tab-item {
-        padding: 14px 16px;
+        padding: 12px 14px;
         align-items: center;
+        flex-direction: row;
     }
 
     .tab-text {
@@ -61,14 +256,51 @@
         font-weight: 600;
     }
 
-    .content {
-        flex: 1;
-        align-items: center;
-        justify-content: center;
+    .tab-count {
+        font-size: 10px;
+        color: #FFFFFF;
+        background-color: #FF6B35;
+        border-radius: 8px;
+        padding: 1px 6px;
+        margin-left: 4px;
     }
 
-    .empty-text {
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+    }
+
+    .search-icon {
         font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-input {
+        flex: 1;
+        font-size: 13px;
+        background-color: #F5F5F5;
+        border-radius: 16px;
+        padding: 6px 12px;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
         color: #999;
     }
 </style>

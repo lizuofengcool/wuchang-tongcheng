@@ -1,0 +1,552 @@
+<template>
+    <view class="page">
+        <!-- 余额概览 -->
+        <view class="balance-card">
+            <view class="balance-row">
+                <text class="balance-label">可提现余额（元）</text>
+                <text class="balance-value">{{ balance }}</text>
+            </view>
+            <view class="balance-actions">
+                <view class="btn-withdraw" @click="onWithdraw">
+                    <text class="btn-withdraw-text">提现</text>
+                </view>
+                <view class="btn-detail" @click="showSummary = !showSummary">
+                    <text class="btn-detail-text">{{ showSummary ? '收起' : '明细概览' }}</text>
+                </view>
+            </view>
+            <view class="summary-row" v-if="showSummary">
+                <view class="summary-item">
+                    <text class="summary-label">本月收益</text>
+                    <text class="summary-value">¥{{ monthIncome }}</text>
+                </view>
+                <view class="summary-divider"></view>
+                <view class="summary-item">
+                    <text class="summary-label">累计收益</text>
+                    <text class="summary-value">¥{{ totalIncome }}</text>
+                </view>
+                <view class="summary-divider"></view>
+                <view class="summary-item">
+                    <text class="summary-label">累计提现</text>
+                    <text class="summary-value">¥{{ totalWithdraw }}</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 状态筛选 -->
+        <view class="tabs-bar">
+            <view class="tab-item" v-for="t in tabs" :key="t.id" @click="switchTab(t.id)">
+                <text :class="t.id == activeTab ? 'tab-text tab-active' : 'tab-text'">{{ t.name }}</text>
+                <view class="tab-line" v-if="t.id == activeTab"></view>
+            </view>
+        </view>
+
+        <!-- 结算列表 -->
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <rider-loading :text="'加载中...'" v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <rider-settlement-card v-for="item in list" :key="item.id" :item="item" @click="goDetail" />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <rider-empty
+                v-if="list.length == 0 && !loading"
+                icon="💳"
+                text="暂无结算记录"
+                btn-text="去抢单"
+                @click="goGrab" />
+        </scroll-view>
+
+        <!-- 提现弹窗 -->
+        <view class="modal-mask" v-if="showWithdraw" @click="showWithdraw = false">
+            <view class="modal-content" @click.stop="">
+                <view class="modal-header">
+                    <text class="modal-title">申请提现</text>
+                    <text class="modal-close" @click="showWithdraw = false">✕</text>
+                </view>
+                <view class="modal-body">
+                    <view class="form-item">
+                        <text class="label">可提现金额</text>
+                        <text class="value">¥{{ balance }}</text>
+                    </view>
+                    <view class="form-item">
+                        <text class="label">提现金额</text>
+                        <input class="input" type="digit" placeholder="请输入提现金额" v-model="withdrawAmount" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">收款账户</text>
+                        <view class="picker" @click="pickAccount">
+                            <text :class="accountName.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ accountName.length > 0 ? accountName : '请选择收款账户' }}</text>
+                            <text class="picker-arrow">›</text>
+                        </view>
+                    </view>
+                    <view class="form-tips">
+                        <text class="tips-text">提示：提现申请提交后，1-3 个工作日到账</text>
+                    </view>
+                </view>
+                <view class="modal-footer">
+                    <view class="btn-cancel" @click="showWithdraw = false">
+                        <text class="btn-cancel-text">取消</text>
+                    </view>
+                    <view class="btn-confirm" @click="confirmWithdraw">
+                        <text class="btn-confirm-text">提交申请</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { guardRider } from '@/utils/auth.uts'
+    import { getMyEarnings, listMySettlements, withdrawSettlement } from '@/api/business/rider.uts'
+
+    type Tab = { id: number, name: string, value: string }
+
+    type SettleItem = {
+        id: number
+        type: string
+        type_text: string
+        amount: string
+        status: string
+        status_text: string
+        created_at: string
+        desc: string
+    }
+
+    const tabs = ref([
+        { id: 1, name: '全部', value: '' },
+        { id: 2, name: '收入', value: 'income' },
+        { id: 3, name: '提现', value: 'withdraw' },
+        { id: 4, name: '奖励', value: 'bonus' }
+    ] as Tab[])
+
+    const activeTab = ref(1)
+    const balance = ref('0.00')
+    const monthIncome = ref('0.00')
+    const totalIncome = ref('0.00')
+    const totalWithdraw = ref('0.00')
+    const showSummary = ref(false)
+
+    const list = ref([] as SettleItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const showWithdraw = ref(false)
+    const withdrawAmount = ref('')
+    const accountName = ref('')
+
+    const switchTab = (id: number) => {
+        if (activeTab.value == id) return
+        activeTab.value = id
+        loadList(true)
+    }
+
+    const loadOverview = () => {
+        getMyEarnings({ period: 'month' } as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                balance.value = (d['balance'] as string) ?? '0.00'
+                monthIncome.value = (d['month_income'] as string) ?? '0.00'
+                totalIncome.value = (d['total_income'] as string) ?? '0.00'
+                totalWithdraw.value = (d['total_withdraw'] as string) ?? '0.00'
+            }
+        }).catch(() => {})
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        const t = tabs.value[activeTab.value - 1]
+        if (t.value.length > 0) {
+            params['type'] = t.value
+        }
+
+        listMySettlements(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as SettleItem[]) ?? ([] as SettleItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.showToast({ title: '结算详情开发中', icon: 'none' })
+    }
+
+    const goGrab = () => {
+        uni.navigateTo({ url: '/pages/rider/grab' })
+    }
+
+    const onWithdraw = () => {
+        const bal = parseFloat(balance.value)
+        if (bal <= 0) {
+            uni.showToast({ title: '可提现余额不足', icon: 'none' })
+            return
+        }
+        withdrawAmount.value = balance.value
+        showWithdraw.value = true
+    }
+
+    const pickAccount = () => {
+        uni.showActionSheet({
+            itemList: ['微信账户', '支付宝账户', '银行卡'],
+            success: (r: ShowActionSheetSuccessCallbackResult) => {
+                const arr = ['微信账户', '支付宝账户', '银行卡']
+                if (r.tapIndex < arr.length) {
+                    accountName.value = arr[r.tapIndex]
+                }
+            }
+        })
+    }
+
+    const confirmWithdraw = () => {
+        if (withdrawAmount.value.length == 0) {
+            uni.showToast({ title: '请输入提现金额', icon: 'none' })
+            return
+        }
+        const amt = parseFloat(withdrawAmount.value)
+        const bal = parseFloat(balance.value)
+        if (amt <= 0) {
+            uni.showToast({ title: '提现金额需大于0', icon: 'none' })
+            return
+        }
+        if (amt > bal) {
+            uni.showToast({ title: '提现金额超过余额', icon: 'none' })
+            return
+        }
+        if (accountName.value.length == 0) {
+            uni.showToast({ title: '请选择收款账户', icon: 'none' })
+            return
+        }
+        uni.showModal({
+            title: '确认提现',
+            content: '确定要提现 ¥' + withdrawAmount.value + ' 到 ' + accountName.value + ' 吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    withdrawSettlement({
+                        amount: withdrawAmount.value,
+                        account: accountName.value
+                    } as UTSJSONObject).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '提现申请已提交', icon: 'success' })
+                            showWithdraw.value = false
+                            loadOverview()
+                            loadList(true)
+                        } else {
+                            uni.showToast({ title: res.message || '提现失败', icon: 'none' })
+                        }
+                    }).catch(() => {})
+                }
+            }
+        })
+    }
+
+    onLoad(() => {
+        if (!guardRider()) return
+        loadOverview()
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadOverview()
+        loadList(true)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .balance-card {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+    }
+
+    .balance-row {
+        align-items: flex-start;
+    }
+
+    .balance-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .balance-value {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .balance-actions {
+        flex-direction: row;
+        margin-top: 16px;
+    }
+
+    .btn-withdraw {
+        background-color: #FFFFFF;
+        border-radius: 18px;
+        padding: 8px 24px;
+        margin-right: 12px;
+    }
+
+    .btn-withdraw-text {
+        font-size: 13px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .btn-detail {
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 18px;
+        padding: 8px 20px;
+    }
+
+    .btn-detail-text {
+        font-size: 13px;
+        color: #FFFFFF;
+    }
+
+    .summary-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .summary-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .summary-label {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .summary-value {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .summary-divider {
+        width: 1px;
+        height: 20px;
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .tabs-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 0 12px;
+    }
+
+    .tab-item {
+        padding: 12px 16px;
+        margin-right: 8px;
+        position: relative;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-line {
+        position: absolute;
+        bottom: 0;
+        left: 16px;
+        right: 16px;
+        height: 2px;
+        background-color: #FF6B35;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .modal-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .modal-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 16px;
+    }
+
+    .modal-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .modal-title {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .modal-close {
+        font-size: 18px;
+        color: #999;
+        padding: 4px 8px;
+    }
+
+    .modal-body {
+        padding: 12px 0;
+    }
+
+    .form-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 6px;
+    }
+
+    .value {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .input {
+        font-size: 16px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .picker {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 18px;
+        color: #CCCCCC;
+    }
+
+    .form-tips {
+        padding: 12px 0;
+    }
+
+    .tips-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .modal-footer {
+        flex-direction: row;
+        padding-top: 12px;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        padding: 12px 0;
+        border-radius: 22px;
+        border: 1px solid #DDDDDD;
+        margin-right: 10px;
+        align-items: center;
+    }
+
+    .btn-cancel-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .btn-confirm {
+        flex: 1;
+        padding: 12px 0;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+    }
+
+    .btn-confirm-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>
