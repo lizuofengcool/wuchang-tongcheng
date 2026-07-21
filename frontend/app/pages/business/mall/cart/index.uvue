@@ -1,0 +1,237 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="select-bar">
+                <view class="check-box" @click="onToggleAll">
+                    <text class="check-icon" :class="{ checked: allSelected }">{{ allSelected ? '✓' : '○' }}</text>
+                </view>
+                <text class="select-text">全选</text>
+            </view>
+            <view class="list-wrap" v-if="list.length > 0">
+                <mall-cart-item v-for="item in list" :key="item.id" :item="item"
+                    @toggle-select="onToggleItem" @change-qty="onChangeQty" />
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="🛒" text="购物车空空如也" btn-text="去逛逛" @click="goList" />
+        </scroll-view>
+        <view class="bottom-bar" v-if="list.length > 0">
+            <view class="check-box" @click="onToggleAll">
+                <text class="check-icon" :class="{ checked: allSelected }">{{ allSelected ? '✓' : '○' }}</text>
+                <text class="check-text">全选</text>
+            </view>
+            <view class="total-wrap">
+                <text class="total-label">合计：</text>
+                <text class="total-price">¥{{ totalAmount }}</text>
+            </view>
+            <view class="btn-checkout" @click="onCheckout">
+                <text class="btn-text">结算 ({{ selectedCount }})</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMallCart, updateMallCartItem, deleteMallCartItem, batchUpdateMallCart, selectAllMallCart } from '@/api/business/mall.uts'
+
+    type CartItem = {
+        id: number
+        product_id: number
+        sku_id: number
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+        stock: number
+        selected: boolean
+    }
+
+    const list = ref([] as CartItem[])
+    const loading = ref(false)
+
+    const allSelected = computed(() : boolean => {
+        if (list.value.length == 0) return false
+        for (let i = 0; i < list.value.length; i++) {
+            if (!list.value[i].selected) return false
+        }
+        return true
+    })
+
+    const selectedCount = computed(() : number => {
+        let count = 0
+        for (let i = 0; i < list.value.length; i++) {
+            if (list.value[i].selected) count += list.value[i].quantity
+        }
+        return count
+    })
+
+    const totalAmount = computed(() : number => {
+        let total = 0
+        for (let i = 0; i < list.value.length; i++) {
+            if (list.value[i].selected) {
+                total += list.value[i].price * list.value[i].quantity
+            }
+        }
+        return total
+    })
+
+    const loadList = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        loading.value = true
+        listMallCart().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                list.value = (res.data as CartItem[]) ?? ([] as CartItem[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const onToggleItem = (id: number) => {
+        for (let i = 0; i < list.value.length; i++) {
+            if (list.value[i].id == id) {
+                const newSelected = !list.value[i].selected
+                list.value[i].selected = newSelected
+                updateMallCartItem(id, { selected: newSelected } as UTSJSONObject).then(() => {})
+                break
+            }
+        }
+    }
+
+    const onChangeQty = (id: number, qty: number) => {
+        for (let i = 0; i < list.value.length; i++) {
+            if (list.value[i].id == id) {
+                list.value[i].quantity = qty
+                updateMallCartItem(id, { quantity: qty } as UTSJSONObject).then(() => {})
+                break
+            }
+        }
+    }
+
+    const onToggleAll = () => {
+        const target = !allSelected.value
+        const data: UTSJSONObject = { selected: target } as UTSJSONObject
+        selectAllMallCart(data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                for (let i = 0; i < list.value.length; i++) {
+                    list.value[i].selected = target
+                }
+            }
+        })
+    }
+
+    const onCheckout = () => {
+        if (selectedCount.value == 0) {
+            uni.showToast({ title: '请选择商品', icon: 'none' })
+            return
+        }
+        uni.navigateTo({ url: '/pages/business/mall/checkout/index?from=cart' })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/mall/list/index' })
+    }
+
+    onLoad(() => {
+        loadList()
+    })
+
+    onPullDownRefresh(() => {
+        loadList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .select-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+    }
+
+    .check-box {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .check-icon {
+        font-size: 18px;
+        color: #CCC;
+    }
+
+    .check-icon.checked {
+        color: #FF6B35;
+    }
+
+    .select-text {
+        font-size: 13px;
+        color: #666;
+        margin-left: 6px;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        align-items: center;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .check-text {
+        font-size: 13px;
+        color: #666;
+        margin-left: 6px;
+    }
+
+    .total-wrap {
+        flex: 1;
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: flex-end;
+        margin-right: 12px;
+    }
+
+    .total-label {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .total-price {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .btn-checkout {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 8px 20px;
+    }
+
+    .btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

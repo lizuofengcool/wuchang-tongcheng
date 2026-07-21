@@ -274,6 +274,31 @@ export const constantRoutes = [
               { path: 'verifications', name: 'Dh114Verifications', component: () => import('@/views/business/dh114/verifications.vue'), meta: { title: '商户认证', icon: 'Postcard', permission: 'dh114:read', menuLevel: 3 } },
               { path: 'batch', name: 'Dh114Batch', component: () => import('@/views/business/dh114/batch.vue'), meta: { title: '批量操作', icon: 'Operation', permission: 'content:audit', menuLevel: 3 } }
             ]
+          },
+          // 同城商城（完整功能：16 个管理页面，对标美团/淘宝/京东同城）
+          {
+            path: 'mall',
+            name: 'Mall',
+            redirect: '/business/mall/list',
+            meta: { title: '同城商城', icon: 'ShoppingCart', permission: 'mall:read', menuLevel: 2 },
+            children: [
+              { path: 'list', name: 'MallShopList', component: () => import('@/views/business/mall/index.vue'), meta: { title: '店铺列表', icon: 'List', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'MallShopDetail', component: () => import('@/views/business/mall/detail.vue'), meta: { title: '店铺详情', hidden: true, permission: 'mall:read' } },
+              { path: 'products', name: 'MallProducts', component: () => import('@/views/business/mall/products.vue'), meta: { title: '商品管理', icon: 'Goods', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'skus', name: 'MallSkus', component: () => import('@/views/business/mall/skus.vue'), meta: { title: 'SKU管理', icon: 'Box', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'orders', name: 'MallOrders', component: () => import('@/views/business/mall/orders.vue'), meta: { title: '订单管理', icon: 'Tickets', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'order-items', name: 'MallOrderItems', component: () => import('@/views/business/mall/order-items.vue'), meta: { title: '订单明细', icon: 'Document', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'payments', name: 'MallPayments', component: () => import('@/views/business/mall/payments.vue'), meta: { title: '支付管理', icon: 'Wallet', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'refunds', name: 'MallRefunds', component: () => import('@/views/business/mall/refunds.vue'), meta: { title: '退款管理', icon: 'RefreshLeft', permission: 'mall:audit', menuLevel: 3 } },
+              { path: 'carts', name: 'MallCarts', component: () => import('@/views/business/mall/carts.vue'), meta: { title: '购物车管理', icon: 'ShoppingCart', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'addresses', name: 'MallAddresses', component: () => import('@/views/business/mall/addresses.vue'), meta: { title: '收货地址', icon: 'Location', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'categories', name: 'MallCategories', component: () => import('@/views/business/mall/categories.vue'), meta: { title: '商品分类', icon: 'Files', permission: 'mall:audit', menuLevel: 3 } },
+              { path: 'logistics', name: 'MallLogistics', component: () => import('@/views/business/mall/logistics.vue'), meta: { title: '物流管理', icon: 'Van', permission: 'mall:read', menuLevel: 3 } },
+              { path: 'reviews', name: 'MallReviews', component: () => import('@/views/business/mall/reviews.vue'), meta: { title: '评价管理', icon: 'ChatDotRound', permission: 'mall:audit', menuLevel: 3 } },
+              { path: 'audit-rules', name: 'MallAuditRules', component: () => import('@/views/business/mall/audit-rules.vue'), meta: { title: '审核规则', icon: 'Filter', permission: 'content:audit', menuLevel: 3 } },
+              { path: 'reports', name: 'MallReports', component: () => import('@/views/business/mall/reports.vue'), meta: { title: '举报管理', icon: 'Warning', permission: 'mall:audit', menuLevel: 3 } },
+              { path: 'statistics', name: 'MallStatistics', component: () => import('@/views/business/mall/statistics.vue'), meta: { title: '数据统计', icon: 'DataLine', permission: 'mall:read', menuLevel: 3 } }
+            ]
           }
         ]
       },
@@ -296,7 +321,7 @@ export const constantRoutes = [
               { path: 'reviews', name: 'ShopReviews', component: () => import('@/views/shop/reviews.vue'), meta: { title: '评价审核', icon: 'ChatDotRound', permission: 'shop:audit', menuLevel: 3 } }
             ]
           },
-          { path: 'mall', name: 'Mall', component: () => import('@/views/shop-service/mall/index.vue'), meta: { title: '同城商城', icon: 'ShoppingCart', permission: 'mall:read', menuLevel: 2 } },
+          { path: 'mall', name: 'MallPlaceholder', component: () => import('@/views/shop-service/mall/index.vue'), meta: { title: '同城商城（旧入口）', icon: 'ShoppingCart', permission: 'mall:read', menuLevel: 2 } },
           { path: 'yuyue', name: 'Yuyue', component: () => import('@/views/shop-service/yuyue/index.vue'), meta: { title: '预约服务', icon: 'Calendar', permission: 'yuyue:read', menuLevel: 2 } },
           { path: 'daojia', name: 'Daojia', component: () => import('@/views/shop-service/daojia/index.vue'), meta: { title: '同城到家', icon: 'Service', permission: 'daojia:read', menuLevel: 2 } },
           { path: 'diancan', name: 'Diancan', component: () => import('@/views/shop-service/diancan/index.vue'), meta: { title: '同城点餐', icon: 'Food', permission: 'diancan:read', menuLevel: 2 } },

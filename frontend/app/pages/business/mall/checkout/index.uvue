@@ -1,0 +1,473 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="address-section" v-if="address.contact_name.length > 0" @click="goSelectAddress">
+                <view class="addr-info">
+                    <view class="addr-user-row">
+                        <text class="addr-name">{{ address.contact_name }}</text>
+                        <text class="addr-phone">{{ address.contact_phone }}</text>
+                    </view>
+                    <text class="addr-text">{{ fullAddress }}</text>
+                </view>
+                <text class="addr-arrow">›</text>
+            </view>
+            <view class="address-section placeholder" v-else @click="goSelectAddress">
+                <text class="placeholder-text">请选择收货地址</text>
+                <text class="addr-arrow">›</text>
+            </view>
+            <view class="product-section" v-if="products.length > 0">
+                <mall-order-card :order="orderData" :actions="[]" />
+            </view>
+            <view class="info-section">
+                <view class="info-row">
+                    <text class="info-label">商品总额</text>
+                    <text class="info-value">¥{{ productAmount }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">运费</text>
+                    <text class="info-value">¥{{ shippingFee }}</text>
+                </view>
+                <view class="info-row total-row">
+                    <text class="info-label">实付款</text>
+                    <text class="info-value total">¥{{ totalAmount }}</text>
+                </view>
+            </view>
+            <view class="pay-section">
+                <text class="section-title">支付方式</text>
+                <view class="pay-item" v-for="(p, idx) in payMethods" :key="idx"
+                    :class="{ active: currentPayMethod == p.value }" @click="selectPayMethod(p.value)">
+                    <text class="pay-icon">{{ p.icon }}</text>
+                    <text class="pay-name">{{ p.label }}</text>
+                    <text class="pay-check" :class="{ active: currentPayMethod == p.value }">{{ currentPayMethod == p.value ? '✓' : '○' }}</text>
+                </view>
+            </view>
+            <view class="remark-section">
+                <text class="section-title">订单备注</text>
+                <input class="remark-input" v-model="remark" placeholder="选填，建议与商家沟通后填写" />
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="total-wrap">
+                <text class="total-label">合计：</text>
+                <text class="total-price">¥{{ totalAmount }}</text>
+            </view>
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-text">提交订单</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createMallOrder, listMallCartSelected, getMallProductDetail, getMallDefaultAddress } from '@/api/business/mall.uts'
+
+    type ProductItem = {
+        product_id: number
+        sku_id: number
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+    type Address = {
+        id: number
+        contact_name: string
+        contact_phone: string
+        province: string
+        city: string
+        district: string
+        detail: string
+    }
+    type PayMethod = { label: string, value: string, icon: string }
+    type OrderCardData = {
+        id: number
+        order_no: string
+        shop_name: string
+        status_text: string
+        total_amount: number
+        products: ProductItem[]
+    }
+
+    const products = ref([] as ProductItem[])
+    const address = ref({
+        id: 0, contact_name: '', contact_phone: '',
+        province: '', city: '', district: '', detail: ''
+    } as Address)
+    const remark = ref('')
+    const currentPayMethod = ref('wechat')
+    const fromType = ref('cart')
+    const directProductId = ref(0)
+    const directQty = ref(1)
+
+    const payMethods = [
+        { label: '微信支付', value: 'wechat', icon: '💚' },
+        { label: '支付宝', value: 'alipay', icon: '💙' },
+        { label: '货到付款', value: 'cod', icon: '💵' }
+    ] as PayMethod[]
+
+    const productAmount = computed(() : number => {
+        let total = 0
+        for (let i = 0; i < products.value.length; i++) {
+            total += products.value[i].price * products.value[i].quantity
+        }
+        return total
+    })
+
+    const shippingFee = computed(() : number => {
+        return products.value.length > 0 ? 10 : 0
+    })
+
+    const totalAmount = computed(() : number => {
+        return productAmount.value + shippingFee.value
+    })
+
+    const orderData = computed(() : OrderCardData => {
+        return {
+            id: 0,
+            order_no: '',
+            shop_name: products.value.length > 0 ? '商城' : '',
+            status_text: '',
+            total_amount: totalAmount.value,
+            products: products.value
+        } as OrderCardData
+    })
+
+    const fullAddress = computed(() : string => {
+        return address.value.province + address.value.city + address.value.district + address.value.detail
+    })
+
+    const loadDefaultAddress = () => {
+        if (!state.checkLogin()) return
+        getMallDefaultAddress().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                address.value = {
+                    id: (d['id'] as number) ?? 0,
+                    contact_name: (d['contact_name'] as string) ?? '',
+                    contact_phone: (d['contact_phone'] as string) ?? '',
+                    province: (d['province'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    district: (d['district'] as string) ?? '',
+                    detail: (d['detail'] as string) ?? ''
+                } as Address
+            }
+        })
+    }
+
+    const loadCartProducts = () => {
+        listMallCartSelected().then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const list = (res.data as UTSJSONObject[])
+                const arr = [] as ProductItem[]
+                for (let i = 0; i < list.length; i++) {
+                    const item = list[i]
+                    arr.push({
+                        product_id: (item['product_id'] as number) ?? 0,
+                        sku_id: (item['sku_id'] as number) ?? 0,
+                        title: (item['title'] as string) ?? '',
+                        cover_image: (item['cover_image'] as string) ?? '',
+                        sku_name: (item['sku_name'] as string) ?? '',
+                        price: (item['price'] as number) ?? 0,
+                        quantity: (item['quantity'] as number) ?? 1
+                    } as ProductItem)
+                }
+                products.value = arr
+            }
+        })
+    }
+
+    const loadDirectProduct = () => {
+        getMallProductDetail(directProductId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                products.value = [{
+                    product_id: directProductId.value,
+                    sku_id: 0,
+                    title: (d['title'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    sku_name: '',
+                    price: (d['price'] as number) ?? 0,
+                    quantity: directQty.value
+                } as ProductItem]
+            }
+        })
+    }
+
+    const selectPayMethod = (m: string) => {
+        currentPayMethod.value = m
+    }
+
+    const goSelectAddress = () => {
+        uni.navigateTo({
+            url: '/pages/business/mall/addresses/index?from=checkout'
+        })
+    }
+
+    const onSubmit = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (address.value.id == 0) {
+            uni.showToast({ title: '请选择收货地址', icon: 'none' })
+            return
+        }
+        if (products.value.length == 0) {
+            uni.showToast({ title: '没有可结算商品', icon: 'none' })
+            return
+        }
+        const itemsArr = [] as UTSJSONObject[]
+        for (let i = 0; i < products.value.length; i++) {
+            itemsArr.push({
+                product_id: products.value[i].product_id,
+                sku_id: products.value[i].sku_id,
+                quantity: products.value[i].quantity
+            } as UTSJSONObject)
+        }
+        const data: UTSJSONObject = {
+            address_id: address.value.id,
+            items: itemsArr,
+            pay_method: currentPayMethod.value,
+            remark: remark.value,
+            from: fromType.value
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '提交中...' })
+        createMallOrder(data).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const orderId = (d['id'] as number) ?? 0
+                uni.showToast({ title: '下单成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.redirectTo({ url: '/pages/business/mall/orders/detail?id=' + orderId })
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '下单失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        loadDefaultAddress()
+        const from = options['from']
+        if (from != null && (from as string) == 'cart') {
+            fromType.value = 'cart'
+            loadCartProducts()
+        } else {
+            const pid = options['product_id']
+            const qty = options['qty']
+            if (pid != null) {
+                fromType.value = 'direct'
+                directProductId.value = parseInt(pid as string)
+                if (qty != null) directQty.value = parseInt(qty as string)
+                loadDirectProduct()
+            } else {
+                loadCartProducts()
+            }
+        }
+    })
+
+    onShow(() => {
+        const pages = getCurrentPages()
+        const cur = pages[pages.length - 1]
+        const selectedAddr = (cur as any).$selectedAddress
+        if (selectedAddr != null) {
+            address.value = selectedAddr as Address
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .address-section {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .addr-info {
+        flex: 1;
+    }
+
+    .addr-user-row {
+        flex-direction: row;
+    }
+
+    .addr-name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .addr-phone {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .addr-text {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .addr-arrow {
+        font-size: 20px;
+        color: #CCC;
+    }
+
+    .placeholder-text {
+        font-size: 14px;
+        color: #999;
+        flex: 1;
+    }
+
+    .product-section {
+        padding: 12px;
+    }
+
+    .info-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .total-row {
+        padding-top: 12px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        margin-top: 4px;
+    }
+
+    .info-value.total {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .pay-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .pay-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .pay-icon {
+        font-size: 18px;
+        margin-right: 10px;
+    }
+
+    .pay-name {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .pay-check {
+        font-size: 16px;
+        color: #CCC;
+    }
+
+    .pay-check.active {
+        color: #FF6B35;
+    }
+
+    .remark-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .remark-input {
+        font-size: 13px;
+        color: #333;
+        margin-top: 8px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        align-items: center;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .total-wrap {
+        flex: 1;
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .total-label {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .total-price {
+        font-size: 20px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .btn-submit {
+        background-color: #FF6B35;
+        border-radius: 22px;
+        padding: 10px 24px;
+    }
+
+    .btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

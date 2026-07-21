@@ -11,7 +11,8 @@
             "^love-(.*)": "@/components/love/love-$1.uvue",
             "^pinche-(.*)": "@/components/pinche/pinche-$1.uvue",
             "^linggong-(.*)": "@/components/linggong/linggong-$1.uvue",
-            "^dh114-(.*)": "@/components/dh114/dh114-$1.uvue"
+            "^dh114-(.*)": "@/components/dh114/dh114-$1.uvue",
+            "^mall-(.*)": "@/components/mall/mall-$1.uvue"
         }
     },
     "pages": [
@@ -753,6 +754,83 @@
             "path": "pages/business/dh114/messages/chat",
             "style": {
                 "navigationBarTitleText": "聊天"
+            }
+        },
+        {
+            "path": "pages/business/mall/list/index",
+            "style": {
+                "navigationBarTitleText": "商城",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/mall/detail/index",
+            "style": {
+                "navigationBarTitleText": "商品详情"
+            }
+        },
+        {
+            "path": "pages/business/mall/shop/index",
+            "style": {
+                "navigationBarTitleText": "店铺"
+            }
+        },
+        {
+            "path": "pages/business/mall/cart/index",
+            "style": {
+                "navigationBarTitleText": "购物车",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/mall/orders/index",
+            "style": {
+                "navigationBarTitleText": "我的订单",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/mall/orders/detail",
+            "style": {
+                "navigationBarTitleText": "订单详情"
+            }
+        },
+        {
+            "path": "pages/business/mall/checkout/index",
+            "style": {
+                "navigationBarTitleText": "结算"
+            }
+        },
+        {
+            "path": "pages/business/mall/addresses/index",
+            "style": {
+                "navigationBarTitleText": "收货地址",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/mall/addresses/edit",
+            "style": {
+                "navigationBarTitleText": "编辑地址"
+            }
+        },
+        {
+            "path": "pages/business/mall/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索"
+            }
+        },
+        {
+            "path": "pages/business/mall/categories/index",
+            "style": {
+                "navigationBarTitleText": "分类"
+            }
+        },
+        {
+            "path": "pages/business/mall/reviews/index",
+            "style": {
+                "navigationBarTitleText": "评价",
+                "enablePullDownRefresh": true
             }
         }
     ],

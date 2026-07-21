@@ -1,0 +1,184 @@
+<template>
+    <view class="product-card" @click="onClick">
+        <image class="cover" :src="product.cover_image" mode="aspectFill" lazy-load="true" v-if="product.cover_image.length > 0" />
+        <view class="cover-placeholder" v-else>
+            <text class="cover-text">{{ product.title.length > 0 ? product.title.charAt(0) : '商' }}</text>
+        </view>
+        <view class="card-main">
+            <text class="title">{{ product.title }}</text>
+            <view class="tag-row" v-if="tags.length > 0">
+                <view class="tag" v-for="(t, idx) in tags" :key="idx" :class="t.type">
+                    <text class="tag-text">{{ t.text }}</text>
+                </view>
+            </view>
+            <view class="meta-row">
+                <text class="price">¥{{ product.price }}</text>
+                <text class="origin-price" v-if="product.origin_price > product.price">¥{{ product.origin_price }}</text>
+            </view>
+            <view class="bottom-row">
+                <text class="sales">已售 {{ product.sales_count }}</text>
+                <text class="shop-name" v-if="product.shop_name.length > 0">{{ product.shop_name }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tag = { text: string, type: string }
+
+    type Product = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        product: Product
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const tags = computed(() : Tag[] => {
+        const list = [] as Tag[]
+        if (props.product.is_featured) list.push({ text: '精选', type: 'featured' } as Tag)
+        if (props.product.is_hot) list.push({ text: '热销', type: 'hot' } as Tag)
+        if (props.product.is_new) list.push({ text: '新品', type: 'new' } as Tag)
+        return list
+    })
+
+    const onClick = () => {
+        emit('click', props.product.id)
+    }
+</script>
+
+<style>
+    .product-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .cover {
+        width: 100%;
+        height: 160px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .cover-placeholder {
+        width: 100%;
+        height: 160px;
+        border-radius: 8px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cover-text {
+        font-size: 40px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .card-main {
+        margin-top: 8px;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        margin-top: 6px;
+    }
+
+    .tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+    }
+
+    .tag.featured {
+        background-color: #FFF5F0;
+    }
+
+    .tag.hot {
+        background-color: #FFEEEE;
+    }
+
+    .tag.new {
+        background-color: #E5F8FF;
+    }
+
+    .tag-text {
+        font-size: 10px;
+    }
+
+    .tag.featured .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag.hot .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.new .tag-text {
+        color: #1989FA;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: baseline;
+        margin-top: 8px;
+    }
+
+    .price {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .origin-price {
+        font-size: 11px;
+        color: #BBB;
+        text-decoration: line-through;
+        margin-left: 6px;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+    }
+
+    .sales {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .shop-name {
+        font-size: 11px;
+        color: #BBB;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        max-width: 120px;
+    }
+</style>

@@ -379,6 +379,38 @@ const (
 	CodeDh114MenuNotFound    = 5330 // 菜单不存在
 	CodeDh114ReportError     = 5331 // 举报错误
 	CodeDh114ReportNotFound  = 5332 // 举报记录不存在
+
+	// ===== mall 同城商城模块错误 5401-5430 =====
+	CodeMallAddressError     = 5401 // 收货地址错误
+	CodeMallAddressNotFound  = 5402 // 收货地址不存在
+	CodeMallAuditRuleError   = 5403 // 审核规则错误
+	CodeMallAuditRuleNotFound = 5404 // 审核规则不存在
+	CodeMallCartError        = 5405 // 购物车错误
+	CodeMallCartNotFound     = 5406 // 购物车项不存在
+	CodeMallCategoryError    = 5407 // 商城分类错误
+	CodeMallCategoryNotFound = 5408 // 商城分类不存在
+	CodeMallLogisticsError   = 5409 // 物流错误
+	CodeMallLogisticsNotFound = 5410 // 物流记录不存在
+	CodeMallOrderError       = 5411 // 订单错误
+	CodeMallOrderNotFound    = 5412 // 订单不存在
+	CodeMallOrderItemError   = 5413 // 订单明细错误
+	CodeMallOrderItemNotFound = 5414 // 订单明细不存在
+	CodeMallPaymentError     = 5415 // 支付错误
+	CodeMallPaymentNotFound  = 5416 // 支付记录不存在
+	CodeMallProductError     = 5417 // 商品错误
+	CodeMallProductNotFound  = 5418 // 商品不存在
+	CodeMallProductAuditError = 5419 // 商品审核错误
+	CodeMallRefundError      = 5420 // 退款错误
+	CodeMallRefundNotFound   = 5421 // 退款记录不存在
+	CodeMallReportError      = 5422 // 举报错误
+	CodeMallReportNotFound   = 5423 // 举报记录不存在
+	CodeMallReviewError      = 5424 // 评价错误
+	CodeMallReviewNotFound   = 5425 // 评价不存在
+	CodeMallShopError        = 5426 // 店铺错误
+	CodeMallShopNotFound     = 5427 // 店铺不存在
+	CodeMallSkuError         = 5428 // SKU错误
+	CodeMallSkuNotFound      = 5429 // SKU不存在
+	CodeMallStatisticError   = 5430 // 统计错误
 )
 
 // 错误消息映射
@@ -749,6 +781,38 @@ var codeMessages = map[int]string{
         CodeLoveVerificationNotFound: "认证记录不存在",
         CodeLoveMemberLevelNotFound:  "会员等级不存在",
         CodeLovePrivacyError:         "隐私设置错误",
+
+	// mall 同城商城模块错误
+	CodeMallAddressError:      "收货地址错误",
+	CodeMallAddressNotFound:   "收货地址不存在",
+	CodeMallAuditRuleError:    "审核规则错误",
+	CodeMallAuditRuleNotFound: "审核规则不存在",
+	CodeMallCartError:         "购物车错误",
+	CodeMallCartNotFound:      "购物车项不存在",
+	CodeMallCategoryError:     "商城分类错误",
+	CodeMallCategoryNotFound:  "商城分类不存在",
+	CodeMallLogisticsError:    "物流错误",
+	CodeMallLogisticsNotFound: "物流记录不存在",
+	CodeMallOrderError:        "订单错误",
+	CodeMallOrderNotFound:     "订单不存在",
+	CodeMallOrderItemError:    "订单明细错误",
+	CodeMallOrderItemNotFound: "订单明细不存在",
+	CodeMallPaymentError:      "支付错误",
+	CodeMallPaymentNotFound:   "支付记录不存在",
+	CodeMallProductError:      "商品错误",
+	CodeMallProductNotFound:   "商品不存在",
+	CodeMallProductAuditError: "商品审核错误",
+	CodeMallRefundError:       "退款错误",
+	CodeMallRefundNotFound:    "退款记录不存在",
+	CodeMallReportError:       "举报错误",
+	CodeMallReportNotFound:    "举报记录不存在",
+	CodeMallReviewError:       "评价错误",
+	CodeMallReviewNotFound:    "评价不存在",
+	CodeMallShopError:         "店铺错误",
+	CodeMallShopNotFound:      "店铺不存在",
+	CodeMallSkuError:          "SKU错误",
+	CodeMallSkuNotFound:       "SKU不存在",
+	CodeMallStatisticError:    "统计错误",
 }
 
 // GetMessage 获取错误码对应的消息

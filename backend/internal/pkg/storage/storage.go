@@ -101,9 +101,9 @@ func GetStorage() Storage {
 
 // LocalStorage 本地磁盘存储
 type LocalStorage struct {
-	domain    string // 访问域名
-	basePath  string // 存储根目录
-	urlPrefix string // URL访问前缀
+	domain      string // 访问域名
+	basePath    string // 存储根目录
+	urlPrefix   string // URL访问前缀
 }
 
 // NewLocalStorage 创建本地存储

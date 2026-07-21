@@ -1,0 +1,72 @@
+<template>
+    <view class="empty" :style="{ paddingTop: paddingTop + 'px', paddingBottom: paddingBottom + 'px' }">
+        <text class="empty-icon">{{ icon }}</text>
+        <text class="empty-text">{{ text }}</text>
+        <text class="empty-sub" v-if="subText.length > 0">{{ subText }}</text>
+        <view class="empty-btn" v-if="btnText.length > 0" @click="onBtnClick">
+            <text class="empty-btn-text">{{ btnText }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    withDefaults(defineProps<{
+        icon?: string
+        text?: string
+        subText?: string
+        btnText?: string
+        paddingTop?: number
+        paddingBottom?: number
+    }>(), {
+        icon: '🛒',
+        text: '暂无商品',
+        subText: '',
+        btnText: '',
+        paddingTop: 80,
+        paddingBottom: 80
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click'): void
+    }>()
+
+    const onBtnClick = () => {
+        emit('click')
+    }
+</script>
+
+<style>
+    .empty {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        color: #999;
+        margin-bottom: 4px;
+    }
+
+    .empty-sub {
+        font-size: 12px;
+        color: #BBB;
+        margin-bottom: 16px;
+    }
+
+    .empty-btn {
+        background-color: #FF6B35;
+        border-radius: 20px;
+        padding: 8px 24px;
+        margin-top: 8px;
+    }
+
+    .empty-btn-text {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+</style>

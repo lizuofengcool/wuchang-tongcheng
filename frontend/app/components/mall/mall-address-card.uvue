@@ -1,0 +1,150 @@
+<template>
+    <view class="address-card" @click="onClick">
+        <view class="info-row">
+            <text class="name">{{ address.contact_name }}</text>
+            <text class="phone">{{ address.contact_phone }}</text>
+            <view class="default-tag" v-if="address.is_default">
+                <text class="default-tag-text">默认</text>
+            </view>
+        </view>
+        <view class="addr-row">
+            <text class="addr">{{ fullAddress }}</text>
+        </view>
+        <view class="action-row" v-if="showActions">
+            <view class="action-btn" @click.stop="onEdit">
+                <text class="action-text">编辑</text>
+            </view>
+            <view class="action-btn" @click.stop="onSetDefault" v-if="!address.is_default">
+                <text class="action-text">设为默认</text>
+            </view>
+            <view class="action-btn danger" @click.stop="onDelete">
+                <text class="action-text danger">删除</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Address = {
+        id: number
+        contact_name: string
+        contact_phone: string
+        province: string
+        city: string
+        district: string
+        detail: string
+        is_default: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        address: Address
+        showActions?: boolean
+    }>(), {
+        showActions: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'edit', id: number): void
+        (e: 'delete', id: number): void
+        (e: 'set-default', id: number): void
+    }>()
+
+    const fullAddress = computed(() : string => {
+        return props.address.province + props.address.city + props.address.district + props.address.detail
+    })
+
+    const onClick = () => {
+        emit('click', props.address.id)
+    }
+
+    const onEdit = () => {
+        emit('edit', props.address.id)
+    }
+
+    const onDelete = () => {
+        emit('delete', props.address.id)
+    }
+
+    const onSetDefault = () => {
+        emit('set-default', props.address.id)
+    }
+</script>
+
+<style>
+    .address-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .name {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .phone {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .default-tag {
+        background-color: #FF6B35;
+        border-radius: 3px;
+        padding: 1px 6px;
+        margin-left: 8px;
+    }
+
+    .default-tag-text {
+        font-size: 10px;
+        color: #FFFFFF;
+    }
+
+    .addr-row {
+        margin-top: 8px;
+    }
+
+    .addr {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .action-btn {
+        border-radius: 14px;
+        padding: 4px 12px;
+        margin-left: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.danger {
+        color: #EE0A24;
+    }
+
+    .action-btn.danger {
+        border-color: #EE0A24;
+    }
+</style>

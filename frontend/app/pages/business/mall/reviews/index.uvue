@@ -1,0 +1,306 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="stats-section" v-if="stats.total > 0">
+                <view class="rating-summary">
+                    <text class="avg-rating">{{ stats.avg_rating }}</text>
+                    <text class="stars">{{ starText(stats.avg_rating) }}</text>
+                    <text class="total-count">{{ stats.total }} 条评价</text>
+                </view>
+                <view class="dist-list">
+                    <view class="dist-row" v-for="(d, idx) in stats.distribution" :key="idx">
+                        <text class="dist-label">{{ d.label }}</text>
+                        <view class="dist-bar-wrap">
+                            <view class="dist-bar" :style="{ width: d.percent + '%' }"></view>
+                        </view>
+                        <text class="dist-count">{{ d.count }}</text>
+                    </view>
+                </view>
+            </view>
+            <view class="filter-bar">
+                <view class="filter-item" v-for="(f, idx) in filters" :key="idx"
+                    :class="{ active: currentFilter == f.value }" @click="changeFilter(f.value)">
+                    <text class="filter-text" :class="{ active: currentFilter == f.value }">{{ f.label }}</text>
+                </view>
+            </view>
+            <view class="list-wrap">
+                <mall-review-card v-for="item in list" :key="item.id" :review="item" @like="onLike" @dislike="onDislike" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="💬" text="暂无评价" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMallReviewsByProduct, getMallReviewStats, likeMallReview, dislikeMallReview } from '@/api/business/mall.uts'
+
+    type FilterItem = { label: string, value: string }
+    type DistItem = { label: string, count: number, percent: number }
+    type Stats = {
+        total: number
+        avg_rating: number
+        distribution: DistItem[]
+    }
+    type ReviewItem = {
+        id: number
+        user_name: string
+        user_avatar: string
+        rating: number
+        content: string
+        images: string[]
+        sku_name: string
+        reply_content: string
+        like_count: number
+        dislike_count: number
+        is_liked: boolean
+        is_disliked: boolean
+        created_at: string
+    }
+
+    const productId = ref(0)
+    const stats = ref({ total: 0, avg_rating: 0, distribution: [] as DistItem[] } as Stats)
+    const list = ref([] as ReviewItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const currentFilter = ref('all')
+
+    const filters = [
+        { label: '全部', value: 'all' },
+        { label: '有图', value: 'has_image' },
+        { label: '好评', value: 'good' },
+        { label: '中评', value: 'medium' },
+        { label: '差评', value: 'bad' },
+        { label: '最新', value: 'latest' }
+    ] as FilterItem[]
+
+    const starText = (rating: number) : string => {
+        const s = '★★★★★'
+        const r = Math.round(rating)
+        return s.substring(0, r)
+    }
+
+    const loadStats = () => {
+        const params: UTSJSONObject = { product_id: productId.value } as UTSJSONObject
+        getMallReviewStats(params).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                stats.value = {
+                    total: (d['total'] as number) ?? 0,
+                    avg_rating: (d['avg_rating'] as number) ?? 0,
+                    distribution: (d['distribution'] as DistItem[]) ?? ([] as DistItem[])
+                } as Stats
+            }
+        })
+    }
+
+    const changeFilter = (f: string) => {
+        if (currentFilter.value == f) return
+        currentFilter.value = f
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            filter: currentFilter.value
+        } as UTSJSONObject
+
+        listMallReviewsByProduct(productId.value, params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ReviewItem[]) ?? ([] as ReviewItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const onLike = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        likeMallReview(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '点赞成功', icon: 'success' })
+            }
+        })
+    }
+
+    const onDislike = (id: number) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        dislikeMallReview(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '操作成功', icon: 'success' })
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['product_id']
+        if (id != null) {
+            productId.value = parseInt(id as string)
+            loadStats()
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadStats()
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .stats-section {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .rating-summary {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avg-rating {
+        font-size: 32px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .stars {
+        font-size: 14px;
+        color: #FF6B35;
+        margin-top: 4px;
+    }
+
+    .total-count {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .dist-list {
+        flex: 2;
+        padding-left: 16px;
+        justify-content: center;
+    }
+
+    .dist-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 3px 0;
+    }
+
+    .dist-label {
+        font-size: 11px;
+        color: #666;
+        width: 40px;
+    }
+
+    .dist-bar-wrap {
+        flex: 1;
+        height: 6px;
+        background-color: #F5F5F5;
+        border-radius: 3px;
+        margin: 0 8px;
+    }
+
+    .dist-bar {
+        height: 100%;
+        background-color: #FF6B35;
+        border-radius: 3px;
+    }
+
+    .dist-count {
+        font-size: 11px;
+        color: #999;
+        width: 30px;
+        text-align: right;
+    }
+
+    .filter-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 8px 4px;
+        margin-bottom: 8px;
+    }
+
+    .filter-item {
+        flex: 1;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .filter-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .filter-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

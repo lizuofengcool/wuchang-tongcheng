@@ -31,6 +31,9 @@ import (
 	_ "wuchang-tongcheng/internal/modules/linggong"
 	_ "wuchang-tongcheng/internal/modules/dh114"
 
+	// P1 阶段2 商家服务扩展：mall 同城商城（店铺/商品/SKU/购物车/订单/支付/退款/物流/评价/统计/审核规则/举报）
+	_ "wuchang-tongcheng/internal/modules/mall"
+
 	// P1 中台精简版（ershou 模块依赖）
 	_ "wuchang-tongcheng/internal/modules/pay"
 	_ "wuchang-tongcheng/internal/modules/im"

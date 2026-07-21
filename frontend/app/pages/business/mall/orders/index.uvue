@@ -1,0 +1,256 @@
+<template>
+    <view class="page">
+        <view class="status-bar">
+            <view class="status-item" v-for="(s, idx) in statusList" :key="idx"
+                :class="{ active: currentStatus == s.value }" @click="changeStatus(s.value)">
+                <text class="status-text" :class="{ active: currentStatus == s.value }">{{ s.label }}</text>
+            </view>
+        </view>
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <view class="list-wrap">
+                <mall-order-card v-for="item in list" :key="item.id" :order="transformCard(item)" :actions="getActions(item)"
+                    @click="goDetail" @action="onAction" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="📋" text="暂无订单" btn-text="去购物" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMyMallOrders, cancelMallOrder, confirmMallOrder } from '@/api/business/mall.uts'
+
+    type StatusItem = { label: string, value: string }
+    type OrderProduct = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+    type Action = { text: string, type: string, primary: boolean }
+    type ListItem = {
+        id: number
+        order_no: string
+        shop_name: string
+        status: string
+        status_text: string
+        total_amount: number
+        products: OrderProduct[]
+    }
+    type CardData = {
+        id: number
+        order_no: string
+        shop_name: string
+        status_text: string
+        total_amount: number
+        products: OrderProduct[]
+    }
+
+    const statusList = [
+        { label: '全部', value: '' },
+        { label: '待付款', value: 'pending_payment' },
+        { label: '待发货', value: 'pending_ship' },
+        { label: '待收货', value: 'pending_confirm' },
+        { label: '已完成', value: 'completed' },
+        { label: '已取消', value: 'cancelled' }
+    ] as StatusItem[]
+
+    const currentStatus = ref('')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            order_no: item.order_no,
+            shop_name: item.shop_name,
+            status_text: item.status_text,
+            total_amount: item.total_amount,
+            products: item.products
+        } as CardData
+    }
+
+    const getActions = (item: ListItem) : Action[] => {
+        const arr = [] as Action[]
+        if (item.status == 'pending_payment') {
+            arr.push({ text: '取消订单', type: 'cancel', primary: false } as Action)
+            arr.push({ text: '去支付', type: 'pay', primary: true } as Action)
+        } else if (item.status == 'pending_confirm') {
+            arr.push({ text: '查看物流', type: 'logistics', primary: false } as Action)
+            arr.push({ text: '确认收货', type: 'confirm', primary: true } as Action)
+        } else if (item.status == 'completed') {
+            arr.push({ text: '再次购买', type: 'rebuy', primary: true } as Action)
+        }
+        return arr
+    }
+
+    const changeStatus = (s: string) => {
+        if (currentStatus.value == s) return
+        currentStatus.value = s
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        if (currentStatus.value.length > 0) {
+            params['status'] = currentStatus.value
+        }
+
+        listMyMallOrders(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const onAction = (orderId: number, actionType: string) => {
+        if (actionType == 'cancel') {
+            uni.showModal({
+                title: '提示',
+                content: '确认取消该订单？',
+                success: (res) => {
+                    if (res.confirm) {
+                        cancelMallOrder(orderId, {} as UTSJSONObject).then((res2: ApiResult) => {
+                            if (res2.code == 200) {
+                                uni.showToast({ title: '已取消', icon: 'success' })
+                                loadList(true)
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (actionType == 'confirm') {
+            uni.showModal({
+                title: '提示',
+                content: '确认收货？',
+                success: (res) => {
+                    if (res.confirm) {
+                        confirmMallOrder(orderId).then((res2: ApiResult) => {
+                            if (res2.code == 200) {
+                                uni.showToast({ title: '已确认', icon: 'success' })
+                                loadList(true)
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (actionType == 'pay') {
+            uni.navigateTo({ url: '/pages/business/mall/checkout/index?order_id=' + orderId })
+        } else if (actionType == 'logistics') {
+            uni.showToast({ title: '物流功能开发中', icon: 'none' })
+        } else if (actionType == 'rebuy') {
+            uni.navigateTo({ url: '/pages/business/mall/list/index' })
+        }
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/mall/orders/detail?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/mall/list/index' })
+    }
+
+    onLoad(() => {
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .status-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 10px 8px;
+        margin-bottom: 8px;
+    }
+
+    .status-item {
+        flex: 1;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .status-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .status-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

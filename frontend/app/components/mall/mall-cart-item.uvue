@@ -1,0 +1,176 @@
+<template>
+    <view class="cart-item">
+        <view class="check-box" @click="onToggleSelect">
+            <text class="check-icon" :class="{ checked: item.selected }">{{ item.selected ? '✓' : '○' }}</text>
+        </view>
+        <image class="cover" :src="item.cover_image" mode="aspectFill" lazy-load="true" v-if="item.cover_image.length > 0" />
+        <view class="cover-placeholder" v-else>
+            <text class="cover-text">{{ item.title.length > 0 ? item.title.charAt(0) : '商' }}</text>
+        </view>
+        <view class="item-main">
+            <text class="title">{{ item.title }}</text>
+            <text class="sku-text" v-if="item.sku_name.length > 0">{{ item.sku_name }}</text>
+            <view class="bottom-row">
+                <text class="price">¥{{ item.price }}</text>
+                <view class="qty-control">
+                    <view class="qty-btn" @click="onDecQty">
+                        <text class="qty-btn-text">-</text>
+                    </view>
+                    <text class="qty-value">{{ item.quantity }}</text>
+                    <view class="qty-btn" @click="onIncQty">
+                        <text class="qty-btn-text">+</text>
+                    </view>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type CartItem = {
+        id: number
+        product_id: number
+        sku_id: number
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+        stock: number
+        selected: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        item: CartItem
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'toggle-select', id: number): void
+        (e: 'change-qty', id: number, qty: number): void
+    }>()
+
+    const onToggleSelect = () => {
+        emit('toggle-select', props.item.id)
+    }
+
+    const onIncQty = () => {
+        if (props.item.stock > 0 && props.item.quantity >= props.item.stock) {
+            uni.showToast({ title: '库存不足', icon: 'none' })
+            return
+        }
+        emit('change-qty', props.item.id, props.item.quantity + 1)
+    }
+
+    const onDecQty = () => {
+        if (props.item.quantity <= 1) return
+        emit('change-qty', props.item.id, props.item.quantity - 1)
+    }
+</script>
+
+<style>
+    .cart-item {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        flex-direction: row;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .check-box {
+        width: 24px;
+        height: 24px;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .check-icon {
+        font-size: 18px;
+        color: #CCC;
+    }
+
+    .check-icon.checked {
+        color: #FF6B35;
+    }
+
+    .cover {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        margin-right: 10px;
+    }
+
+    .cover-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .cover-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .item-main {
+        flex: 1;
+    }
+
+    .title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .sku-text {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .bottom-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 8px;
+    }
+
+    .price {
+        font-size: 15px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .qty-control {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .qty-btn {
+        width: 24px;
+        height: 24px;
+        background-color: #F5F5F5;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+    }
+
+    .qty-btn-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .qty-value {
+        font-size: 13px;
+        color: #333;
+        margin: 0 12px;
+    }
+</style>

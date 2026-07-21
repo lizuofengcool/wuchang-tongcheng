@@ -1,0 +1,689 @@
+// 同城商城模块 API 封装
+// 对应后端 backend/internal/modules/mall/plugin.go 路由清单（180+ API）
+// 路由前缀：/mall（由 request.uts 中 BASE_URL 拼接为 /api/v1/mall）
+// 按场景分组：店铺/商品/SKU/分类/购物车/订单/支付/退款/收货地址/评价/物流/举报/统计/审核规则
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+// 对标淘宝/京东/拼多多同城商城
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 店铺（shops）=====
+// 店铺列表（公开）
+export const listMallShops = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/shops', params)
+}
+
+// 店铺搜索（公开）
+export const searchMallShops = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/shops/search', params)
+}
+
+// 按用户列出店铺（公开）
+export const listMallShopsByUser = (userId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/shops/by-user/' + userId, params)
+}
+
+// 按分类列出店铺（公开）
+export const listMallShopsByCategory = (categoryId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/shops/by-category/' + categoryId, params)
+}
+
+// 店铺详情（公开）
+export const getMallShopDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/shops/' + id)
+}
+
+// 我的店铺（需登录）
+export const getMyMallShop = () : Promise<ApiResult> => {
+    return get('/mall/shops/mine')
+}
+
+// 创建店铺（需登录）
+export const createMallShop = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/shops', data)
+}
+
+// 更新店铺（需登录）
+export const updateMallShop = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/shops/' + id, data)
+}
+
+// 删除店铺（需登录）
+export const deleteMallShop = (id: number) : Promise<ApiResult> => {
+    return del('/mall/shops/' + id)
+}
+
+// 更新店铺状态（需登录）
+export const updateMallShopStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/shops/' + id + '/status', data)
+}
+
+// 店铺浏览数 +1（公开）
+export const incrMallShopView = (id: number) : Promise<ApiResult> => {
+    return post('/mall/shops/' + id + '/view', null)
+}
+
+// ===== 商品（products）=====
+// 商品列表（公开）
+export const listMallProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products', params)
+}
+
+// 商品搜索（公开）
+export const searchMallProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/search', params)
+}
+
+// 精选商品（公开）
+export const listMallFeaturedProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/featured', params)
+}
+
+// 热销商品（公开）
+export const listMallHotProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/hot', params)
+}
+
+// 新品（公开）
+export const listMallNewProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/new', params)
+}
+
+// 按店铺列出商品（公开）
+export const listMallProductsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/by-shop/' + shopId, params)
+}
+
+// 按分类列出商品（公开）
+export const listMallProductsByCategory = (categoryId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/by-category/' + categoryId, params)
+}
+
+// 商品详情（公开）
+export const getMallProductDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/products/' + id)
+}
+
+// 我的商品（需登录）
+export const listMyMallProducts = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/products/mine', params)
+}
+
+// 创建商品（需登录）
+export const createMallProduct = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/products', data)
+}
+
+// 更新商品（需登录）
+export const updateMallProduct = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/products/' + id, data)
+}
+
+// 删除商品（需登录）
+export const deleteMallProduct = (id: number) : Promise<ApiResult> => {
+    return del('/mall/products/' + id)
+}
+
+// 更新商品状态（需登录）
+export const updateMallProductStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/products/' + id + '/status', data)
+}
+
+// 商品浏览数 +1（公开）
+export const incrMallProductView = (id: number) : Promise<ApiResult> => {
+    return post('/mall/products/' + id + '/view', null)
+}
+
+// ===== SKU 规格表（skus）=====
+// 按商品列出 SKU（公开）
+export const listMallSkusByProduct = (productId: number) : Promise<ApiResult> => {
+    return get('/mall/skus/by-product/' + productId)
+}
+
+// 按店铺列出 SKU（公开）
+export const listMallSkusByShop = (shopId: number) : Promise<ApiResult> => {
+    return get('/mall/skus/by-shop/' + shopId)
+}
+
+// SKU 详情（公开）
+export const getMallSkuDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/skus/' + id)
+}
+
+// 创建 SKU（需登录）
+export const createMallSku = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/skus', data)
+}
+
+// 更新 SKU（需登录）
+export const updateMallSku = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/skus/' + id, data)
+}
+
+// 删除 SKU（需登录）
+export const deleteMallSku = (id: number) : Promise<ApiResult> => {
+    return del('/mall/skus/' + id)
+}
+
+// 更新 SKU 库存（需登录）
+export const updateMallSkuStock = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/skus/' + id + '/stock', data)
+}
+
+// 批量更新 SKU 库存（需登录）
+export const batchUpdateMallSkuStock = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/skus/batch-stock', data)
+}
+
+// ===== 商城分类（categories）=====
+// 分类列表（公开）
+export const listMallCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/categories', params)
+}
+
+// 分类树（公开）
+export const listMallCategoryTree = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/categories/tree', params)
+}
+
+// 按父分类查询（公开）
+export const listMallCategoriesByParent = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/categories/by-parent', params)
+}
+
+// 启用中的分类（公开）
+export const listMallEnabledCategories = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/categories/enabled', params)
+}
+
+// 分类详情（公开）
+export const getMallCategoryDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/categories/' + id)
+}
+
+// ===== 购物车（cart）=====
+// 加入购物车（需登录）
+export const addMallCart = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/cart', data)
+}
+
+// 购物车列表（需登录）
+export const listMallCart = () : Promise<ApiResult> => {
+    return get('/mall/cart')
+}
+
+// 购物车汇总（需登录）
+export const getMallCartSummary = () : Promise<ApiResult> => {
+    return get('/mall/cart/summary')
+}
+
+// 购物车数量（需登录）
+export const getMallCartCount = () : Promise<ApiResult> => {
+    return get('/mall/cart/count')
+}
+
+// 选中数量（需登录）
+export const getMallCartSelectedCount = () : Promise<ApiResult> => {
+    return get('/mall/cart/count-selected')
+}
+
+// 选中商品（需登录）
+export const listMallCartSelected = () : Promise<ApiResult> => {
+    return get('/mall/cart/selected')
+}
+
+// 按店铺分组（需登录）
+export const listMallCartGroupByShop = () : Promise<ApiResult> => {
+    return get('/mall/cart/group-by-shop')
+}
+
+// 按店铺列出购物车（需登录）
+export const listMallCartByShop = (shopId: number) : Promise<ApiResult> => {
+    return get('/mall/cart/by-shop/' + shopId)
+}
+
+// 购物车项详情（需登录）
+export const getMallCartItem = (id: number) : Promise<ApiResult> => {
+    return get('/mall/cart/' + id)
+}
+
+// 更新购物车项（需登录）
+export const updateMallCartItem = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/cart/' + id, data)
+}
+
+// 批量更新购物车（需登录）
+export const batchUpdateMallCart = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/cart/batch', data)
+}
+
+// 全选/取消全选（需登录）
+export const selectAllMallCart = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/cart/select-all', data)
+}
+
+// 删除购物车项（需登录）
+export const deleteMallCartItem = (id: number) : Promise<ApiResult> => {
+    return del('/mall/cart/' + id)
+}
+
+// 批量删除购物车（需登录）
+export const batchDeleteMallCart = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return del('/mall/cart/batch', data)
+}
+
+// 清空购物车（需登录）
+export const clearMallCart = () : Promise<ApiResult> => {
+    return del('/mall/cart/clear')
+}
+
+// 清空指定店铺购物车（需登录）
+export const clearMallCartByShop = (shopId: number) : Promise<ApiResult> => {
+    return del('/mall/cart/clear-by-shop/' + shopId)
+}
+
+// ===== 订单（orders）=====
+// 创建订单（需登录）
+export const createMallOrder = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/orders', data)
+}
+
+// 我的订单（需登录）
+export const listMyMallOrders = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/orders/mine', params)
+}
+
+// 按状态统计订单数（需登录）
+export const countMallOrdersByStatus = () : Promise<ApiResult> => {
+    return get('/mall/orders/count-by-status')
+}
+
+// 订单汇总（需登录）
+export const getMallOrderSummary = () : Promise<ApiResult> => {
+    return get('/mall/orders/summary')
+}
+
+// 按店铺列出订单（公开）
+export const listMallOrdersByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/orders/by-shop/' + shopId, params)
+}
+
+// 按订单号查询（公开）
+export const getMallOrderByOrderNo = (orderNo: string) : Promise<ApiResult> => {
+    return get('/mall/orders/by-no/' + orderNo)
+}
+
+// 订单详情（公开）
+export const getMallOrderDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/orders/' + id)
+}
+
+// 取消订单（需登录）
+export const cancelMallOrder = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/orders/' + id + '/cancel', data)
+}
+
+// 卖家发货（需登录）
+export const shipMallOrder = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/orders/' + id + '/ship', data)
+}
+
+// 买家确认收货（需登录）
+export const confirmMallOrder = (id: number) : Promise<ApiResult> => {
+    return put('/mall/orders/' + id + '/confirm', null)
+}
+
+// 完成订单（需登录）
+export const completeMallOrder = (id: number) : Promise<ApiResult> => {
+    return put('/mall/orders/' + id + '/complete', null)
+}
+
+// 删除订单（需登录）
+export const deleteMallOrder = (id: number) : Promise<ApiResult> => {
+    return del('/mall/orders/' + id)
+}
+
+// ===== 订单明细（order-items）=====
+// 按订单列出明细（公开）
+export const listMallOrderItemsByOrder = (orderId: number) : Promise<ApiResult> => {
+    return get('/mall/order-items/by-order/' + orderId)
+}
+
+// 订单明细详情（公开）
+export const getMallOrderItemDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/order-items/' + id)
+}
+
+// 我的订单明细（需登录）
+export const listMyMallOrderItems = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/order-items/mine', params)
+}
+
+// ===== 支付（payments）=====
+// 创建支付（需登录）
+export const createMallPayment = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/payments', data)
+}
+
+// 关闭支付（需登录）
+export const closeMallPayment = (id: number) : Promise<ApiResult> => {
+    return put('/mall/payments/' + id + '/close', null)
+}
+
+// 我的支付记录（需登录）
+export const listMyMallPayments = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/payments/mine', params)
+}
+
+// 按支付单号查询（公开）
+export const getMallPaymentByNo = (paymentNo: string) : Promise<ApiResult> => {
+    return get('/mall/payments/by-no/' + paymentNo)
+}
+
+// 按订单查询支付（公开）
+export const getMallPaymentByOrder = (orderId: number) : Promise<ApiResult> => {
+    return get('/mall/payments/by-order/' + orderId)
+}
+
+// 按店铺列出支付（公开）
+export const listMallPaymentsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/payments/by-shop/' + shopId, params)
+}
+
+// 支付详情（公开）
+export const getMallPaymentDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/payments/' + id)
+}
+
+// 支付回调（公开）
+export const mallPaymentCallback = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/payments/callback', data)
+}
+
+// ===== 退款（refunds）=====
+// 退款列表（公开）
+export const listMallRefunds = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/refunds', params)
+}
+
+// 创建退款（需登录）
+export const createMallRefund = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/refunds', data)
+}
+
+// 我的退款（需登录）
+export const listMyMallRefunds = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/refunds/mine', params)
+}
+
+// 卖家处理退款（需登录）
+export const sellerProcessMallRefund = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/refunds/' + id + '/seller-process', data)
+}
+
+// 退款发货（需登录）
+export const shipMallRefund = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/refunds/' + id + '/ship', data)
+}
+
+// 按退款单号查询（公开）
+export const getMallRefundByNo = (refundNo: string) : Promise<ApiResult> => {
+    return get('/mall/refunds/by-refund-no/' + refundNo)
+}
+
+// 按订单查询退款（公开）
+export const listMallRefundsByOrder = (orderId: number) : Promise<ApiResult> => {
+    return get('/mall/refunds/by-order/' + orderId)
+}
+
+// 按店铺列出退款（公开）
+export const listMallRefundsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/refunds/by-shop/' + shopId, params)
+}
+
+// 退款详情（公开）
+export const getMallRefundDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/refunds/' + id)
+}
+
+// 退款统计（公开）
+export const getMallRefundStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/refunds/stats', params)
+}
+
+// ===== 收货地址（addresses）=====
+// 创建地址（需登录）
+export const createMallAddress = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/addresses', data)
+}
+
+// 地址列表（需登录）
+export const listMallAddresses = () : Promise<ApiResult> => {
+    return get('/mall/addresses')
+}
+
+// 默认地址（需登录）
+export const getMallDefaultAddress = () : Promise<ApiResult> => {
+    return get('/mall/addresses/default')
+}
+
+// 地址详情（需登录）
+export const getMallAddressDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/addresses/' + id)
+}
+
+// 更新地址（需登录）
+export const updateMallAddress = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/addresses/' + id, data)
+}
+
+// 设默认地址（需登录）
+export const setMallDefaultAddress = (id: number) : Promise<ApiResult> => {
+    return put('/mall/addresses/' + id + '/default', null)
+}
+
+// 删除地址（需登录）
+export const deleteMallAddress = (id: number) : Promise<ApiResult> => {
+    return del('/mall/addresses/' + id)
+}
+
+// ===== 评价（reviews）=====
+// 评价列表（公开）
+export const listMallReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews', params)
+}
+
+// 评价统计（公开）
+export const getMallReviewStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews/stats', params)
+}
+
+// 按商品查询评价（公开）
+export const listMallReviewsByProduct = (productId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews/by-product/' + productId, params)
+}
+
+// 按店铺查询评价（公开）
+export const listMallReviewsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews/by-shop/' + shopId, params)
+}
+
+// 按订单查询评价（公开）
+export const listMallReviewsByOrder = (orderId: number) : Promise<ApiResult> => {
+    return get('/mall/reviews/by-order/' + orderId)
+}
+
+// 评价详情（公开）
+export const getMallReviewDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/reviews/' + id)
+}
+
+// 创建评价（需登录）
+export const createMallReview = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/reviews', data)
+}
+
+// 我的评价（需登录）
+export const listMyMallReviews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reviews/mine', params)
+}
+
+// 回复评价（需登录）
+export const replyMallReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/reviews/' + id + '/reply', data)
+}
+
+// 追加评价（需登录）
+export const appendMallReview = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/reviews/' + id + '/append', data)
+}
+
+// 删除评价（需登录）
+export const deleteMallReview = (id: number) : Promise<ApiResult> => {
+    return del('/mall/reviews/' + id)
+}
+
+// 点赞评价（需登录）
+export const likeMallReview = (id: number) : Promise<ApiResult> => {
+    return post('/mall/reviews/' + id + '/like', null)
+}
+
+// 踩评价（需登录）
+export const dislikeMallReview = (id: number) : Promise<ApiResult> => {
+    return post('/mall/reviews/' + id + '/dislike', null)
+}
+
+// ===== 物流（logistics）=====
+// 物流列表（公开）
+export const listMallLogistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/logistics', params)
+}
+
+// 创建物流（需登录）
+export const createMallLogistics = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/logistics', data)
+}
+
+// 更新物流（需登录）
+export const updateMallLogistics = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/logistics/' + id, data)
+}
+
+// 删除物流（需登录）
+export const deleteMallLogistics = (id: number) : Promise<ApiResult> => {
+    return del('/mall/logistics/' + id)
+}
+
+// 我的物流（需登录）
+export const listMyMallLogistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/logistics/mine', params)
+}
+
+// 更新物流状态（需登录）
+export const updateMallLogisticsStatus = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/mall/logistics/' + id + '/status', data)
+}
+
+// 按订单查询物流（公开）
+export const getMallLogisticsByOrder = (orderId: number) : Promise<ApiResult> => {
+    return get('/mall/logistics/by-order/' + orderId)
+}
+
+// 按运单号查询物流（公开）
+export const getMallLogisticsByTrackingNo = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/logistics/by-tracking-no', params)
+}
+
+// 按店铺列出物流（公开）
+export const listMallLogisticsByShop = (shopId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/logistics/by-shop/' + shopId, params)
+}
+
+// 物流详情（公开）
+export const getMallLogisticsDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/logistics/' + id)
+}
+
+// 物流回调（公开）
+export const mallLogisticsCallback = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/logistics/callback', data)
+}
+
+// ===== 举报（reports）=====
+// 举报列表（公开）
+export const listMallReports = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reports', params)
+}
+
+// 创建举报（需登录）
+export const createMallReport = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/mall/reports', data)
+}
+
+// 按用户查询举报（公开）
+export const listMallReportsByUser = (userId: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reports/by-user/' + userId, params)
+}
+
+// 按目标查询举报（公开）
+export const listMallReportsByTarget = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reports/by-target', params)
+}
+
+// 举报统计（公开）
+export const getMallReportStats = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/reports/stats', params)
+}
+
+// 举报详情（公开）
+export const getMallReportDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/reports/' + id)
+}
+
+// ===== 审核规则（audit-rules，公开只读）=====
+// 审核规则列表（公开）
+export const listMallAuditRules = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/audit-rules', params)
+}
+
+// 启用中的规则（公开）
+export const listMallEnabledAuditRules = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/audit-rules/enabled', params)
+}
+
+// 按类型查询规则（公开）
+export const listMallAuditRulesByType = (ruleType: string, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/audit-rules/type/' + ruleType, params)
+}
+
+// 规则详情（公开）
+export const getMallAuditRuleDetail = (id: number) : Promise<ApiResult> => {
+    return get('/mall/audit-rules/' + id)
+}
+
+// ===== 数据统计（statistics，公开只读）=====
+// 统计汇总（公开）
+export const getMallStatisticSummary = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/summary', params)
+}
+
+// 热销商品（公开）
+export const listMallHotProductStatistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/hot-products', params)
+}
+
+// 热门店铺（公开）
+export const listMallHotShopStatistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/hot-shops', params)
+}
+
+// 热门分类（公开）
+export const listMallHotCategoryStatistics = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/mall/statistics/hot-categories', params)
+}

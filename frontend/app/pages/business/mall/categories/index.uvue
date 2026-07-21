@@ -1,0 +1,292 @@
+<template>
+    <view class="page">
+        <view class="content-wrap">
+            <scroll-view class="left-scroll" scroll-y>
+                <view class="left-item" v-for="(c, idx) in categories" :key="idx"
+                    :class="{ active: currentCategoryId == c.id }" @click="onSelectCategory(c)">
+                    <text class="left-text" :class="{ active: currentCategoryId == c.id }">{{ c.name }}</text>
+                </view>
+            </scroll-view>
+            <scroll-view class="right-scroll" scroll-y @scrolltolower="loadMore">
+                <view class="banner" v-if="currentCategory.banner.length > 0">
+                    <image class="banner-img" :src="currentCategory.banner" mode="aspectFill" />
+                </view>
+                <view class="sub-cats" v-if="subCategories.length > 0">
+                    <view class="sub-cat-item" v-for="(s, idx) in subCategories" :key="idx" @click="onSelectSub(s)">
+                        <view class="sub-icon-wrap" v-if="s.icon.length > 0">
+                            <text class="sub-icon-text">{{ s.icon }}</text>
+                        </view>
+                        <view class="sub-icon-placeholder" v-else>
+                            <text class="sub-icon-text">{{ s.name.length > 0 ? s.name.charAt(0) : '类' }}</text>
+                        </view>
+                        <text class="sub-name">{{ s.name }}</text>
+                    </view>
+                </view>
+                <view class="section-header">
+                    <text class="section-title">热门商品</text>
+                </view>
+                <view class="product-wrap">
+                    <mall-product-card v-for="item in products" :key="item.id" :product="transformCard(item)" @click="goDetail" />
+                </view>
+                <view class="load-more" v-if="loading">
+                    <text class="load-text">加载中...</text>
+                </view>
+                <view class="no-more" v-if="!hasMore && products.length > 0">
+                    <text class="no-more-text">已经到底啦~</text>
+                </view>
+                <mall-empty v-if="products.length == 0 && !loading" icon="📦" text="该分类下暂无商品" />
+            </scroll-view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listMallCategories, listMallProductsByCategory } from '@/api/business/mall.uts'
+
+    type Category = {
+        id: number
+        name: string
+        icon: string
+        banner: string
+        children: Category[]
+    }
+    type ProductItem = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+    type CardData = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+
+    const categories = ref([] as Category[])
+    const currentCategoryId = ref(0)
+    const currentCategory = ref({ id: 0, name: '', icon: '', banner: '', children: [] as Category[] } as Category)
+    const subCategories = ref([] as Category[])
+    const products = ref([] as ProductItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ProductItem) : CardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            price: item.price,
+            origin_price: item.origin_price,
+            sales_count: item.sales_count,
+            shop_name: item.shop_name,
+            is_featured: item.is_featured,
+            is_hot: item.is_hot,
+            is_new: item.is_new
+        } as CardData
+    }
+
+    const loadCategories = () => {
+        listMallCategories({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const list = (d['list'] as Category[]) ?? ([] as Category[])
+                categories.value = list
+                if (list.length > 0) {
+                    onSelectCategory(list[0])
+                }
+            }
+        })
+    }
+
+    const onSelectCategory = (c: Category) => {
+        if (currentCategoryId.value == c.id) return
+        currentCategoryId.value = c.id
+        currentCategory.value = c
+        subCategories.value = c.children
+        loadProducts(true)
+    }
+
+    const onSelectSub = (s: Category) => {
+        currentCategoryId.value = s.id
+        loadProducts(true)
+    }
+
+    const loadProducts = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+        if (currentCategoryId.value == 0) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        listMallProductsByCategory(currentCategoryId.value, params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ProductItem[]) ?? ([] as ProductItem[])
+                if (reset) {
+                    products.value = newList
+                } else {
+                    products.value = products.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadProducts(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/mall/detail/index?id=' + id })
+    }
+
+    onLoad(() => {
+        loadCategories()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #FFFFFF;
+    }
+
+    .content-wrap {
+        flex: 1;
+        flex-direction: row;
+    }
+
+    .left-scroll {
+        width: 90px;
+        background-color: #F5F5F5;
+    }
+
+    .left-item {
+        padding: 14px 8px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .left-item.active {
+        background-color: #FFFFFF;
+    }
+
+    .left-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .left-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .right-scroll {
+        flex: 1;
+        background-color: #FFFFFF;
+    }
+
+    .banner {
+        width: 100%;
+        height: 100px;
+        padding: 8px;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+    }
+
+    .sub-cats {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px;
+    }
+
+    .sub-cat-item {
+        width: 33.33%;
+        align-items: center;
+        padding: 8px 4px;
+    }
+
+    .sub-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sub-icon-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sub-icon-text {
+        font-size: 18px;
+    }
+
+    .sub-name {
+        font-size: 12px;
+        color: #333;
+        margin-top: 4px;
+    }
+
+    .section-header {
+        padding: 8px 12px;
+        margin-top: 4px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .product-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

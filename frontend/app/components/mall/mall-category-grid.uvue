@@ -1,0 +1,85 @@
+<template>
+    <view class="category-grid">
+        <view class="grid-item" v-for="(item, idx) in categories" :key="idx" @click="onTapItem(item)">
+            <view class="icon-wrap" v-if="item.icon.length > 0">
+                <text class="icon-text">{{ item.icon }}</text>
+            </view>
+            <view class="icon-placeholder" v-else>
+                <text class="icon-placeholder-text">{{ item.name.length > 0 ? item.name.charAt(0) : '类' }}</text>
+            </view>
+            <text class="name">{{ item.name }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Category = {
+        id: number
+        name: string
+        icon: string
+    }
+
+    const props = withDefaults(defineProps<{
+        categories: Category[]
+    }>(), {
+        categories: [] as Category[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', categoryId: number): void
+    }>()
+
+    const onTapItem = (item: Category) => {
+        emit('click', item.id)
+    }
+</script>
+
+<style>
+    .category-grid {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 12px 6px;
+    }
+
+    .grid-item {
+        width: 20%;
+        align-items: center;
+        padding: 8px 4px;
+    }
+
+    .icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FFF5F0;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-text {
+        font-size: 22px;
+    }
+
+    .icon-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-placeholder-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .name {
+        font-size: 12px;
+        color: #333;
+        margin-top: 4px;
+        text-align: center;
+    }
+</style>

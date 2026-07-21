@@ -1,0 +1,152 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="list-wrap" v-if="list.length > 0">
+                <mall-address-card v-for="item in list" :key="item.id" :address="item"
+                    @click="onSelect" @edit="onEdit" @delete="onDelete" @set-default="onSetDefault" />
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="📍" text="暂无收货地址" btn-text="新增地址" @click="onAdd" />
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-add" @click="onAdd">
+                <text class="btn-text">+ 新增收货地址</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { listMallAddresses, deleteMallAddress, setMallDefaultAddress } from '@/api/business/mall.uts'
+
+    type Address = {
+        id: number
+        contact_name: string
+        contact_phone: string
+        province: string
+        city: string
+        district: string
+        detail: string
+        is_default: boolean
+    }
+
+    const list = ref([] as Address[])
+    const loading = ref(false)
+    const fromPage = ref('')
+
+    const loadList = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        loading.value = true
+        listMallAddresses().then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                list.value = (res.data as Address[]) ?? ([] as Address[])
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const onSelect = (id: number) => {
+        if (fromPage.value == 'checkout') {
+            for (let i = 0; i < list.value.length; i++) {
+                if (list.value[i].id == id) {
+                    const pages = getCurrentPages()
+                    const cur = pages[pages.length - 1]
+                    ;(cur as any).$selectedAddress = list.value[i]
+                    uni.navigateBack()
+                    break
+                }
+            }
+        }
+    }
+
+    const onEdit = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/mall/addresses/edit?id=' + id })
+    }
+
+    const onAdd = () => {
+        uni.navigateTo({ url: '/pages/business/mall/addresses/edit' })
+    }
+
+    const onDelete = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认删除该地址？',
+            success: (res) => {
+                if (res.confirm) {
+                    deleteMallAddress(id).then((res2: ApiResult) => {
+                        if (res2.code == 200) {
+                            uni.showToast({ title: '已删除', icon: 'success' })
+                            loadList()
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const onSetDefault = (id: number) => {
+        setMallDefaultAddress(id).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已设为默认', icon: 'success' })
+                loadList()
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const from = options['from']
+        if (from != null) fromPage.value = from as string
+        loadList()
+    })
+
+    onPullDownRefresh(() => {
+        loadList()
+    })
+
+    onShow(() => {
+        if (state.checkLogin()) loadList()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-add {
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

@@ -1,0 +1,348 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="status-section">
+                <text class="status-text">{{ order.status_text }}</text>
+                <text class="order-no">订单号：{{ order.order_no }}</text>
+            </view>
+            <view class="address-section" v-if="address.contact_name.length > 0">
+                <text class="addr-icon">📍</text>
+                <view class="addr-info">
+                    <view class="addr-user-row">
+                        <text class="addr-name">{{ address.contact_name }}</text>
+                        <text class="addr-phone">{{ address.contact_phone }}</text>
+                    </view>
+                    <text class="addr-text">{{ fullAddress }}</text>
+                </view>
+            </view>
+            <view class="product-section" v-if="order.products.length > 0">
+                <mall-order-card :order="order" :actions="[]" />
+            </view>
+            <view class="info-section">
+                <view class="info-row">
+                    <text class="info-label">商品总额</text>
+                    <text class="info-value">¥{{ order.product_amount }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">运费</text>
+                    <text class="info-value">¥{{ order.shipping_fee }}</text>
+                </view>
+                <view class="info-row total-row">
+                    <text class="info-label">实付款</text>
+                    <text class="info-value total">¥{{ order.total_amount }}</text>
+                </view>
+            </view>
+            <view class="info-section" v-if="order.created_at.length > 0">
+                <view class="info-row" v-if="order.created_at.length > 0">
+                    <text class="info-label">创建时间</text>
+                    <text class="info-value">{{ order.created_at }}</text>
+                </view>
+                <view class="info-row" v-if="order.paid_at.length > 0">
+                    <text class="info-label">支付时间</text>
+                    <text class="info-value">{{ order.paid_at }}</text>
+                </view>
+                <view class="info-row" v-if="order.shipped_at.length > 0">
+                    <text class="info-label">发货时间</text>
+                    <text class="info-value">{{ order.shipped_at }}</text>
+                </view>
+                <view class="info-row" v-if="order.completed_at.length > 0">
+                    <text class="info-label">完成时间</text>
+                    <text class="info-value">{{ order.completed_at }}</text>
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar" v-if="actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getMallOrderDetail, cancelMallOrder, confirmMallOrder } from '@/api/business/mall.uts'
+
+    type OrderProduct = {
+        title: string
+        cover_image: string
+        sku_name: string
+        price: number
+        quantity: number
+    }
+    type Address = {
+        contact_name: string
+        contact_phone: string
+        province: string
+        city: string
+        district: string
+        detail: string
+    }
+    type Action = { text: string, type: string, primary: boolean }
+    type Order = {
+        id: number
+        order_no: string
+        status: string
+        status_text: string
+        total_amount: number
+        product_amount: number
+        shipping_fee: number
+        products: OrderProduct[]
+        created_at: string
+        paid_at: string
+        shipped_at: string
+        completed_at: string
+    }
+
+    const orderId = ref(0)
+    const order = ref({
+        id: 0, order_no: '', status: '', status_text: '', total_amount: 0, product_amount: 0,
+        shipping_fee: 0, products: [] as OrderProduct[],
+        created_at: '', paid_at: '', shipped_at: '', completed_at: ''
+    } as Order)
+    const address = ref({
+        contact_name: '', contact_phone: '',
+        province: '', city: '', district: '', detail: ''
+    } as Address)
+
+    const fullAddress = computed(() : string => {
+        return address.value.province + address.value.city + address.value.district + address.value.detail
+    })
+
+    const actions = computed(() : Action[] => {
+        const arr = [] as Action[]
+        if (order.value.status == 'pending_payment') {
+            arr.push({ text: '取消订单', type: 'cancel', primary: false } as Action)
+            arr.push({ text: '去支付', type: 'pay', primary: true } as Action)
+        } else if (order.value.status == 'pending_confirm') {
+            arr.push({ text: '查看物流', type: 'logistics', primary: false } as Action)
+            arr.push({ text: '确认收货', type: 'confirm', primary: true } as Action)
+        } else if (order.value.status == 'completed') {
+            arr.push({ text: '再次购买', type: 'rebuy', primary: true } as Action)
+        }
+        return arr
+    })
+
+    const loadDetail = () => {
+        getMallOrderDetail(orderId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                order.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    status: (d['status'] as string) ?? '',
+                    status_text: (d['status_text'] as string) ?? '',
+                    total_amount: (d['total_amount'] as number) ?? 0,
+                    product_amount: (d['product_amount'] as number) ?? 0,
+                    shipping_fee: (d['shipping_fee'] as number) ?? 0,
+                    products: (d['products'] as OrderProduct[]) ?? ([] as OrderProduct[]),
+                    created_at: (d['created_at'] as string) ?? '',
+                    paid_at: (d['paid_at'] as string) ?? '',
+                    shipped_at: (d['shipped_at'] as string) ?? '',
+                    completed_at: (d['completed_at'] as string) ?? ''
+                } as Order
+                const addr = (d['address'] as UTSJSONObject)
+                if (addr != null) {
+                    address.value = {
+                        contact_name: (addr['contact_name'] as string) ?? '',
+                        contact_phone: (addr['contact_phone'] as string) ?? '',
+                        province: (addr['province'] as string) ?? '',
+                        city: (addr['city'] as string) ?? '',
+                        district: (addr['district'] as string) ?? '',
+                        detail: (addr['detail'] as string) ?? ''
+                    } as Address
+                }
+            }
+        })
+    }
+
+    const onAction = (a: Action) => {
+        if (a.type == 'cancel') {
+            uni.showModal({
+                title: '提示',
+                content: '确认取消该订单？',
+                success: (res) => {
+                    if (res.confirm) {
+                        cancelMallOrder(orderId.value, {} as UTSJSONObject).then((res2: ApiResult) => {
+                            if (res2.code == 200) {
+                                uni.showToast({ title: '已取消', icon: 'success' })
+                                loadDetail()
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (a.type == 'confirm') {
+            uni.showModal({
+                title: '提示',
+                content: '确认收货？',
+                success: (res) => {
+                    if (res.confirm) {
+                        confirmMallOrder(orderId.value).then((res2: ApiResult) => {
+                            if (res2.code == 200) {
+                                uni.showToast({ title: '已确认', icon: 'success' })
+                                loadDetail()
+                            }
+                        })
+                    }
+                }
+            })
+        } else if (a.type == 'pay') {
+            uni.navigateTo({ url: '/pages/business/mall/checkout/index?order_id=' + orderId.value })
+        } else if (a.type == 'logistics') {
+            uni.showToast({ title: '物流功能开发中', icon: 'none' })
+        } else if (a.type == 'rebuy') {
+            uni.navigateTo({ url: '/pages/business/mall/list/index' })
+        }
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            orderId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .status-section {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+        margin-bottom: 8px;
+    }
+
+    .status-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .order-no {
+        font-size: 12px;
+        color: #FFE5D9;
+        margin-top: 6px;
+    }
+
+    .address-section {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .addr-icon {
+        font-size: 16px;
+        margin-right: 8px;
+    }
+
+    .addr-info {
+        flex: 1;
+    }
+
+    .addr-user-row {
+        flex-direction: row;
+    }
+
+    .addr-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .addr-phone {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .addr-text {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .product-section {
+        padding: 12px;
+    }
+
+    .info-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .info-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .total-row {
+        padding-top: 12px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+        margin-top: 4px;
+    }
+
+    .info-value.total {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        justify-content: flex-end;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .action-btn {
+        border-radius: 14px;
+        padding: 6px 16px;
+        margin-left: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .action-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+</style>

@@ -1,0 +1,333 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="shop-header">
+                <image class="logo" :src="shop.logo" mode="aspectFill" lazy-load="true" v-if="shop.logo.length > 0" />
+                <view class="logo-placeholder" v-else>
+                    <text class="logo-text">{{ shop.name.length > 0 ? shop.name.charAt(0) : '店' }}</text>
+                </view>
+                <view class="shop-info">
+                    <text class="shop-name">{{ shop.name }}</text>
+                    <view class="meta-row">
+                        <text class="rating" v-if="shop.rating > 0">★ {{ shop.rating }}</text>
+                        <text class="meta">{{ shop.sales_count }} 销量</text>
+                    </view>
+                    <text class="addr" v-if="shop.address.length > 0">📍 {{ shop.address }}</text>
+                </view>
+            </view>
+            <view class="action-bar">
+                <view class="action-item" @click="onContact">
+                    <text class="action-icon">📞</text>
+                    <text class="action-text">联系客服</text>
+                </view>
+                <view class="action-item" @click="onFav">
+                    <text class="action-icon">★</text>
+                    <text class="action-text">收藏店铺</text>
+                </view>
+            </view>
+            <view class="sort-bar">
+                <text class="sort-text" :class="{ active: currentSort == 'popular' }" @click="changeSort('popular')">综合</text>
+                <text class="sort-text" :class="{ active: currentSort == 'sales' }" @click="changeSort('sales')">销量</text>
+                <text class="sort-text" :class="{ active: currentSort == 'new' }" @click="changeSort('new')">新品</text>
+            </view>
+            <view class="list-wrap">
+                <mall-product-card v-for="item in list" :key="item.id" :product="transformCard(item)" @click="goDetail" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="📦" text="店铺暂无商品" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { getMallShopDetail, listMallProductsByShop, incrMallShopView } from '@/api/business/mall.uts'
+
+    type Shop = {
+        id: number
+        name: string
+        logo: string
+        rating: number
+        sales_count: number
+        address: string
+        phone: string
+        is_open: boolean
+    }
+    type ListItem = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+    type CardData = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+
+    const shopId = ref(0)
+    const shop = ref({
+        id: 0, name: '', logo: '', rating: 0, sales_count: 0, address: '', phone: '', is_open: false
+    } as Shop)
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+    const currentSort = ref('popular')
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            price: item.price,
+            origin_price: item.origin_price,
+            sales_count: item.sales_count,
+            shop_name: item.shop_name,
+            is_featured: item.is_featured,
+            is_hot: item.is_hot,
+            is_new: item.is_new
+        } as CardData
+    }
+
+    const loadShop = () => {
+        getMallShopDetail(shopId.value).then((res: ApiResult) => {
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                shop.value = {
+                    id: (d['id'] as number) ?? 0,
+                    name: (d['name'] as string) ?? '',
+                    logo: (d['logo'] as string) ?? '',
+                    rating: (d['rating'] as number) ?? 0,
+                    sales_count: (d['sales_count'] as number) ?? 0,
+                    address: (d['address'] as string) ?? '',
+                    phone: (d['phone'] as string) ?? '',
+                    is_open: (d['is_open'] as boolean) ?? false
+                } as Shop
+            }
+        })
+        incrMallShopView(shopId.value)
+    }
+
+    const changeSort = (s: string) => {
+        if (currentSort.value == s) return
+        currentSort.value = s
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            sort: currentSort.value
+        } as UTSJSONObject
+        listMallProductsByShop(shopId.value, params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const onContact = () => {
+        if (shop.value.phone.length == 0) {
+            uni.showToast({ title: '商家未提供联系方式', icon: 'none' })
+            return
+        }
+        uni.makePhoneCall({ phoneNumber: shop.value.phone })
+    }
+
+    const onFav = () => {
+        uni.showToast({ title: '收藏功能开发中', icon: 'none' })
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/mall/detail/index?id=' + id })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            shopId.value = parseInt(id as string)
+            loadShop()
+            loadList(true)
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadShop()
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .shop-header {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 16px;
+        margin-bottom: 8px;
+    }
+
+    .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        margin-right: 12px;
+    }
+
+    .logo-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+
+    .logo-text {
+        font-size: 26px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .shop-info {
+        flex: 1;
+    }
+
+    .shop-name {
+        font-size: 16px;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .rating {
+        font-size: 12px;
+        color: #FF6B35;
+        margin-right: 12px;
+        font-weight: 600;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .addr {
+        font-size: 12px;
+        color: #999;
+        margin-top: 6px;
+    }
+
+    .action-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 12px 0;
+        margin-bottom: 8px;
+    }
+
+    .action-item {
+        flex: 1;
+        align-items: center;
+    }
+
+    .action-icon {
+        font-size: 18px;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .sort-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+
+    .sort-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+    }
+
+    .sort-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

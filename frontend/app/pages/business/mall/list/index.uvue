@@ -1,0 +1,276 @@
+<template>
+    <view class="page">
+        <view class="search-bar" @click="goSearch">
+            <text class="search-icon">🔍</text>
+            <text class="search-placeholder">搜索商品</text>
+        </view>
+        <view class="category-bar" v-if="categories.length > 0">
+            <scroll-view class="category-scroll" scroll-x>
+                <view class="category-item" v-for="(c, idx) in categories" :key="idx"
+                    :class="{ active: currentCategoryId == c.id }" @click="changeCategory(c.id)">
+                    <text class="category-text" :class="{ active: currentCategoryId == c.id }">{{ c.name }}</text>
+                </view>
+            </scroll-view>
+        </view>
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <view class="sort-bar">
+                <text class="sort-text" :class="{ active: currentSort == 'popular' }" @click="changeSort('popular')">综合</text>
+                <text class="sort-text" :class="{ active: currentSort == 'sales' }" @click="changeSort('sales')">销量</text>
+                <text class="sort-text" :class="{ active: currentSort == 'price_asc' }" @click="changeSort('price_asc')">价格↑</text>
+                <text class="sort-text" :class="{ active: currentSort == 'price_desc' }" @click="changeSort('price_desc')">价格↓</text>
+                <text class="sort-text" :class="{ active: currentSort == 'new' }" @click="changeSort('new')">新品</text>
+            </view>
+            <view class="list-wrap">
+                <mall-product-card v-for="item in list" :key="item.id" :product="transformCard(item)" @click="goDetail" />
+            </view>
+            <view class="load-more" v-if="loading">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <mall-empty v-if="list.length == 0 && !loading" icon="🛒" text="暂无商品" btn-text="去搜索" @click="goSearch" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listMallProducts, listMallCategories } from '@/api/business/mall.uts'
+
+    type ListItem = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+    type CardData = {
+        id: number
+        title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        shop_name: string
+        is_featured: boolean
+        is_hot: boolean
+        is_new: boolean
+    }
+    type Category = {
+        id: number
+        name: string
+        icon: string
+    }
+
+    const categories = ref([] as Category[])
+    const currentCategoryId = ref(0)
+    const currentSort = ref('popular')
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            cover_image: item.cover_image,
+            price: item.price,
+            origin_price: item.origin_price,
+            sales_count: item.sales_count,
+            shop_name: item.shop_name,
+            is_featured: item.is_featured,
+            is_hot: item.is_hot,
+            is_new: item.is_new
+        } as CardData
+    }
+
+    const loadCategories = () => {
+        listMallCategories({} as UTSJSONObject).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                categories.value = (d['list'] as Category[]) ?? ([] as Category[])
+            }
+        })
+    }
+
+    const changeCategory = (id: number) => {
+        if (currentCategoryId.value == id) return
+        currentCategoryId.value = id
+        loadList(true)
+    }
+
+    const changeSort = (s: string) => {
+        if (currentSort.value == s) return
+        currentSort.value = s
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize,
+            sort: currentSort.value
+        } as UTSJSONObject
+        if (currentCategoryId.value > 0) {
+            params['category_id'] = currentCategoryId.value
+        }
+
+        listMallProducts(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/mall/detail/index?id=' + id })
+    }
+
+    const goSearch = () => {
+        uni.navigateTo({ url: '/pages/business/mall/search/index' })
+    }
+
+    onLoad(() => {
+        loadCategories()
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        align-items: center;
+        margin: 8px 12px;
+        padding: 8px 12px;
+        border-radius: 20px;
+        background-color: #F5F5F5;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-placeholder {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .category-bar {
+        background-color: #FFFFFF;
+        margin-bottom: 8px;
+    }
+
+    .category-scroll {
+        flex-direction: row;
+        padding: 10px 8px;
+    }
+
+    .category-item {
+        padding: 4px 12px;
+        margin-right: 8px;
+        border-radius: 16px;
+        background-color: #F5F5F5;
+    }
+
+    .category-item.active {
+        background-color: #FFF5F0;
+    }
+
+    .category-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .category-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .sort-bar {
+        background-color: #FFFFFF;
+        flex-direction: row;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+
+    .sort-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+    }
+
+    .sort-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .list-wrap {
+        padding: 0 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

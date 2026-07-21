@@ -1,0 +1,214 @@
+<template>
+    <view class="sku-selector">
+        <view class="sku-group" v-for="(group, gIdx) in groups" :key="gIdx">
+            <text class="group-title">{{ group.name }}</text>
+            <view class="value-list">
+                <view class="value-item" v-for="(val, vIdx) in group.values" :key="vIdx"
+                    :class="{ active: isSelected(group.key, val) }" @click="onSelect(group.key, val)">
+                    <text class="value-text">{{ val }}</text>
+                </view>
+            </view>
+        </view>
+        <view class="qty-row">
+            <text class="qty-label">数量</text>
+            <view class="qty-control">
+                <view class="qty-btn" @click="onDecQty">
+                    <text class="qty-btn-text">-</text>
+                </view>
+                <text class="qty-value">{{ quantity }}</text>
+                <view class="qty-btn" @click="onIncQty">
+                    <text class="qty-btn-text">+</text>
+                </view>
+            </view>
+        </view>
+        <view class="bottom-bar">
+            <view class="btn-cart" @click="onAddCart">
+                <text class="btn-cart-text">加入购物车</text>
+            </view>
+            <view class="btn-buy" @click="onBuyNow">
+                <text class="btn-buy-text">立即购买</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type SkuGroup = {
+        key: string
+        name: string
+        values: string[]
+    }
+
+    const props = withDefaults(defineProps<{
+        groups: SkuGroup[]
+        stock: number
+    }>(), {
+        groups: [] as SkuGroup[],
+        stock: 0
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'select', key: string, value: string): void
+        (e: 'change-qty', qty: number): void
+        (e: 'add-cart'): void
+        (e: 'buy-now'): void
+    }>()
+
+    const selected = ref({} as UTSJSONObject)
+    const quantity = ref(1)
+
+    const isSelected = (key: string, value: string) : boolean => {
+        const v = (selected.value[key] as string) ?? ''
+        return v == value
+    }
+
+    const onSelect = (key: string, value: string) => {
+        selected.value[key] = value
+        emit('select', key, value)
+    }
+
+    const onIncQty = () => {
+        if (props.stock > 0 && quantity.value >= props.stock) {
+            uni.showToast({ title: '库存不足', icon: 'none' })
+            return
+        }
+        quantity.value++
+        emit('change-qty', quantity.value)
+    }
+
+    const onDecQty = () => {
+        if (quantity.value <= 1) return
+        quantity.value--
+        emit('change-qty', quantity.value)
+    }
+
+    const onAddCart = () => {
+        emit('add-cart')
+    }
+
+    const onBuyNow = () => {
+        emit('buy-now')
+    }
+</script>
+
+<style>
+    .sku-selector {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+    }
+
+    .sku-group {
+        margin-bottom: 12px;
+    }
+
+    .group-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .value-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .value-item {
+        background-color: #F5F5F5;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        margin-top: 8px;
+        border-width: 1px;
+        border-color: #F5F5F5;
+    }
+
+    .value-item.active {
+        background-color: #FFF5F0;
+        border-color: #FF6B35;
+    }
+
+    .value-text {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .value-item.active .value-text {
+        color: #FF6B35;
+    }
+
+    .qty-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .qty-label {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .qty-control {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .qty-btn {
+        width: 28px;
+        height: 28px;
+        background-color: #F5F5F5;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+    }
+
+    .qty-btn-text {
+        font-size: 16px;
+        color: #333;
+    }
+
+    .qty-value {
+        font-size: 14px;
+        color: #333;
+        margin: 0 16px;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        margin-top: 12px;
+    }
+
+    .btn-cart {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px 0 0 22px;
+        background-color: #FFB340;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-cart-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .btn-buy {
+        flex: 1;
+        height: 44px;
+        border-radius: 0 22px 22px 0;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-buy-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

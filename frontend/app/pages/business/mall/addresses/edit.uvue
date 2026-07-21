@@ -1,0 +1,251 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <view class="form-card">
+                <text class="card-title">收货人信息</text>
+                <view class="form-row">
+                    <text class="label">姓名<text class="required">*</text></text>
+                    <input class="input" v-model="form.contact_name" placeholder="请输入收货人姓名" />
+                </view>
+                <view class="form-row">
+                    <text class="label">电话<text class="required">*</text></text>
+                    <input class="input" type="number" v-model="form.contact_phone" placeholder="请输入手机号" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <text class="card-title">地址信息</text>
+                <view class="form-row">
+                    <text class="label">省份</text>
+                    <input class="input" v-model="form.province" placeholder="如：湖北省" />
+                </view>
+                <view class="form-row">
+                    <text class="label">城市</text>
+                    <input class="input" v-model="form.city" placeholder="如：武汉市" />
+                </view>
+                <view class="form-row">
+                    <text class="label">区/县</text>
+                    <input class="input" v-model="form.district" placeholder="如：武昌区" />
+                </view>
+                <view class="form-row column">
+                    <text class="label">详细地址<text class="required">*</text></text>
+                    <textarea class="textarea" v-model="form.detail" placeholder="请输入街道、门牌号等详细地址" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="default-row">
+                    <text class="default-label">设为默认地址</text>
+                    <switch :checked="form.is_default" @change="onToggleDefault" color="#FF6B35" />
+                </view>
+            </view>
+        </scroll-view>
+        <view class="bottom-bar">
+            <view class="btn-save" @click="onSave">
+                <text class="btn-text">保存</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { createMallAddress, updateMallAddress, getMallAddressDetail } from '@/api/business/mall.uts'
+
+    type Form = {
+        id: number
+        contact_name: string
+        contact_phone: string
+        province: string
+        city: string
+        district: string
+        detail: string
+        is_default: boolean
+    }
+
+    const form = ref({
+        id: 0,
+        contact_name: '',
+        contact_phone: '',
+        province: '',
+        city: '',
+        district: '',
+        detail: '',
+        is_default: false
+    } as Form)
+
+    const onToggleDefault = (e: SwitchChangeEvent) => {
+        form.value.is_default = e.detail.value
+    }
+
+    const onSave = () => {
+        if (!state.checkLogin()) {
+            uni.showToast({ title: '请先登录', icon: 'none' })
+            return
+        }
+        if (form.value.contact_name.length == 0) {
+            uni.showToast({ title: '请输入收货人姓名', icon: 'none' })
+            return
+        }
+        if (form.value.contact_phone.length == 0) {
+            uni.showToast({ title: '请输入手机号', icon: 'none' })
+            return
+        }
+        if (form.value.detail.length == 0) {
+            uni.showToast({ title: '请输入详细地址', icon: 'none' })
+            return
+        }
+
+        const data: UTSJSONObject = {
+            contact_name: form.value.contact_name,
+            contact_phone: form.value.contact_phone,
+            province: form.value.province,
+            city: form.value.city,
+            district: form.value.district,
+            detail: form.value.detail,
+            is_default: form.value.is_default
+        } as UTSJSONObject
+
+        uni.showLoading({ title: '保存中...' })
+        const reqFn = form.value.id > 0
+            ? updateMallAddress(form.value.id, data)
+            : createMallAddress(data)
+        reqFn.then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '保存成功', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '保存失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getMallAddressDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    id: (d['id'] as number) ?? 0,
+                    contact_name: (d['contact_name'] as string) ?? '',
+                    contact_phone: (d['contact_phone'] as string) ?? '',
+                    province: (d['province'] as string) ?? '',
+                    city: (d['city'] as string) ?? '',
+                    district: (d['district'] as string) ?? '',
+                    detail: (d['detail'] as string) ?? '',
+                    is_default: (d['is_default'] as boolean) ?? false
+                } as Form
+            }
+        })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            form.value.id = parseInt(id as string)
+            loadEdit(form.value.id)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .form-row.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 80px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .default-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+    }
+
+    .default-label {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .bottom-bar {
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-save {
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>
