@@ -411,6 +411,76 @@ const (
 	CodeMallSkuError         = 5428 // SKU错误
 	CodeMallSkuNotFound      = 5429 // SKU不存在
 	CodeMallStatisticError   = 5430 // 统计错误
+
+	// ===== lbs 地图中台错误 5501-5530 =====
+	CodeLbsError           = 5501 // LBS通用错误
+	CodeLbsPoiNotFound     = 5502 // POI不存在
+	CodeLbsRegionNotFound  = 5503 // 区域不存在
+	CodeLbsGeofenceError   = 5504 // 围栏错误
+	CodeLbsGeofenceNotFound = 5505 // 围栏不存在
+	CodeLbsNearbyError     = 5506 // 附近搜索错误
+	CodeLbsRouteError      = 5507 // 路线规划错误
+	CodeLbsDistanceError   = 5508 // 距离计算错误
+	CodeLbsParamInvalid    = 5509 // 参数无效
+	CodeLbsNoPermission    = 5510 // 无权操作
+
+	// ===== tenant 分站中台错误 5601-5630 =====
+	CodeTenantError           = 5601 // 分站通用错误
+	CodeTenantStationNotFound = 5602 // 分站不存在
+	CodeTenantStaffError      = 5603 // 员工错误
+	CodeTenantStaffNotFound   = 5604 // 员工不存在
+	CodeTenantConfigError     = 5605 // 配置错误
+	CodeTenantDomainError     = 5606 // 域名错误
+	CodeTenantNoPermission    = 5607 // 无权操作
+
+	// ===== merchant 商户中台错误 5701-5730 =====
+	CodeMerchantError              = 5701 // 商户通用错误
+	CodeMerchantShopNotFound       = 5702 // 店铺不存在
+	CodeMerchantStaffError         = 5703 // 员工错误
+	CodeMerchantStaffNotFound      = 5704 // 员工不存在
+	CodeMerchantSettleError        = 5705 // 结算错误
+	CodeMerchantSettleNotFound     = 5706 // 结算单不存在
+	CodeMerchantCategoryError      = 5707 // 类目错误
+	CodeMerchantVerifyError        = 5708 // 认证错误
+	CodeMerchantVerifyNotFound     = 5709 // 认证记录不存在
+	CodeMerchantNoPermission       = 5710 // 无权操作
+	CodeMerchantAlreadySettled     = 5711 // 已入驻
+
+	// ===== marketing 营销中台错误 5801-5830 =====
+	CodeMarketingError             = 5801 // 营销通用错误
+	CodeMarketingAdNotFound        = 5802 // 广告位不存在
+	CodeMarketingCouponError       = 5803 // 优惠券错误
+	CodeMarketingCouponNotFound    = 5804 // 优惠券不存在
+	CodeMarketingCouponUsed        = 5805 // 优惠券已使用
+	CodeMarketingCouponExpired     = 5806 // 优惠券已过期
+	CodeMarketingCouponInsufficient = 5807 // 优惠券已领完
+	CodeMarketingSignError         = 5808 // 签到错误
+	CodeMarketingSignAlready       = 5809 // 今日已签到
+	CodeMarketingActivityError     = 5810 // 活动错误
+	CodeMarketingActivityNotFound  = 5811 // 活动不存在
+
+	// ===== distribution 分销中台错误 5901-5930 =====
+	CodeDistributionError              = 5901 // 分销通用错误
+	CodeDistributionPartnerNotFound    = 5902 // 合伙人不存在
+	CodeDistributionChannelError       = 5903 // 渠道错误
+	CodeDistributionChannelNotFound    = 5904 // 渠道不存在
+	CodeDistributionCommissionError    = 5905 // 佣金错误
+	CodeDistributionCommissionNotFound = 5906 // 佣金记录不存在
+	CodeDistributionLevelError         = 5907 // 等级错误
+	CodeDistributionWithdrawalError    = 5908 // 提现错误
+	CodeDistributionWithdrawalNotFound = 5909 // 提现记录不存在
+	CodeDistributionInsufficientBalance = 5910 // 余额不足
+	CodeDistributionAlreadyPartner     = 5911 // 已是合伙人
+
+	// ===== diy 页面中台错误 6001-6030 =====
+	CodeDiyError             = 6001 // DIY通用错误
+	CodeDiyPageNotFound      = 6002 // 页面不存在
+	CodeDiyComponentError    = 6003 // 组件错误
+	CodeDiyComponentNotFound = 6004 // 组件不存在
+	CodeDiyTemplateError     = 6005 // 模板错误
+	CodeDiyTemplateNotFound  = 6006 // 模板不存在
+	CodeDiyStatError         = 6007 // 统计错误
+	CodeDiyNoPermission      = 6008 // 无权操作
 )
 
 // 错误消息映射

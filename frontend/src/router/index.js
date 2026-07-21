@@ -446,15 +446,83 @@ export const constantRoutes = [
               { path: 'user', name: 'MiddlewareUser', component: () => import('@/views/middleware-center/user.vue'), meta: { title: '用户中台', icon: 'User', menuLevel: 3 } },
               { path: 'pay', name: 'MiddlewarePay', component: () => import('@/views/middleware-center/pay.vue'), meta: { title: '支付中台', icon: 'Wallet', menuLevel: 3 } },
               { path: 'im', name: 'MiddlewareIm', component: () => import('@/views/middleware-center/im.vue'), meta: { title: 'IM中台', icon: 'ChatDotRound', menuLevel: 3 } },
-              { path: 'merchant', name: 'MiddlewareMerchant', component: () => import('@/views/middleware-center/merchant.vue'), meta: { title: '商家中台', icon: 'Shop', menuLevel: 3 } },
-              { path: 'distribution', name: 'MiddlewareDistribution', component: () => import('@/views/middleware-center/distribution.vue'), meta: { title: '分销中台', icon: 'Share', menuLevel: 3 } },
-              { path: 'marketing', name: 'MiddlewareMarketing', component: () => import('@/views/middleware-center/marketing.vue'), meta: { title: '营销中台', icon: 'Present', menuLevel: 3 } },
+              {
+                path: 'merchant',
+                name: 'MiddlewareMerchant',
+                redirect: '/settings-center/middleware/merchant/shops',
+                meta: { title: '商家中台', icon: 'Shop', permission: 'merchant:audit', menuLevel: 3 },
+                children: [
+                  { path: 'shops', name: 'MiddlewareMerchantShops', component: () => import('@/views/middleware-center/merchant/shops.vue'), meta: { title: '店铺管理', icon: 'Shop', permission: 'merchant:audit', menuLevel: 4 } },
+                  { path: 'staff', name: 'MiddlewareMerchantStaff', component: () => import('@/views/middleware-center/merchant/staff.vue'), meta: { title: '员工管理', icon: 'User', permission: 'merchant:audit', menuLevel: 4 } },
+                  { path: 'settles', name: 'MiddlewareMerchantSettles', component: () => import('@/views/middleware-center/merchant/settles.vue'), meta: { title: '结算管理', icon: 'Wallet', permission: 'merchant:audit', menuLevel: 4 } },
+                  { path: 'categories', name: 'MiddlewareMerchantCategories', component: () => import('@/views/middleware-center/merchant/categories.vue'), meta: { title: '类目管理', icon: 'Files', permission: 'merchant:audit', menuLevel: 4 } },
+                  { path: 'verifications', name: 'MiddlewareMerchantVerifications', component: () => import('@/views/middleware-center/merchant/verifications.vue'), meta: { title: '认证审核', icon: 'Postcard', permission: 'merchant:audit', menuLevel: 4 } }
+                ]
+              },
+              {
+                path: 'distribution',
+                name: 'MiddlewareDistribution',
+                redirect: '/settings-center/middleware/distribution/partners',
+                meta: { title: '分销中台', icon: 'Share', permission: 'distribution:manage', menuLevel: 3 },
+                children: [
+                  { path: 'partners', name: 'MiddlewareDistributionPartners', component: () => import('@/views/middleware-center/distribution/partners.vue'), meta: { title: '合伙人管理', icon: 'User', permission: 'distribution:manage', menuLevel: 4 } },
+                  { path: 'channels', name: 'MiddlewareDistributionChannels', component: () => import('@/views/middleware-center/distribution/channels.vue'), meta: { title: '推广渠道', icon: 'Share', permission: 'distribution:manage', menuLevel: 4 } },
+                  { path: 'commissions', name: 'MiddlewareDistributionCommissions', component: () => import('@/views/middleware-center/distribution/commissions.vue'), meta: { title: '佣金结算', icon: 'Wallet', permission: 'distribution:manage', menuLevel: 4 } },
+                  { path: 'levels', name: 'MiddlewareDistributionLevels', component: () => import('@/views/middleware-center/distribution/levels.vue'), meta: { title: '等级管理', icon: 'Medal', permission: 'distribution:manage', menuLevel: 4 } },
+                  { path: 'withdrawals', name: 'MiddlewareDistributionWithdrawals', component: () => import('@/views/middleware-center/distribution/withdrawals.vue'), meta: { title: '提现审核', icon: 'CreditCard', permission: 'distribution:manage', menuLevel: 4 } }
+                ]
+              },
+              {
+                path: 'marketing',
+                name: 'MiddlewareMarketing',
+                redirect: '/settings-center/middleware/marketing/ads',
+                meta: { title: '营销中台', icon: 'Present', permission: 'marketing:manage', menuLevel: 3 },
+                children: [
+                  { path: 'ads', name: 'MarketingAds', component: () => import('@/views/middleware-center/marketing/ads.vue'), meta: { title: '广告位管理', icon: 'Picture', permission: 'marketing:manage', menuLevel: 4 } },
+                  { path: 'coupons', name: 'MarketingCoupons', component: () => import('@/views/middleware-center/marketing/coupons.vue'), meta: { title: '优惠券管理', icon: 'Ticket', permission: 'marketing:manage', menuLevel: 4 } },
+                  { path: 'sign-rules', name: 'MarketingSignRules', component: () => import('@/views/middleware-center/marketing/sign-rules.vue'), meta: { title: '签到规则', icon: 'Calendar', permission: 'marketing:manage', menuLevel: 4 } },
+                  { path: 'activities', name: 'MarketingActivities', component: () => import('@/views/middleware-center/marketing/activities.vue'), meta: { title: '营销活动', icon: 'Flag', permission: 'marketing:manage', menuLevel: 4 } }
+                ]
+              },
               { path: 'risk', name: 'MiddlewareRisk', component: () => import('@/views/middleware-center/risk.vue'), meta: { title: '风控中台', icon: 'Warning', menuLevel: 3 } },
               { path: 'lbs', name: 'MiddlewareLbs', component: () => import('@/views/middleware-center/lbs.vue'), meta: { title: 'LBS中台', icon: 'Location', menuLevel: 3 } },
+              {
+                path: 'lbs-manage',
+                name: 'MiddlewareLbsManage',
+                redirect: '/settings-center/middleware/lbs-manage/pois',
+                meta: { title: 'LBS管理', icon: 'MapLocation', permission: 'lbs:manage', menuLevel: 3 },
+                children: [
+                  { path: 'pois', name: 'LbsPois', component: () => import('@/views/middleware-center/lbs/pois.vue'), meta: { title: 'POI管理', icon: 'LocationFilled', permission: 'lbs:manage', menuLevel: 4 } },
+                  { path: 'regions', name: 'LbsRegions', component: () => import('@/views/middleware-center/lbs/regions.vue'), meta: { title: '区域分站', icon: 'MapLocation', permission: 'lbs:manage', menuLevel: 4 } },
+                  { path: 'geofences', name: 'LbsGeofences', component: () => import('@/views/middleware-center/lbs/geofences.vue'), meta: { title: '地理围栏', icon: 'Position', permission: 'lbs:manage', menuLevel: 4 } }
+                ]
+              },
               { path: 'ai', name: 'MiddlewareAi', component: () => import('@/views/middleware-center/ai.vue'), meta: { title: 'AI中台', icon: 'MagicStick', menuLevel: 3 } },
-              { path: 'tenant', name: 'MiddlewareTenant', component: () => import('@/views/middleware-center/tenant.vue'), meta: { title: '分站中台', icon: 'OfficeBuilding', menuLevel: 3 } },
+              {
+                path: 'tenant',
+                name: 'MiddlewareTenant',
+                redirect: '/settings-center/middleware/tenant/stations',
+                meta: { title: '分站中台', icon: 'OfficeBuilding', permission: 'tenant:manage', menuLevel: 3 },
+                children: [
+                  { path: 'stations', name: 'TenantStations', component: () => import('@/views/middleware-center/tenant/stations.vue'), meta: { title: '分站管理', icon: 'OfficeBuilding', permission: 'tenant:manage', menuLevel: 4 } },
+                  { path: 'staff', name: 'TenantStaff', component: () => import('@/views/middleware-center/tenant/staff.vue'), meta: { title: '员工管理', icon: 'User', permission: 'tenant:manage', menuLevel: 4 } },
+                  { path: 'configs', name: 'TenantConfigs', component: () => import('@/views/middleware-center/tenant/configs.vue'), meta: { title: '配置管理', icon: 'Tools', permission: 'tenant:manage', menuLevel: 4 } },
+                  { path: 'domains', name: 'TenantDomains', component: () => import('@/views/middleware-center/tenant/domains.vue'), meta: { title: '域名管理', icon: 'Link', permission: 'tenant:manage', menuLevel: 4 } }
+                ]
+              },
               { path: 'material', name: 'MiddlewareMaterial', component: () => import('@/views/middleware-center/material.vue'), meta: { title: '素材中台', icon: 'Picture', menuLevel: 3 } },
-              { path: 'diy', name: 'MiddlewareDiy', component: () => import('@/views/middleware-center/diy.vue'), meta: { title: 'DIY中台', icon: 'Brush', menuLevel: 3 } }
+              {
+                path: 'diy',
+                name: 'MiddlewareDiy',
+                redirect: '/settings-center/middleware/diy/pages',
+                meta: { title: 'DIY中台', icon: 'Brush', permission: 'diy:manage', menuLevel: 3 },
+                children: [
+                  { path: 'pages', name: 'DiyPages', component: () => import('@/views/middleware-center/diy/pages.vue'), meta: { title: '页面管理', icon: 'Document', permission: 'diy:manage', menuLevel: 4 } },
+                  { path: 'components', name: 'DiyComponents', component: () => import('@/views/middleware-center/diy/components.vue'), meta: { title: '组件库', icon: 'Grid', permission: 'diy:manage', menuLevel: 4 } },
+                  { path: 'templates', name: 'DiyTemplates', component: () => import('@/views/middleware-center/diy/templates.vue'), meta: { title: '模板管理', icon: 'Files', permission: 'diy:manage', menuLevel: 4 } },
+                  { path: 'editor', name: 'DiyEditor', component: () => import('@/views/middleware-center/diy/editor.vue'), meta: { title: '页面编辑器', icon: 'EditPen', permission: 'diy:manage', menuLevel: 4, hidden: true } }
+                ]
+              }
             ]
           }
         ]

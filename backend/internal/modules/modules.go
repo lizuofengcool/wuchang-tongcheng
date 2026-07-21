@@ -41,6 +41,14 @@ import (
 	_ "wuchang-tongcheng/internal/modules/risk"
 	_ "wuchang-tongcheng/internal/modules/ai"
 
+	// P1 中台层完整版（6 大中台）
+	_ "wuchang-tongcheng/internal/modules/lbs"
+	_ "wuchang-tongcheng/internal/modules/tenant"
+	_ "wuchang-tongcheng/internal/modules/merchant"
+	_ "wuchang-tongcheng/internal/modules/marketing"
+	_ "wuchang-tongcheng/internal/modules/distribution"
+	_ "wuchang-tongcheng/internal/modules/diy"
+
 	// 招聘求职模块
 	_ "wuchang-tongcheng/internal/modules/job"
 
