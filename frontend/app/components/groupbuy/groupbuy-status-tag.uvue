@@ -1,0 +1,100 @@
+<template>
+    <view class="status-tag" :class="tagClass">
+        <text class="status-text" :class="tagClass">{{ statusText }}</text>
+    </view>
+</template>
+
+<script setup lang="uts">
+    const props = withDefaults(defineProps<{
+        status: number
+        type?: string  // 'groupbuy' | 'order' | 'coupon'
+    }>(), {
+        type: 'order'
+    } as any)
+
+    // 团购商品状态：0=下架 1=上架 2=售罄
+    // 团购订单状态：0=待付款 1=已付款 2=已使用 3=已完成 4=已取消 5=已退款
+    // 优惠券状态：0=未使用 1=已使用 2=已过期
+    const statusText = computed(() : string => {
+        if (props.type == 'groupbuy') {
+            const m = ['已下架', '进行中', '已售罄']
+            return m[props.status] ?? '未知'
+        } else if (props.type == 'coupon') {
+            const m = ['未使用', '已使用', '已过期']
+            return m[props.status] ?? '未知'
+        }
+        const m = ['待付款', '已付款', '已使用', '已完成', '已取消', '已退款']
+        return m[props.status] ?? '未知'
+    })
+
+    const tagClass = computed(() : string => {
+        if (props.type == 'groupbuy') {
+            const m = ['tag-disabled', 'tag-success', 'tag-warning']
+            return m[props.status] ?? 'tag-info'
+        } else if (props.type == 'coupon') {
+            const m = ['tag-success', 'tag-info', 'tag-disabled']
+            return m[props.status] ?? 'tag-info'
+        }
+        const m = ['tag-warning', 'tag-primary', 'tag-info', 'tag-success', 'tag-disabled', 'tag-danger']
+        return m[props.status] ?? 'tag-info'
+    })
+</script>
+
+<style>
+    .status-tag {
+        border-radius: 4px;
+        padding: 1px 6px;
+    }
+
+    .status-text {
+        font-size: 11px;
+    }
+
+    .tag-primary .status-text {
+        color: #409EFF;
+    }
+
+    .tag-primary {
+        background-color: #ECF5FF;
+    }
+
+    .tag-success .status-text {
+        color: #67C23A;
+    }
+
+    .tag-success {
+        background-color: #F0F9EB;
+    }
+
+    .tag-warning .status-text {
+        color: #E6A23C;
+    }
+
+    .tag-warning {
+        background-color: #FDF6EC;
+    }
+
+    .tag-danger .status-text {
+        color: #F56C6C;
+    }
+
+    .tag-danger {
+        background-color: #FEF0F0;
+    }
+
+    .tag-info .status-text {
+        color: #909399;
+    }
+
+    .tag-info {
+        background-color: #F4F4F5;
+    }
+
+    .tag-disabled .status-text {
+        color: #C0C4CC;
+    }
+
+    .tag-disabled {
+        background-color: #F4F4F5;
+    }
+</style>

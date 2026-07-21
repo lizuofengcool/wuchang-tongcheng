@@ -1,0 +1,697 @@
+<template>
+    <view class="page">
+        <scroll-view class="form-scroll" scroll-y>
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">基本信息</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">标题<text class="required">*</text></text>
+                    <input class="input" placeholder="请输入标题（最多200字）" v-model="form.title" maxlength="200" />
+                </view>
+                <view class="form-item column">
+                    <text class="label">详情描述</text>
+                    <textarea class="textarea" placeholder="请输入详细描述（最多2000字）" v-model="form.content" maxlength="2000" />
+                </view>
+                <view class="form-item column">
+                    <text class="label">摘要</text>
+                    <textarea class="textarea short" placeholder="一句话摘要（选填，最多500字）" v-model="form.summary" maxlength="500" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">分类信息</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">信息类型<text class="required">*</text></text>
+                    <view class="picker" @click="showListingTypePicker = true">
+                        <text :class="form.listing_type.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.listing_type.length > 0 ? listingTypeName : '请选择类型' }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-item" v-if="needCondition">
+                    <text class="label">成色</text>
+                    <view class="picker" @click="showConditionPicker = true">
+                        <text :class="form.condition.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.condition.length > 0 ? conditionName : '请选择成色' }}</text>
+                        <text class="picker-arrow">›</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">价格</text>
+                    <input class="input" type="digit" placeholder="0.00（选填）" v-model="form.price" />
+                    <text class="suffix">{{ priceUnit }}</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">标签</text>
+                    <input class="input" placeholder="多个标签用逗号分隔" v-model="form.tags" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">图片（最多9张）</text>
+                </view>
+                <view class="image-grid">
+                    <view class="image-item" v-for="(img, idx) in imageList" :key="idx">
+                        <image class="preview-img" :src="img" mode="aspectFill" @click="onPreviewImage(idx)" />
+                        <view class="image-delete" @click="onDeleteImage(idx)">
+                            <text class="image-delete-icon">×</text>
+                        </view>
+                    </view>
+                    <view class="image-add" v-if="imageList.length < 9" @click="chooseImages">
+                        <text class="image-add-icon">+</text>
+                        <text class="image-add-text">添加图片</text>
+                    </view>
+                </view>
+                <text class="form-tip">第一张为封面图，建议 16:9 比例</text>
+            </view>
+
+            <view class="form-card">
+                <view class="form-title-row">
+                    <text class="form-title">地区与联系方式</text>
+                </view>
+                <view class="form-item">
+                    <text class="label">所在地区<text class="required">*</text></text>
+                    <view class="picker" @click="chooseLocation">
+                        <text :class="form.address.length > 0 ? 'picker-text' : 'picker-placeholder'">{{ form.address.length > 0 ? form.address : '点击选择位置' }}</text>
+                        <text class="picker-arrow">📍</text>
+                    </view>
+                </view>
+                <view class="form-item">
+                    <text class="label">联系电话</text>
+                    <input class="input" type="number" placeholder="手机号（选填）" v-model="form.contact_phone" maxlength="11" />
+                </view>
+                <view class="form-item">
+                    <text class="label">微信号</text>
+                    <input class="input" placeholder="微信号（选填）" v-model="form.contact_wechat" />
+                </view>
+            </view>
+
+            <view class="form-card">
+                <view class="form-item">
+                    <text class="label">发布状态</text>
+                    <view class="switch-row">
+                        <text class="switch-label">{{ form.status == 1 ? '立即发布' : '存为草稿' }}</text>
+                        <switch :checked="form.status == 1" @change="onStatusChange" color="#FF6B35" />
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="footer">
+            <view class="btn-submit" @click="onSubmit">
+                <text class="btn-submit-text">{{ form.status == 1 ? '发布头条' : '保存草稿' }}</text>
+            </view>
+        </view>
+
+        <view class="picker-mask" v-if="showListingTypePicker" @click="showListingTypePicker = false">
+            <view class="picker-content" @click.stop="noop">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showListingTypePicker = false">取消</text>
+                    <text class="picker-title">选择信息类型</text>
+                    <text class="picker-confirm" @click="showListingTypePicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="t in listingTypes" :key="t.value" @click="selectListingType(t)">
+                        <text :class="t.value == form.listing_type ? 'option-text option-active' : 'option-text'">{{ t.label }}</text>
+                        <text class="option-check" v-if="t.value == form.listing_type">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+
+        <view class="picker-mask" v-if="showConditionPicker" @click="showConditionPicker = false">
+            <view class="picker-content" @click.stop="noop">
+                <view class="picker-header">
+                    <text class="picker-cancel" @click="showConditionPicker = false">取消</text>
+                    <text class="picker-title">选择成色</text>
+                    <text class="picker-confirm" @click="showConditionPicker = false">确定</text>
+                </view>
+                <scroll-view class="picker-list" scroll-y>
+                    <view class="picker-option" v-for="c in conditions" :key="c.value" @click="selectCondition(c)">
+                        <text :class="c.value == form.condition ? 'option-text option-active' : 'option-text'">{{ c.label }}</text>
+                        <text class="option-check" v-if="c.value == form.condition">✓</text>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+
+        <news-loading v-if="uploading" text="上传中..." />
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { requireLogin } from '@/utils/auth.uts'
+    import { createNews, updateNews, getNewsDetail } from '@/api/business/news.uts'
+
+    type Option = { label: string, value: string }
+    type Form = {
+        title: string
+        content: string
+        summary: string
+        listing_type: string
+        condition: string
+        price: string
+        tags: string
+        address: string
+        latitude: number
+        longitude: number
+        contact_phone: string
+        contact_wechat: string
+        status: number
+    }
+
+    const newsId = ref(0)
+    const form = ref({
+        title: '',
+        content: '',
+        summary: '',
+        listing_type: '',
+        condition: '',
+        price: '',
+        tags: '',
+        address: '',
+        latitude: 0,
+        longitude: 0,
+        contact_phone: '',
+        contact_wechat: '',
+        status: 1
+    } as Form)
+
+    const imageList = ref([] as string[])
+    const uploading = ref(false)
+    const submitting = ref(false)
+    const showListingTypePicker = ref(false)
+    const showConditionPicker = ref(false)
+
+    const listingTypes = [
+        { label: '出售', value: 'sell' },
+        { label: '求购', value: 'buy' },
+        { label: '出租', value: 'rent' },
+        { label: '服务', value: 'service' },
+        { label: '招聘', value: 'job' }
+    ] as Option[]
+
+    const conditions = [
+        { label: '全新', value: 'new' },
+        { label: '二手', value: 'used' }
+    ] as Option[]
+
+    const listingTypeName = computed(() : string => {
+        const t = listingTypes.find((x: Option) : boolean => x.value == form.value.listing_type)
+        return t != null ? t!.label : ''
+    })
+
+    const conditionName = computed(() : string => {
+        const c = conditions.find((x: Option) : boolean => x.value == form.value.condition)
+        return c != null ? c!.label : ''
+    })
+
+    const priceUnit = computed(() : string => {
+        if (form.value.listing_type == 'rent') return '元/月'
+        return '元'
+    })
+
+    const needCondition = computed(() : boolean => {
+        return form.value.listing_type == 'sell' || form.value.listing_type == 'rent'
+    })
+
+    const selectListingType = (t: Option) => {
+        form.value.listing_type = t.value
+        if (!needCondition.value) {
+            form.value.condition = ''
+        }
+        showListingTypePicker.value = false
+    }
+
+    const selectCondition = (c: Option) => {
+        form.value.condition = c.value
+        showConditionPicker.value = false
+    }
+
+    const chooseImages = () => {
+        const maxCount = 9 - imageList.value.length
+        if (maxCount <= 0) {
+            uni.showToast({ title: '最多上传9张图片', icon: 'none' })
+            return
+        }
+        uni.chooseImage({
+            count: maxCount,
+            success: (res: ChooseImageSuccessCallbackResult) => {
+                uploading.value = true
+                const paths = res.tempFilePaths
+                uploadImageSequentially(paths, 0)
+            }
+        })
+    }
+
+    const uploadImageSequentially = (paths: string[], idx: number) => {
+        if (idx >= paths.length) {
+            uploading.value = false
+            return
+        }
+        uni.uploadFile({
+            url: 'http://localhost:8088/api/v1/file/upload',
+            filePath: paths[idx],
+            name: 'file',
+            header: { Authorization: 'Bearer ' + (uni.getStorageSync('wctc_token') as string) },
+            success: (r: UploadFileSuccessCallbackResult) => {
+                try {
+                    const data = JSON.parse(r.data) as UTSJSONObject
+                    const code = (data['code'] as number) ?? 0
+                    if (code == 200 || code == 0) {
+                        const d = (data['data'] as UTSJSONObject) ?? ({} as UTSJSONObject)
+                        const url = (d['url'] as string) ?? (d['file_url'] as string) ?? ''
+                        if (url.length > 0) {
+                            imageList.value.push(url)
+                        }
+                    } else {
+                        uni.showToast({ title: (data['message'] as string) ?? '上传失败', icon: 'none' })
+                    }
+                } catch (e) {
+                    uni.showToast({ title: '上传失败', icon: 'none' })
+                }
+                uploadImageSequentially(paths, idx + 1)
+            },
+            fail: () => {
+                uni.showToast({ title: '上传失败', icon: 'none' })
+                uploadImageSequentially(paths, idx + 1)
+            }
+        })
+    }
+
+    const onPreviewImage = (idx: number) => {
+        uni.previewImage({
+            urls: imageList.value,
+            current: imageList.value[idx]
+        })
+    }
+
+    const onDeleteImage = (idx: number) => {
+        imageList.value.splice(idx, 1)
+    }
+
+    const chooseLocation = () => {
+        uni.chooseLocation({
+            success: (res: ChooseLocationSuccessCallbackResult) => {
+                form.value.address = res.address.length > 0 ? res.address : res.name
+                form.value.latitude = res.latitude
+                form.value.longitude = res.longitude
+            },
+            fail: () => {
+                uni.showToast({ title: '未选择位置', icon: 'none' })
+            }
+        })
+    }
+
+    const onStatusChange = (e: SwitchChangeEvent) => {
+        form.value.status = e.detail.value ? 1 : 0
+    }
+
+    const validate = () : boolean => {
+        if (form.value.title.length == 0) {
+            uni.showToast({ title: '请输入标题', icon: 'none' })
+            return false
+        }
+        if (form.value.listing_type.length == 0) {
+            uni.showToast({ title: '请选择信息类型', icon: 'none' })
+            return false
+        }
+        if (form.value.address.length == 0) {
+            uni.showToast({ title: '请选择所在地区', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!requireLogin()) return
+        if (!validate()) return
+        if (submitting.value) return
+        submitting.value = true
+
+        const data: UTSJSONObject = {
+            title: form.value.title,
+            content: form.value.content,
+            summary: form.value.summary,
+            cover_image: imageList.value.length > 0 ? imageList.value[0] : '',
+            images: JSON.stringify(imageList.value),
+            listing_type: form.value.listing_type,
+            tags: form.value.tags,
+            address: form.value.address,
+            latitude: form.value.latitude,
+            longitude: form.value.longitude,
+            contact_phone: form.value.contact_phone,
+            contact_wechat: form.value.contact_wechat,
+            status: form.value.status,
+            region_id: state.regionId
+        } as UTSJSONObject
+        if (form.value.condition.length > 0) {
+            data['condition'] = form.value.condition
+        }
+        if (form.value.price.length > 0) {
+            data['price'] = parseFloat(form.value.price)
+        }
+
+        const api = newsId.value > 0
+            ? updateNews(newsId.value, data)
+            : createNews(data)
+
+        api.then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showToast({ title: newsId.value > 0 ? '更新成功' : (form.value.status == 1 ? '发布成功' : '已保存草稿'), icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1000)
+            } else {
+                uni.showToast({ title: res.message || '操作失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    const loadEdit = (id: number) => {
+        getNewsDetail(id).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                form.value = {
+                    title: (d['title'] as string) ?? '',
+                    content: (d['content'] as string) ?? '',
+                    summary: (d['summary'] as string) ?? '',
+                    listing_type: (d['listing_type'] as string) ?? '',
+                    condition: (d['condition'] as string) ?? '',
+                    price: ((d['price'] as number) ?? 0).toString(),
+                    tags: (d['tags'] as string) ?? '',
+                    address: (d['address'] as string) ?? '',
+                    latitude: (d['latitude'] as number) ?? 0,
+                    longitude: (d['longitude'] as number) ?? 0,
+                    contact_phone: (d['contact_phone'] as string) ?? '',
+                    contact_wechat: (d['contact_wechat'] as string) ?? '',
+                    status: (d['status'] as number) ?? 1
+                } as Form
+                const cover = (d['cover_image'] as string) ?? ''
+                const imgsStr = (d['images'] as string) ?? ''
+                const arr = [] as string[]
+                if (cover.length > 0) arr.push(cover)
+                if (imgsStr.length > 0) {
+                    try {
+                        const parsed = JSON.parse(imgsStr) as string[]
+                        if (parsed instanceof Array) {
+                            for (let i = 0; i < parsed.length; i++) {
+                                if (arr.indexOf(parsed[i]) < 0) arr.push(parsed[i])
+                            }
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+                imageList.value = arr
+            }
+        })
+    }
+
+    const noop = () => {}
+
+    onLoad((options: OnLoadOptions) => {
+        if (!requireLogin()) return
+        const id = options['id']
+        if (id != null) {
+            newsId.value = parseInt(id as string)
+            loadEdit(newsId.value)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .form-card {
+        background-color: #FFFFFF;
+        margin: 12px;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .form-title-row {
+        padding-bottom: 10px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+        margin-bottom: 4px;
+    }
+
+    .form-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .form-item {
+        padding: 12px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .form-item.column {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .label {
+        font-size: 13px;
+        color: #666;
+        width: 80px;
+    }
+
+    .required {
+        color: #EE0A24;
+    }
+
+    .input {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        padding: 4px 0;
+    }
+
+    .textarea {
+        font-size: 14px;
+        color: #333;
+        margin-top: 8px;
+        height: 120px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+
+    .textarea.short {
+        height: 60px;
+    }
+
+    .suffix {
+        font-size: 12px;
+        color: #999;
+        margin-left: 6px;
+    }
+
+    .picker {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .picker-placeholder {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-arrow {
+        font-size: 16px;
+        color: #CCCCCC;
+    }
+
+    .image-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .image-item {
+        width: 100px;
+        height: 100px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+
+    .preview-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+    }
+
+    .image-delete {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background-color: #EE0A24;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-delete-icon {
+        font-size: 14px;
+        color: #FFFFFF;
+    }
+
+    .image-add {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        background-color: #F5F5F5;
+        border: 1px dashed #CCCCCC;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-add-icon {
+        font-size: 28px;
+        color: #CCCCCC;
+    }
+
+    .image-add-text {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .form-tip {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .switch-row {
+        flex: 1;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .switch-label {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .footer {
+        padding: 12px;
+        background-color: #FFFFFF;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+    }
+
+    .btn-submit {
+        height: 44px;
+        border-radius: 22px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-submit-text {
+        font-size: 15px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .picker-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .picker-content {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 60%;
+    }
+
+    .picker-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .picker-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .picker-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .picker-confirm {
+        font-size: 14px;
+        color: #FF6B35;
+    }
+
+    .picker-list {
+        max-height: 400px;
+    }
+
+    .picker-option {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .option-text {
+        font-size: 14px;
+        color: #333;
+    }
+
+    .option-active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .option-check {
+        font-size: 16px;
+        color: #FF6B35;
+    }
+</style>

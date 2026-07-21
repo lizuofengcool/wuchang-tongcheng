@@ -4,12 +4,18 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// 主导航：覆盖五常同城核心频道
+// 主导航：覆盖武昌同城核心频道
 const NAV_ITEMS = [
   { href: '/', label: '首页' },
   { href: '/ershou', label: '二手' },
   { href: '/job', label: '招聘' },
   { href: '/fang', label: '房产' },
+  { href: '/love', label: '相亲' },
+  { href: '/pinche', label: '拼车' },
+  { href: '/linggong', label: '零工' },
+  { href: '/dh114', label: '114' },
+  { href: '/mall', label: '商城' },
+  { href: '/groupbuy', label: '团购' },
   { href: '/news', label: '头条' },
 ]
 

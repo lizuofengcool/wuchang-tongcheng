@@ -1,0 +1,501 @@
+<template>
+    <view class="page">
+        <groupbuy-loading v-if="loading" />
+        <scroll-view class="content" scroll-y v-if="!loading && order.id > 0">
+            <view class="status-section">
+                <text class="status-title">{{ statusText }}</text>
+                <text class="status-desc">{{ statusDesc }}</text>
+            </view>
+            <view class="card">
+                <view class="card-title-row">
+                    <text class="shop-icon">🏪</text>
+                    <text class="card-title">{{ order.shop_name }}</text>
+                </view>
+                <view class="product-row">
+                    <image class="p-cover" :src="order.cover_image" mode="aspectFill" lazy-load="true" v-if="order.cover_image.length > 0" />
+                    <view class="p-cover-placeholder" v-else>
+                        <text class="p-cover-text">团</text>
+                    </view>
+                    <view class="p-info">
+                        <text class="p-title">{{ order.title }}</text>
+                        <text class="p-sub" v-if="order.sub_title.length > 0">{{ order.sub_title }}</text>
+                        <view class="p-meta-row">
+                            <text class="p-price">¥{{ order.price }}</text>
+                            <text class="p-qty">x{{ order.quantity }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="amount-row">
+                    <text class="amount-label">实付金额</text>
+                    <text class="amount-value">¥{{ order.total_amount }}</text>
+                </view>
+            </view>
+            <view class="card">
+                <text class="card-title">订单信息</text>
+                <view class="info-row">
+                    <text class="info-label">订单号</text>
+                    <text class="info-value">{{ order.order_no }}</text>
+                </view>
+                <view class="info-row">
+                    <text class="info-label">下单时间</text>
+                    <text class="info-value">{{ order.created_at }}</text>
+                </view>
+                <view class="info-row" v-if="order.pay_time.length > 0">
+                    <text class="info-label">支付时间</text>
+                    <text class="info-value">{{ order.pay_time }}</text>
+                </view>
+                <view class="info-row" v-if="order.use_time.length > 0">
+                    <text class="info-label">使用时间</text>
+                    <text class="info-value">{{ order.use_time }}</text>
+                </view>
+                <view class="info-row" v-if="order.cancel_time.length > 0">
+                    <text class="info-label">取消时间</text>
+                    <text class="info-value">{{ order.cancel_time }}</text>
+                </view>
+            </view>
+            <view class="card" v-if="order.address.length > 0 || order.contact_name.length > 0">
+                <text class="card-title">收货信息</text>
+                <view class="info-row" v-if="order.contact_name.length > 0">
+                    <text class="info-label">收货人</text>
+                    <text class="info-value">{{ order.contact_name }} {{ order.contact_phone }}</text>
+                </view>
+                <view class="info-row" v-if="order.address.length > 0">
+                    <text class="info-label">收货地址</text>
+                    <text class="info-value">{{ order.address }}</text>
+                </view>
+            </view>
+            <view class="card" v-if="order.cancel_reason.length > 0">
+                <text class="card-title">取消原因</text>
+                <text class="card-content">{{ order.cancel_reason }}</text>
+            </view>
+            <view class="card">
+                <text class="card-title">状态流程</text>
+                <view class="step-row" v-for="(s, idx) in steps" :key="idx">
+                    <view class="step-dot" :class="{ active: s.active, done: s.done }"></view>
+                    <view class="step-line" v-if="idx < steps.length - 1"></view>
+                    <view class="step-info">
+                        <text class="step-title" :class="{ active: s.active, done: s.done }">{{ s.title }}</text>
+                        <text class="step-time" v-if="s.time.length > 0">{{ s.time }}</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+        <groupbuy-empty v-if="!loading && order.id == 0" icon="😕" text="订单不存在" btn-text="返回" @click="goBack" />
+        <view class="bottom-bar" v-if="!loading && order.id > 0">
+            <view class="bottom-action-btn" v-if="order.status == 0" @click="onCancel">
+                <text class="bottom-action-text">取消订单</text>
+            </view>
+            <view class="bottom-action-btn primary" v-if="order.status == 0" @click="onPay">
+                <text class="bottom-action-text primary">去支付</text>
+            </view>
+            <view class="bottom-action-btn primary" v-if="order.status == 2" @click="onReview">
+                <text class="bottom-action-text primary">去评价</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { requireLogin } from '@/utils/auth.uts'
+    import { getGroupBuyOrderDetail, cancelGroupBuyOrder } from '@/api/business/groupbuy.uts'
+
+    type Step = { title: string, time: string, active: boolean, done: boolean }
+
+    type Order = {
+        id: number
+        order_no: string
+        shop_name: string
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        quantity: number
+        total_amount: number
+        status: number
+        created_at: string
+        pay_time: string
+        use_time: string
+        cancel_time: string
+        contact_name: string
+        contact_phone: string
+        address: string
+        cancel_reason: string
+    }
+
+    const orderId = ref(0)
+    const order = ref({
+        id: 0, order_no: '', shop_name: '', title: '', sub_title: '', cover_image: '',
+        price: 0, quantity: 1, total_amount: 0, status: 0,
+        created_at: '', pay_time: '', use_time: '', cancel_time: '',
+        contact_name: '', contact_phone: '', address: '', cancel_reason: ''
+    } as Order)
+    const loading = ref(true)
+
+    const statusText = computed(() : string => {
+        const m = ['待付款', '已付款', '已使用', '已完成', '已取消', '已退款']
+        return m[order.value.status] ?? '未知'
+    })
+
+    const statusDesc = computed(() : string => {
+        if (order.value.status == 0) return '请尽快完成支付'
+        if (order.value.status == 1) return '请到店出示订单使用'
+        if (order.value.status == 2) return '期待您的评价'
+        if (order.value.status == 3) return '订单已完成'
+        if (order.value.status == 4) return '订单已取消'
+        if (order.value.status == 5) return '订单已退款'
+        return ''
+    })
+
+    const steps = computed(() : Step[] => {
+        const s = order.value.status
+        return [
+            { title: '提交订单', time: order.value.created_at, active: s >= 0, done: s > 0 } as Step,
+            { title: '支付订单', time: order.value.pay_time, active: s >= 1, done: s > 1 } as Step,
+            { title: '使用消费', time: order.value.use_time, active: s >= 2, done: s > 2 } as Step,
+            { title: '订单完成', time: s == 3 ? order.value.use_time : '', active: s >= 3, done: s > 3 } as Step
+        ] as Step[]
+    })
+
+    const loadDetail = () => {
+        loading.value = true
+        getGroupBuyOrderDetail(orderId.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                order.value = {
+                    id: (d['id'] as number) ?? 0,
+                    order_no: (d['order_no'] as string) ?? '',
+                    shop_name: (d['shop_name'] as string) ?? '',
+                    title: (d['title'] as string) ?? '',
+                    sub_title: (d['sub_title'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    price: (d['price'] as number) ?? 0,
+                    quantity: (d['quantity'] as number) ?? 1,
+                    total_amount: (d['total_amount'] as number) ?? 0,
+                    status: (d['status'] as number) ?? 0,
+                    created_at: (d['created_at'] as string) ?? '',
+                    pay_time: (d['pay_time'] as string) ?? '',
+                    use_time: (d['use_time'] as string) ?? '',
+                    cancel_time: (d['cancel_time'] as string) ?? '',
+                    contact_name: (d['contact_name'] as string) ?? '',
+                    contact_phone: (d['contact_phone'] as string) ?? '',
+                    address: (d['address'] as string) ?? '',
+                    cancel_reason: (d['cancel_reason'] as string) ?? ''
+                } as Order
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    const onCancel = () => {
+        uni.showModal({
+            title: '提示',
+            content: '确定取消该订单吗？',
+            success: (r: ShowModalRes) => {
+                if (r.confirm) {
+                    doCancel()
+                }
+            }
+        })
+    }
+
+    const doCancel = () => {
+        const data: UTSJSONObject = { reason: '用户主动取消' } as UTSJSONObject
+        cancelGroupBuyOrder(orderId.value, data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已取消', icon: 'success' })
+                loadDetail()
+            } else {
+                uni.showToast({ title: res.message || '取消失败', icon: 'none' })
+            }
+        }).catch(() => {})
+    }
+
+    const onPay = () => {
+        uni.showToast({ title: '支付功能开发中', icon: 'none' })
+    }
+
+    const onReview = () => {
+        uni.showToast({ title: '评价功能开发中', icon: 'none' })
+    }
+
+    onLoad((options: OnLoadOptions) => {
+        if (!requireLogin()) return
+        const id = options['id']
+        if (id != null) {
+            orderId.value = parseInt(id as string)
+            loadDetail()
+        } else {
+            loading.value = false
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+        padding-bottom: 60px;
+    }
+
+    .status-section {
+        background-color: #FF6B35;
+        padding: 20px 16px;
+    }
+
+    .status-title {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .status-desc {
+        font-size: 12px;
+        color: #FFFFFF;
+        opacity: 0.9;
+        margin-top: 4px;
+    }
+
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 8px 12px;
+    }
+
+    .card-title-row {
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 10px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .shop-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .card-content {
+        font-size: 13px;
+        color: #666;
+        margin-top: 6px;
+        line-height: 1.6;
+    }
+
+    .product-row {
+        flex-direction: row;
+        padding: 10px 0;
+    }
+
+    .p-cover {
+        width: 70px;
+        height: 70px;
+        border-radius: 6px;
+        margin-right: 10px;
+    }
+
+    .p-cover-placeholder {
+        width: 70px;
+        height: 70px;
+        border-radius: 6px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .p-cover-text {
+        font-size: 24px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .p-info {
+        flex: 1;
+    }
+
+    .p-title {
+        font-size: 14px;
+        color: #333;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .p-sub {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .p-meta-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+    }
+
+    .p-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .p-qty {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .amount-label {
+        font-size: 12px;
+        color: #666;
+        margin-right: 8px;
+    }
+
+    .amount-value {
+        font-size: 18px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .info-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #999;
+        width: 80px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .step-row {
+        flex-direction: row;
+        padding: 10px 0;
+        align-items: flex-start;
+    }
+
+    .step-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background-color: #DDD;
+        margin-right: 12px;
+        margin-top: 4px;
+    }
+
+    .step-dot.active {
+        background-color: #FF6B35;
+    }
+
+    .step-dot.done {
+        background-color: #67C23A;
+    }
+
+    .step-line {
+        position: absolute;
+        left: 5px;
+        top: 24px;
+        width: 1px;
+        height: 32px;
+        background-color: #EEE;
+    }
+
+    .step-info {
+        flex: 1;
+    }
+
+    .step-title {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .step-title.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .step-title.done {
+        color: #67C23A;
+    }
+
+    .step-time {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 2px;
+    }
+
+    .bottom-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .bottom-action-btn {
+        border-radius: 18px;
+        padding: 6px 18px;
+        margin-left: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .bottom-action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+
+    .bottom-action-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .bottom-action-text.primary {
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>

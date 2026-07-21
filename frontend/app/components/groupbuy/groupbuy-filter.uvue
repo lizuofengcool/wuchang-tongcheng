@@ -1,0 +1,136 @@
+<template>
+    <view class="filter-bar">
+        <view class="filter-row" v-if="showSearch">
+            <view class="search-bar" @click="onSearchClick">
+                <text class="search-icon">🔍</text>
+                <text class="search-placeholder">{{ searchPlaceholder }}</text>
+            </view>
+        </view>
+        <scroll-view class="category-scroll" scroll-x v-if="categories.length > 0">
+            <view class="category-item" v-for="(c, idx) in categories" :key="idx"
+                :class="{ active: currentCategoryId == c.id }" @click="onCategoryClick(c.id)">
+                <text class="category-text" :class="{ active: currentCategoryId == c.id }">{{ c.name }}</text>
+            </view>
+        </scroll-view>
+        <view class="sort-bar">
+            <text class="sort-text" :class="{ active: currentSort == 'popular' }" @click="onSortClick('popular')">综合</text>
+            <text class="sort-text" :class="{ active: currentSort == 'sales' }" @click="onSortClick('sales')">销量</text>
+            <text class="sort-text" :class="{ active: currentSort == 'price_asc' }" @click="onSortClick('price_asc')">价格↑</text>
+            <text class="sort-text" :class="{ active: currentSort == 'price_desc' }" @click="onSortClick('price_desc')">价格↓</text>
+            <text class="sort-text" :class="{ active: currentSort == 'new' }" @click="onSortClick('new')">最新</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Category = {
+        id: number
+        name: string
+    }
+
+    const props = withDefaults(defineProps<{
+        categories?: Category[]
+        currentCategoryId?: number
+        currentSort?: string
+        showSearch?: boolean
+        searchPlaceholder?: string
+    }>(), {
+        categories: [] as Category[],
+        currentCategoryId: 0,
+        currentSort: 'popular',
+        showSearch: true,
+        searchPlaceholder: '搜索团购'
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'search-click'): void
+        (e: 'category-change', id: number): void
+        (e: 'sort-change', sort: string): void
+    }>()
+
+    const onSearchClick = () => {
+        emit('search-click')
+    }
+
+    const onCategoryClick = (id: number) => {
+        emit('category-change', id)
+    }
+
+    const onSortClick = (sort: string) => {
+        emit('sort-change', sort)
+    }
+</script>
+
+<style>
+    .filter-bar {
+        background-color: #FFFFFF;
+    }
+
+    .filter-row {
+        padding: 8px 12px;
+    }
+
+    .search-bar {
+        flex-direction: row;
+        align-items: center;
+        background-color: #F5F5F5;
+        padding: 8px 12px;
+        border-radius: 20px;
+    }
+
+    .search-icon {
+        font-size: 14px;
+        color: #999;
+        margin-right: 6px;
+    }
+
+    .search-placeholder {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .category-scroll {
+        flex-direction: row;
+        padding: 0 8px 8px 8px;
+    }
+
+    .category-item {
+        padding: 4px 12px;
+        margin-right: 8px;
+        border-radius: 16px;
+        background-color: #F5F5F5;
+    }
+
+    .category-item.active {
+        background-color: #FFF5F0;
+    }
+
+    .category-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .category-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .sort-bar {
+        flex-direction: row;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .sort-text {
+        flex: 1;
+        font-size: 13px;
+        color: #666;
+        text-align: center;
+    }
+
+    .sort-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+</style>

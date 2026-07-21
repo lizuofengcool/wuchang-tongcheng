@@ -1,0 +1,583 @@
+<template>
+    <view class="page">
+        <scroll-view class="content" scroll-y>
+            <news-loading v-if="loading && detail.id == 0" />
+            <view v-else>
+                <news-detail-header :news="headerData" @preview="onPreviewImage" />
+                <view class="content-section" v-if="detail.content.length > 0">
+                    <text class="content-title">详情描述</text>
+                    <text class="content-text">{{ detail.content }}</text>
+                </view>
+                <view class="contact-section" v-if="detail.contact_phone.length > 0 || detail.contact_wechat.length > 0">
+                    <text class="content-title">联系方式</text>
+                    <view class="contact-row" v-if="detail.contact_phone.length > 0" @click="onCallPhone">
+                        <text class="contact-label">电话</text>
+                        <text class="contact-value">{{ detail.contact_phone }}</text>
+                        <text class="contact-action">拨打</text>
+                    </view>
+                    <view class="contact-row" v-if="detail.contact_wechat.length > 0">
+                        <text class="contact-label">微信</text>
+                        <text class="contact-value">{{ detail.contact_wechat }}</text>
+                        <text class="contact-action" @click="onCopyWechat">复制</text>
+                    </view>
+                </view>
+
+                <view class="comment-section">
+                    <view class="section-header">
+                        <text class="section-title">评论 {{ commentTotal }}</text>
+                    </view>
+                    <view class="comment-list" v-if="commentList.length > 0">
+                        <news-comment-item v-for="item in commentList" :key="item.id" :comment="transformComment(item)" :can-delete="item.user_id == currentUserId" @reply="onReply" @delete="onDeleteComment" />
+                    </view>
+                    <news-empty v-else icon="💬" text="暂无评论，快来抢沙发" :padding-top="40" :padding-bottom="40" />
+                    <view class="load-more" v-if="commentLoading">
+                        <text class="load-text">加载中...</text>
+                    </view>
+                    <view class="no-more" v-if="!commentHasMore && commentList.length > 0">
+                        <text class="no-more-text">没有更多评论了</text>
+                    </view>
+                </view>
+            </view>
+        </scroll-view>
+
+        <view class="bottom-bar">
+            <view class="bottom-input" @click="showCommentInput">
+                <text class="bottom-input-text">写评论...</text>
+            </view>
+            <view class="bottom-btn" @click="onLike">
+                <text class="bottom-icon" :class="{ liked: isLiked }">{{ isLiked ? '❤️' : '🤍' }}</text>
+                <text class="bottom-count">{{ detail.like_count }}</text>
+            </view>
+            <view class="bottom-btn" @click="onFav">
+                <text class="bottom-icon" :class="{ faved: isFaved }">{{ isFaved ? '⭐' : '☆' }}</text>
+                <text class="bottom-count">{{ detail.fav_count }}</text>
+            </view>
+            <view class="bottom-btn" @click="onShare">
+                <text class="bottom-icon">📤</text>
+                <text class="bottom-count">分享</text>
+            </view>
+        </view>
+
+        <view class="comment-mask" v-if="commentInputVisible" @click="commentInputVisible = false">
+            <view class="comment-panel" @click.stop="noop">
+                <view class="comment-panel-header">
+                    <text class="comment-panel-cancel" @click="commentInputVisible = false">取消</text>
+                    <text class="comment-panel-title">{{ replyTo.length > 0 ? '回复评论' : '发表评论' }}</text>
+                    <text class="comment-panel-send" @click="onSubmitComment">发送</text>
+                </view>
+                <textarea class="comment-textarea" v-model="commentContent" :placeholder="replyTo.length > 0 ? '回复 ' + replyTo : '说点什么...'" :focus="true" maxlength="500" />
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { state } from '@/store/index.uts'
+    import { requireLogin } from '@/utils/auth.uts'
+    import {
+        getNewsDetail, listNewsComments, getNewsLikeStatus, getNewsFavStatus,
+        likeNews, favNews, createNewsComment, deleteNewsComment
+    } from '@/api/business/news.uts'
+
+    type Detail = {
+        id: number
+        title: string
+        content: string
+        cover_image: string
+        images: string[]
+        summary: string
+        author_id: number
+        author_name: string
+        author_avatar: string
+        category_id: number
+        listing_type: string
+        condition: string
+        is_urgent: boolean
+        view_count: number
+        like_count: number
+        fav_count: number
+        comment_count: number
+        distance: number
+        address: string
+        contact_phone: string
+        contact_wechat: string
+        contact_qq: string
+        published_at: string
+    }
+    type HeaderData = {
+        id: number
+        title: string
+        cover_image: string
+        images: string[]
+        author_name: string
+        author_avatar: string
+        published_at: string
+        listing_type: string
+        condition: string
+        is_urgent: boolean
+        view_count: number
+        like_count: number
+        fav_count: number
+        comment_count: number
+        distance: number
+        address: string
+    }
+    type Comment = {
+        id: number
+        news_id: number
+        user_id: number
+        user_name: string
+        avatar: string
+        content: string
+        parent_id: number
+        reply_to: string
+        created_at: string
+    }
+
+    const newsId = ref(0)
+    const loading = ref(false)
+    const detail = ref({
+        id: 0, title: '', content: '', cover_image: '', images: [] as string[], summary: '',
+        author_id: 0, author_name: '', author_avatar: '', category_id: 0,
+        listing_type: '', condition: '', is_urgent: false,
+        view_count: 0, like_count: 0, fav_count: 0, comment_count: 0,
+        distance: 0, address: '', contact_phone: '', contact_wechat: '', contact_qq: '',
+        published_at: ''
+    } as Detail)
+
+    const isLiked = ref(false)
+    const isFaved = ref(false)
+    const currentUserId = computed(() : number => {
+        return state.userInfo != null ? state.userInfo!.userId : 0
+    })
+
+    const headerData = computed(() : HeaderData => {
+        const d = detail.value
+        return {
+            id: d.id, title: d.title, cover_image: d.cover_image, images: d.images,
+            author_name: d.author_name, author_avatar: d.author_avatar, published_at: d.published_at,
+            listing_type: d.listing_type, condition: d.condition, is_urgent: d.is_urgent,
+            view_count: d.view_count, like_count: d.like_count, fav_count: d.fav_count,
+            comment_count: d.comment_count, distance: d.distance, address: d.address
+        } as HeaderData
+    })
+
+    const commentList = ref([] as Comment[])
+    const commentTotal = ref(0)
+    const commentLoading = ref(false)
+    const commentHasMore = ref(true)
+    const commentPage = ref(1)
+    const commentPageSize = 20
+
+    const commentInputVisible = ref(false)
+    const commentContent = ref('')
+    const replyTo = ref('')
+    const replyParentId = ref(0)
+
+    const transformComment = (item: Comment) : Comment => {
+        return item
+    }
+
+    const loadDetail = () => {
+        loading.value = true
+        getNewsDetail(newsId.value).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                detail.value = {
+                    id: (d['id'] as number) ?? 0,
+                    title: (d['title'] as string) ?? '',
+                    content: (d['content'] as string) ?? '',
+                    cover_image: (d['cover_image'] as string) ?? '',
+                    images: (d['images'] as string[]) ?? ([] as string[]),
+                    summary: (d['summary'] as string) ?? '',
+                    author_id: (d['author_id'] as number) ?? 0,
+                    author_name: (d['author_name'] as string) ?? '',
+                    author_avatar: (d['author_avatar'] as string) ?? '',
+                    category_id: (d['category_id'] as number) ?? 0,
+                    listing_type: (d['listing_type'] as string) ?? '',
+                    condition: (d['condition'] as string) ?? '',
+                    is_urgent: (d['is_urgent'] as boolean) ?? false,
+                    view_count: (d['view_count'] as number) ?? 0,
+                    like_count: (d['like_count'] as number) ?? 0,
+                    fav_count: (d['fav_count'] as number) ?? 0,
+                    comment_count: (d['comment_count'] as number) ?? 0,
+                    distance: (d['distance'] as number) ?? 0,
+                    address: (d['address'] as string) ?? '',
+                    contact_phone: (d['contact_phone'] as string) ?? '',
+                    contact_wechat: (d['contact_wechat'] as string) ?? '',
+                    contact_qq: (d['contact_qq'] as string) ?? '',
+                    published_at: (d['published_at'] as string) ?? ''
+                } as Detail
+                commentTotal.value = detail.value.comment_count
+                loadLikeFavStatus()
+                loadComments(true)
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadLikeFavStatus = () => {
+        if (!state.checkLogin()) return
+        getNewsLikeStatus(newsId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isLiked.value = (d['liked'] as boolean) ?? false
+            }
+        })
+        getNewsFavStatus(newsId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isFaved.value = (d['faved'] as boolean) ?? false
+            }
+        })
+    }
+
+    const loadComments = (reset: boolean = false) => {
+        if (commentLoading.value) return
+        if (reset) {
+            commentPage.value = 1
+            commentHasMore.value = true
+        }
+        if (!commentHasMore.value) return
+
+        commentLoading.value = true
+        const params: UTSJSONObject = {
+            page: commentPage.value,
+            page_size: commentPageSize
+        } as UTSJSONObject
+
+        listNewsComments(newsId.value, params).then((res: ApiResult) => {
+            commentLoading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as Comment[]) ?? ([] as Comment[])
+                if (reset) {
+                    commentList.value = newList
+                } else {
+                    commentList.value = commentList.value.concat(newList)
+                }
+                commentTotal.value = (d['total'] as number) ?? commentList.value.length
+                commentHasMore.value = newList.length >= commentPageSize
+                if (commentHasMore.value) commentPage.value++
+            }
+        }).catch(() => {
+            commentLoading.value = false
+        })
+    }
+
+    const onPreviewImage = (idx: number) => {
+        uni.previewImage({
+            urls: detail.value.images,
+            current: detail.value.images[idx]
+        })
+    }
+
+    const onLike = () => {
+        if (!requireLogin()) return
+        likeNews(newsId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isLiked.value = (d['liked'] as boolean) ?? !isLiked.value
+                detail.value.like_count = (d['like_count'] as number) ?? detail.value.like_count
+                uni.vibrateShort({})
+            }
+        })
+    }
+
+    const onFav = () => {
+        if (!requireLogin()) return
+        favNews(newsId.value).then((res: ApiResult) => {
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                isFaved.value = (d['faved'] as boolean) ?? !isFaved.value
+                detail.value.fav_count = (d['fav_count'] as number) ?? detail.value.fav_count
+                uni.showToast({ title: isFaved.value ? '已收藏' : '已取消收藏', icon: 'none' })
+            }
+        })
+    }
+
+    const onShare = () => {
+        uni.showToast({ title: '分享功能开发中', icon: 'none' })
+    }
+
+    const onCallPhone = () => {
+        if (detail.value.contact_phone.length == 0) return
+        uni.makePhoneCall({ phoneNumber: detail.value.contact_phone })
+    }
+
+    const onCopyWechat = () => {
+        uni.setClipboardData({ data: detail.value.contact_wechat })
+    }
+
+    const showCommentInput = () => {
+        if (!requireLogin()) return
+        replyTo.value = ''
+        replyParentId.value = 0
+        commentContent.value = ''
+        commentInputVisible.value = true
+    }
+
+    const onReply = (id: number) => {
+        if (!requireLogin()) return
+        const item = commentList.value.find((c: Comment) : boolean => c.id == id)
+        replyTo.value = item != null ? item!.user_name : ''
+        replyParentId.value = id
+        commentContent.value = ''
+        commentInputVisible.value = true
+    }
+
+    const onSubmitComment = () => {
+        const content = commentContent.value.trim()
+        if (content.length == 0) {
+            uni.showToast({ title: '请输入评论内容', icon: 'none' })
+            return
+        }
+        const data: UTSJSONObject = {
+            content: content
+        } as UTSJSONObject
+        if (replyParentId.value > 0) {
+            data['parent_id'] = replyParentId.value
+            data['reply_to'] = replyTo.value
+        }
+
+        createNewsComment(newsId.value, data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '评论成功', icon: 'success' })
+                commentInputVisible.value = false
+                commentContent.value = ''
+                replyTo.value = ''
+                replyParentId.value = 0
+                loadComments(true)
+            } else {
+                uni.showToast({ title: res.message || '评论失败', icon: 'none' })
+            }
+        })
+    }
+
+    const onDeleteComment = (id: number) => {
+        uni.showModal({
+            title: '提示',
+            content: '确认删除该评论？',
+            success: (r) => {
+                if (r.confirm) {
+                    deleteNewsComment(id).then((res: ApiResult) => {
+                        if (res.code == 200) {
+                            uni.showToast({ title: '已删除', icon: 'success' })
+                            loadComments(true)
+                        } else {
+                            uni.showToast({ title: res.message || '删除失败', icon: 'none' })
+                        }
+                    })
+                }
+            }
+        })
+    }
+
+    const noop = () => {}
+
+    onLoad((options: OnLoadOptions) => {
+        const id = options['id']
+        if (id != null) {
+            newsId.value = parseInt(id as string)
+            loadDetail()
+        }
+    })
+
+    onPullDownRefresh(() => {
+        loadDetail()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .content-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-top: 8px;
+    }
+
+    .content-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .content-text {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .contact-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-top: 8px;
+    }
+
+    .contact-row {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .contact-label {
+        font-size: 13px;
+        color: #999;
+        width: 50px;
+    }
+
+    .contact-value {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .contact-action {
+        font-size: 13px;
+        color: #FF6B35;
+        padding: 4px 12px;
+        border-radius: 12px;
+        background-color: #FFF5F0;
+    }
+
+    .comment-section {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        margin-top: 8px;
+    }
+
+    .section-header {
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .comment-list {
+        flex-direction: column;
+    }
+
+    .load-more, .no-more {
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .bottom-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-top-width: 1px;
+        border-top-color: #F0F0F0;
+        align-items: center;
+    }
+
+    .bottom-input {
+        flex: 1;
+        background-color: #F5F5F5;
+        border-radius: 18px;
+        padding: 8px 14px;
+        margin-right: 10px;
+    }
+
+    .bottom-input-text {
+        font-size: 13px;
+        color: #999;
+    }
+
+    .bottom-btn {
+        align-items: center;
+        justify-content: center;
+        padding: 4px 10px;
+    }
+
+    .bottom-icon {
+        font-size: 20px;
+    }
+
+    .bottom-icon.liked {
+        font-size: 22px;
+    }
+
+    .bottom-icon.faved {
+        font-size: 22px;
+    }
+
+    .bottom-count {
+        font-size: 11px;
+        color: #999;
+        margin-top: 2px;
+    }
+
+    .comment-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: flex-end;
+    }
+
+    .comment-panel {
+        background-color: #FFFFFF;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        padding: 12px;
+    }
+
+    .comment-panel-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .comment-panel-cancel {
+        font-size: 14px;
+        color: #999;
+    }
+
+    .comment-panel-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .comment-panel-send {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .comment-textarea {
+        font-size: 14px;
+        color: #333;
+        height: 100px;
+        padding: 8px;
+        background-color: #F9F9F9;
+        border-radius: 8px;
+    }
+</style>

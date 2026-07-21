@@ -1,0 +1,328 @@
+<template>
+    <view class="page">
+        <view class="search-bar">
+            <text class="back-arrow" @click="goBack">‹</text>
+            <input class="search-input" type="text" v-model="keyword" placeholder="搜索团购" :focus="true" @confirm="doSearch" />
+            <text class="search-btn" @click="doSearch">搜索</text>
+        </view>
+        <scroll-view class="content" scroll-y @scrolltolower="loadMore">
+            <view v-if="!hasSearched">
+                <view class="section" v-if="hotKeywords.length > 0">
+                    <text class="section-title">热门搜索</text>
+                    <view class="tag-wrap">
+                        <view class="tag" v-for="(k, idx) in hotKeywords" :key="idx" @click="onTag(k)">
+                            <text class="tag-text">{{ k }}</text>
+                        </view>
+                    </view>
+                </view>
+                <view class="section" v-if="historyKeywords.length > 0">
+                    <view class="section-header">
+                        <text class="section-title">搜索历史</text>
+                        <text class="clear-text" @click="clearHistory">清空</text>
+                    </view>
+                    <view class="history-list">
+                        <view class="history-item" v-for="(k, idx) in historyKeywords" :key="idx" @click="onTag(k)">
+                            <text class="history-time">🕒</text>
+                            <text class="history-text">{{ k }}</text>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <view v-else>
+                <groupbuy-loading v-if="loading && resultList.length == 0" />
+                <view class="list-wrap" v-if="resultList.length > 0">
+                    <groupbuy-card v-for="item in resultList" :key="item.id" :groupbuy="transformCard(item)" @click="goDetail" />
+                </view>
+                <view class="load-more" v-if="loading && resultList.length > 0">
+                    <text class="load-text">加载中...</text>
+                </view>
+                <view class="no-more" v-if="!hasMore && resultList.length > 0">
+                    <text class="no-more-text">已经到底啦~</text>
+                </view>
+                <groupbuy-empty v-if="resultList.length == 0 && !loading" icon="🔍" text="未找到相关团购" btn-text="换个关键词" @click="clearSearch" />
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { listGroupBuys } from '@/api/business/groupbuy.uts'
+
+    type ResultItem = {
+        id: number
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        stock: number
+        shop_name: string
+        status: number
+        is_featured: boolean
+        is_hot: boolean
+    }
+    type CardData = {
+        id: number
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        origin_price: number
+        sales_count: number
+        stock: number
+        shop_name: string
+        status: number
+        is_featured: boolean
+        is_hot: boolean
+    }
+
+    const keyword = ref('')
+    const hotKeywords = ref(['美食', '电影', '酒店', 'KTV', '丽人', '休闲娱乐'])
+    const historyKeywords = ref([] as string[])
+    const hasSearched = ref(false)
+    const resultList = ref([] as ResultItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ResultItem) : CardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            sub_title: item.sub_title,
+            cover_image: item.cover_image,
+            price: item.price,
+            origin_price: item.origin_price,
+            sales_count: item.sales_count,
+            stock: item.stock,
+            shop_name: item.shop_name,
+            status: item.status,
+            is_featured: item.is_featured,
+            is_hot: item.is_hot
+        } as CardData
+    }
+
+    const loadHistory = () => {
+        const data = uni.getStorageSync('groupbuy_search_history')
+        if (data instanceof Array) {
+            historyKeywords.value = data as string[]
+        }
+    }
+
+    const saveHistory = (kw: string) => {
+        const list = historyKeywords.value
+        const idx = list.indexOf(kw)
+        if (idx >= 0) list.splice(idx, 1)
+        list.unshift(kw)
+        if (list.length > 20) list.splice(20)
+        historyKeywords.value = list
+        uni.setStorageSync('groupbuy_search_history', list)
+    }
+
+    const doSearch = () => {
+        const kw = keyword.value.trim()
+        if (kw.length == 0) {
+            uni.showToast({ title: '请输入关键词', icon: 'none' })
+            return
+        }
+        hasSearched.value = true
+        saveHistory(kw)
+        loadResult(true)
+    }
+
+    const loadResult = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            keyword: keyword.value,
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listGroupBuys(params).then((res: ApiResult) => {
+            loading.value = false
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ResultItem[]) ?? ([] as ResultItem[])
+                if (reset) {
+                    resultList.value = newList
+                } else {
+                    resultList.value = resultList.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '搜索失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadResult(false)
+    }
+
+    const onTag = (k: string) => {
+        keyword.value = k
+        doSearch()
+    }
+
+    const clearHistory = () => {
+        uni.showModal({
+            title: '提示',
+            content: '确认清空搜索历史？',
+            success: (res) => {
+                if (res.confirm) {
+                    historyKeywords.value = [] as string[]
+                    uni.removeStorageSync('groupbuy_search_history')
+                    uni.showToast({ title: '已清空', icon: 'success' })
+                }
+            }
+        })
+    }
+
+    const clearSearch = () => {
+        keyword.value = ''
+        hasSearched.value = false
+        resultList.value = [] as ResultItem[]
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/groupbuy/detail/index?id=' + id })
+    }
+
+    const goBack = () => {
+        uni.navigateBack()
+    }
+
+    onLoad(() => {
+        loadHistory()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .search-bar {
+        flex-direction: row;
+        align-items: center;
+        background-color: #FFFFFF;
+        padding: 8px 12px;
+        border-bottom: 1px solid #EEEEEE;
+    }
+
+    .back-arrow {
+        font-size: 28px;
+        color: #333333;
+        padding: 0 8px;
+    }
+
+    .search-input {
+        flex: 1;
+        height: 36px;
+        background-color: #F5F5F5;
+        border-radius: 18px;
+        padding: 0 16px;
+        font-size: 14px;
+    }
+
+    .search-btn {
+        color: #FF6B35;
+        font-size: 15px;
+        padding: 0 8px;
+    }
+
+    .content {
+        flex: 1;
+    }
+
+    .section {
+        padding: 16px;
+        background-color: #FFFFFF;
+        margin-top: 8px;
+    }
+
+    .section-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 14px;
+        color: #333333;
+        font-weight: bold;
+    }
+
+    .clear-text {
+        font-size: 12px;
+        color: #999999;
+    }
+
+    .tag-wrap {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .tag {
+        background-color: #F5F5F5;
+        border-radius: 16px;
+        padding: 6px 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+
+    .tag-text {
+        font-size: 13px;
+        color: #555555;
+    }
+
+    .history-list {
+        margin-top: 12px;
+    }
+
+    .history-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .history-time {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .history-text {
+        font-size: 14px;
+        color: #333333;
+    }
+
+    .list-wrap {
+        padding: 8px 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999999;
+    }
+</style>

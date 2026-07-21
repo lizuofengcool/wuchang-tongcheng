@@ -1,0 +1,215 @@
+<template>
+    <view class="coupon-card" :class="{ disabled: isDisabled }" @click="onClick">
+        <view class="left-section">
+            <view class="amount-row">
+                <text class="amount-symbol" :class="{ disabled: isDisabled }">¥</text>
+                <text class="amount-value" :class="{ disabled: isDisabled }">{{ coupon.amount }}</text>
+            </view>
+            <text class="threshold" :class="{ disabled: isDisabled }">{{ thresholdText }}</text>
+        </view>
+        <view class="dashed-line"></view>
+        <view class="right-section">
+            <text class="coupon-title" :class="{ disabled: isDisabled }">{{ coupon.title }}</text>
+            <text class="coupon-sub" :class="{ disabled: isDisabled }" v-if="coupon.applicable_text.length > 0">{{ coupon.applicable_text }}</text>
+            <text class="validity" :class="{ disabled: isDisabled }">{{ validityText }}</text>
+            <view class="action-btn" v-if="actionText.length > 0" @click.stop="onAction">
+                <text class="action-text" :class="{ disabled: isDisabled }">{{ actionText }}</text>
+            </view>
+            <view class="status-stamp" v-if="isDisabled && stampText.length > 0">
+                <text class="stamp-text">{{ stampText }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Coupon = {
+        id: number
+        title: string
+        amount: number
+        threshold: number
+        applicable_text: string
+        start_time: string
+        end_time: string
+        status: number  // 0=未使用 1=已使用 2=已过期
+        stock: number
+        received: boolean
+    }
+
+    const props = withDefaults(defineProps<{
+        coupon: Coupon
+        actionText?: string
+    }>(), {
+        actionText: ''
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', id: number): void
+    }>()
+
+    const isDisabled = computed(() : boolean => {
+        return props.coupon.status == 1 || props.coupon.status == 2
+    })
+
+    const thresholdText = computed(() : string => {
+        if (props.coupon.threshold > 0) {
+            return '满' + props.coupon.threshold + '元可用'
+        }
+        return '无门槛'
+    })
+
+    const validityText = computed(() : string => {
+        const s = props.coupon.start_time.length >= 10 ? props.coupon.start_time.substring(0, 10) : props.coupon.start_time
+        const e = props.coupon.end_time.length >= 10 ? props.coupon.end_time.substring(0, 10) : props.coupon.end_time
+        return s + ' 至 ' + e
+    })
+
+    const stampText = computed(() : string => {
+        if (props.coupon.status == 1) return '已使用'
+        if (props.coupon.status == 2) return '已过期'
+        return ''
+    })
+
+    const onClick = () => {
+        emit('click', props.coupon.id)
+    }
+
+    const onAction = () => {
+        emit('action', props.coupon.id)
+    }
+</script>
+
+<style>
+    .coupon-card {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .left-section {
+        width: 110px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        padding: 16px 8px;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .amount-symbol {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .amount-value {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .threshold {
+        font-size: 11px;
+        color: #FFFFFF;
+        margin-top: 4px;
+        opacity: 0.9;
+    }
+
+    .dashed-line {
+        width: 1px;
+        background-color: #FFFFFF;
+        border-style: dashed;
+        border-left-width: 1px;
+        border-left-color: #FFFFFF;
+        border-left-style: dashed;
+        margin: 8px 0;
+    }
+
+    .right-section {
+        flex: 1;
+        padding: 12px 14px;
+        justify-content: center;
+    }
+
+    .coupon-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .coupon-sub {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .validity {
+        font-size: 11px;
+        color: #BBB;
+        margin-top: 6px;
+    }
+
+    .action-btn {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: #FF6B35;
+        border-radius: 14px;
+        padding: 4px 12px;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+
+    .coupon-card.disabled .left-section {
+        background-color: #BBBBBB;
+    }
+
+    .amount-symbol.disabled,
+    .amount-value.disabled,
+    .threshold.disabled {
+        color: #FFFFFF;
+        opacity: 0.8;
+    }
+
+    .coupon-title.disabled,
+    .coupon-sub.disabled,
+    .validity.disabled {
+        color: #BBB;
+    }
+
+    .action-text.disabled {
+        color: #FFFFFF;
+    }
+
+    .status-stamp {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        border-radius: 14px;
+        padding: 4px 12px;
+        background-color: #999999;
+    }
+
+    .stamp-text {
+        font-size: 12px;
+        color: #FFFFFF;
+    }
+</style>

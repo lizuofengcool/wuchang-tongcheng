@@ -1,0 +1,287 @@
+<template>
+    <view class="news-card" @click="onClick">
+        <view class="card-body">
+            <view class="text-area">
+                <text class="title">{{ news.title }}</text>
+                <text class="summary" v-if="news.summary.length > 0">{{ news.summary }}</text>
+                <view class="tag-row" v-if="tags.length > 0">
+                    <view class="tag" v-for="(t, idx) in tags" :key="idx" :class="t.type">
+                        <text class="tag-text">{{ t.text }}</text>
+                    </view>
+                </view>
+                <view class="meta-row">
+                    <text class="author" v-if="news.author_name.length > 0">{{ news.author_name }}</text>
+                    <text class="meta-dot" v-if="news.author_name.length > 0">·</text>
+                    <text class="meta">{{ news.view_count }} 阅读</text>
+                    <text class="meta-dot">·</text>
+                    <text class="meta">{{ news.comment_count }} 评论</text>
+                    <text class="meta-dot" v-if="news.distance > 0">·</text>
+                    <text class="meta" v-if="news.distance > 0">{{ distanceText }}</text>
+                </view>
+            </view>
+            <image class="cover" :src="news.cover_image" mode="aspectFill" lazy-load="true" v-if="news.cover_image.length > 0" />
+            <view class="cover-placeholder" v-else-if="showPlaceholder">
+                <text class="cover-text">{{ news.title.length > 0 ? news.title.charAt(0) : '头' }}</text>
+            </view>
+        </view>
+        <view class="card-footer" v-if="showFooter">
+            <view class="footer-item">
+                <text class="footer-icon">{{ news.is_urgent ? '🔥' : '👍' }}</text>
+                <text class="footer-text">{{ news.like_count }}</text>
+            </view>
+            <view class="footer-item">
+                <text class="footer-icon">💬</text>
+                <text class="footer-text">{{ news.comment_count }}</text>
+            </view>
+            <view class="footer-item">
+                <text class="footer-icon">⭐</text>
+                <text class="footer-text">{{ news.fav_count }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tag = { text: string, type: string }
+
+    type News = {
+        id: number
+        title: string
+        summary: string
+        cover_image: string
+        author_name: string
+        category_id: number
+        listing_type: string
+        condition: string
+        is_urgent: boolean
+        view_count: number
+        like_count: number
+        fav_count: number
+        comment_count: number
+        distance: number
+        published_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        news: News
+        showFooter?: boolean
+        showPlaceholder?: boolean
+    }>(), {
+        showFooter: true,
+        showPlaceholder: true
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+    }>()
+
+    const tags = computed(() : Tag[] => {
+        const list = [] as Tag[]
+        if (props.news.is_urgent) list.push({ text: '置顶', type: 'urgent' } as Tag)
+        if (props.news.listing_type == 'sell') list.push({ text: '出售', type: 'sell' } as Tag)
+        else if (props.news.listing_type == 'buy') list.push({ text: '求购', type: 'buy' } as Tag)
+        else if (props.news.listing_type == 'rent') list.push({ text: '出租', type: 'rent' } as Tag)
+        else if (props.news.listing_type == 'service') list.push({ text: '服务', type: 'service' } as Tag)
+        else if (props.news.listing_type == 'job') list.push({ text: '招聘', type: 'job' } as Tag)
+        if (props.news.condition == 'new') list.push({ text: '全新', type: 'new' } as Tag)
+        else if (props.news.condition == 'used') list.push({ text: '二手', type: 'used' } as Tag)
+        return list
+    })
+
+    const distanceText = computed(() : string => {
+        if (props.news.distance < 1) {
+            return Math.round(props.news.distance * 1000) + 'm'
+        }
+        return props.news.distance.toFixed(1) + 'km'
+    })
+
+    const onClick = () => {
+        emit('click', props.news.id)
+    }
+</script>
+
+<style>
+    .news-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-body {
+        flex-direction: row;
+    }
+
+    .text-area {
+        flex: 1;
+        margin-right: 10px;
+    }
+
+    .title {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .summary {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+
+    .tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+        margin-bottom: 2px;
+    }
+
+    .tag.urgent {
+        background-color: #FFEEEE;
+    }
+
+    .tag.sell {
+        background-color: #FFF5F0;
+    }
+
+    .tag.buy {
+        background-color: #E5F8FF;
+    }
+
+    .tag.rent {
+        background-color: #F0FFE5;
+    }
+
+    .tag.service {
+        background-color: #FFF0F5;
+    }
+
+    .tag.job {
+        background-color: #F5F0FF;
+    }
+
+    .tag.new {
+        background-color: #E5F8FF;
+    }
+
+    .tag.used {
+        background-color: #FFF5F0;
+    }
+
+    .tag.urgent .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.sell .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag.buy .tag-text {
+        color: #1989FA;
+    }
+
+    .tag.rent .tag-text {
+        color: #07C160;
+    }
+
+    .tag.service .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.job .tag-text {
+        color: #7232DD;
+    }
+
+    .tag.new .tag-text {
+        color: #1989FA;
+    }
+
+    .tag.used .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag-text {
+        font-size: 10px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .author {
+        font-size: 11px;
+        color: #576B95;
+    }
+
+    .meta {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .meta-dot {
+        font-size: 11px;
+        color: #CCC;
+        margin: 0 4px;
+    }
+
+    .cover {
+        width: 110px;
+        height: 80px;
+        border-radius: 6px;
+        background-color: #F5F5F5;
+    }
+
+    .cover-placeholder {
+        width: 110px;
+        height: 80px;
+        border-radius: 6px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cover-text {
+        font-size: 32px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .card-footer {
+        flex-direction: row;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .footer-item {
+        flex-direction: row;
+        align-items: center;
+        margin-right: 24px;
+    }
+
+    .footer-icon {
+        font-size: 13px;
+        margin-right: 4px;
+    }
+
+    .footer-text {
+        font-size: 11px;
+        color: #999;
+    }
+</style>

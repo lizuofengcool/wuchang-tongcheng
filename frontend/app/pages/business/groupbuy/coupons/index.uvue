@@ -1,0 +1,172 @@
+<template>
+    <view class="page">
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <groupbuy-loading v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <groupbuy-coupon-card
+                    v-for="item in list"
+                    :key="item.id"
+                    :coupon="transformCard(item)"
+                    action-text="立即领取"
+                    @action="onReceive"
+                />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <groupbuy-empty v-if="list.length == 0 && !loading" icon="🎟" text="暂无可领取的优惠券" btn-text="刷新" @click="reload" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { requireLogin } from '@/utils/auth.uts'
+    import { listCoupons, receiveCoupon } from '@/api/business/groupbuy.uts'
+
+    type ListItem = {
+        id: number
+        title: string
+        amount: number
+        threshold: number
+        applicable_text: string
+        start_time: string
+        end_time: string
+        status: number
+        stock: number
+        received: boolean
+    }
+    type CardData = {
+        id: number
+        title: string
+        amount: number
+        threshold: number
+        applicable_text: string
+        start_time: string
+        end_time: string
+        status: number
+        stock: number
+        received: boolean
+    }
+
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            title: item.title,
+            amount: item.amount,
+            threshold: item.threshold,
+            applicable_text: item.applicable_text,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            status: item.status,
+            stock: item.stock,
+            received: item.received
+        } as CardData
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+
+        listCoupons(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const reload = () => {
+        loadList(true)
+    }
+
+    const onReceive = (id: number) => {
+        if (!requireLogin()) return
+        uni.showLoading({ title: '领取中...' })
+        receiveCoupon(id).then((res: ApiResult) => {
+            uni.hideLoading()
+            if (res.code == 200) {
+                uni.showToast({ title: '领取成功', icon: 'success' })
+                loadList(true)
+            } else {
+                uni.showToast({ title: res.message || '领取失败', icon: 'none' })
+            }
+        }).catch(() => {
+            uni.hideLoading()
+        })
+    }
+
+    onLoad(() => {
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

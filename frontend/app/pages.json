@@ -13,6 +13,8 @@
             "^linggong-(.*)": "@/components/linggong/linggong-$1.uvue",
             "^dh114-(.*)": "@/components/dh114/dh114-$1.uvue",
             "^mall-(.*)": "@/components/mall/mall-$1.uvue",
+            "^groupbuy-(.*)": "@/components/groupbuy/groupbuy-$1.uvue",
+            "^news-(.*)": "@/components/news/news-$1.uvue",
             "^shop-(.*)": "@/components/shop/shop-$1.uvue",
             "^rider-(.*)": "@/components/rider/rider-$1.uvue"
         }
@@ -941,6 +943,97 @@
             "path": "pages/business/mall/reviews/index",
             "style": {
                 "navigationBarTitleText": "评价",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/list/index",
+            "style": {
+                "navigationBarTitleText": "团购",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/detail/index",
+            "style": {
+                "navigationBarTitleText": "团购详情"
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/coupons/index",
+            "style": {
+                "navigationBarTitleText": "优惠券中心",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/my-coupons/index",
+            "style": {
+                "navigationBarTitleText": "我的优惠券",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/orders/index",
+            "style": {
+                "navigationBarTitleText": "我的团购订单",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/orders/detail",
+            "style": {
+                "navigationBarTitleText": "订单详情"
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索团购"
+            }
+        },
+        {
+            "path": "pages/business/groupbuy/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布团购"
+            }
+        },
+        {
+            "path": "pages/business/news/list/index",
+            "style": {
+                "navigationBarTitleText": "同城头条",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/news/detail/index",
+            "style": {
+                "navigationBarTitleText": "头条详情"
+            }
+        },
+        {
+            "path": "pages/business/news/search/index",
+            "style": {
+                "navigationBarTitleText": "搜索头条"
+            }
+        },
+        {
+            "path": "pages/business/news/publish/index",
+            "style": {
+                "navigationBarTitleText": "发布头条"
+            }
+        },
+        {
+            "path": "pages/business/news/favorites/index",
+            "style": {
+                "navigationBarTitleText": "我的收藏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/business/news/messages/index",
+            "style": {
+                "navigationBarTitleText": "消息通知",
                 "enablePullDownRefresh": true
             }
         }

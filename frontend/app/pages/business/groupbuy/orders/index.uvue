@@ -1,0 +1,265 @@
+<template>
+    <view class="page">
+        <view class="tabs-bar">
+            <view class="tab-item" v-for="(t, idx) in tabs" :key="idx"
+                :class="{ active: currentTab == t.value }" @click="changeTab(t.value)">
+                <text class="tab-text" :class="{ active: currentTab == t.value }">{{ t.label }}</text>
+            </view>
+        </view>
+        <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
+            <groupbuy-loading v-if="loading && list.length == 0" />
+            <view class="list-wrap" v-if="list.length > 0">
+                <groupbuy-order-card
+                    v-for="item in list"
+                    :key="item.id"
+                    :order="transformCard(item)"
+                    :actions="getActions(item.status)"
+                    @click="goDetail"
+                    @action="onAction"
+                />
+            </view>
+            <view class="load-more" v-if="loading && list.length > 0">
+                <text class="load-text">加载中...</text>
+            </view>
+            <view class="no-more" v-if="!hasMore && list.length > 0">
+                <text class="no-more-text">已经到底啦~</text>
+            </view>
+            <groupbuy-empty v-if="list.length == 0 && !loading" icon="📝" text="暂无订单" btn-text="去逛逛" @click="goList" />
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { requireLogin } from '@/utils/auth.uts'
+    import { getMyGroupBuyOrders, cancelGroupBuyOrder } from '@/api/business/groupbuy.uts'
+
+    type Tab = { label: string, value: number }
+    type Action = { text: string, type: string, primary: boolean }
+
+    type ListItem = {
+        id: number
+        order_no: string
+        shop_name: string
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        quantity: number
+        total_amount: number
+        status: number
+        status_text: string
+    }
+    type CardData = {
+        id: number
+        order_no: string
+        shop_name: string
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        quantity: number
+        total_amount: number
+        status: number
+        status_text: string
+    }
+
+    const tabs = ref([
+        { label: '全部', value: -1 } as Tab,
+        { label: '待付款', value: 0 } as Tab,
+        { label: '已付款', value: 1 } as Tab,
+        { label: '已完成', value: 3 } as Tab,
+        { label: '已取消', value: 4 } as Tab
+    ] as Tab[])
+    const currentTab = ref(-1)
+    const list = ref([] as ListItem[])
+    const loading = ref(false)
+    const hasMore = ref(true)
+    const page = ref(1)
+    const pageSize = 20
+
+    const transformCard = (item: ListItem) : CardData => {
+        return {
+            id: item.id,
+            order_no: item.order_no,
+            shop_name: item.shop_name,
+            title: item.title,
+            sub_title: item.sub_title,
+            cover_image: item.cover_image,
+            price: item.price,
+            quantity: item.quantity,
+            total_amount: item.total_amount,
+            status: item.status,
+            status_text: item.status_text
+        } as CardData
+    }
+
+    const getActions = (status: number) : Action[] => {
+        const list = [] as Action[]
+        // 0=待付款 1=已付款 2=已使用 3=已完成 4=已取消 5=已退款
+        if (status == 0) {
+            list.push({ text: '取消订单', type: 'cancel', primary: false } as Action)
+            list.push({ text: '去支付', type: 'pay', primary: true } as Action)
+        } else if (status == 1) {
+            list.push({ text: '查看详情', type: 'detail', primary: false } as Action)
+        } else if (status == 2) {
+            list.push({ text: '去评价', type: 'review', primary: true } as Action)
+        }
+        return list
+    }
+
+    const changeTab = (val: number) => {
+        if (currentTab.value == val) return
+        currentTab.value = val
+        loadList(true)
+    }
+
+    const loadList = (reset: boolean = false) => {
+        if (loading.value) return
+        if (reset) {
+            page.value = 1
+            hasMore.value = true
+        }
+        if (!hasMore.value) return
+
+        loading.value = true
+        const params: UTSJSONObject = {
+            page: page.value,
+            page_size: pageSize
+        } as UTSJSONObject
+        if (currentTab.value >= 0) {
+            params['status'] = currentTab.value
+        }
+
+        getMyGroupBuyOrders(params).then((res: ApiResult) => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+            if (res.code == 200 && res.data) {
+                const d = res.data as UTSJSONObject
+                const newList = (d['list'] as ListItem[]) ?? ([] as ListItem[])
+                if (reset) {
+                    list.value = newList
+                } else {
+                    list.value = list.value.concat(newList)
+                }
+                hasMore.value = newList.length >= pageSize
+                if (hasMore.value) page.value++
+            } else {
+                uni.showToast({ title: res.message || '加载失败', icon: 'none' })
+            }
+        }).catch(() => {
+            loading.value = false
+            uni.stopPullDownRefresh()
+        })
+    }
+
+    const loadMore = () => {
+        if (!hasMore.value || loading.value) return
+        loadList(false)
+    }
+
+    const goDetail = (id: number) => {
+        uni.navigateTo({ url: '/pages/business/groupbuy/orders/detail?id=' + id })
+    }
+
+    const goList = () => {
+        uni.navigateTo({ url: '/pages/business/groupbuy/list/index' })
+    }
+
+    const onAction = (orderId: number, actionType: string) => {
+        if (actionType == 'cancel') {
+            uni.showModal({
+                title: '提示',
+                content: '确定取消该订单吗？',
+                success: (res: ShowModalRes) => {
+                    if (res.confirm) {
+                        doCancel(orderId)
+                    }
+                }
+            })
+        } else if (actionType == 'pay') {
+            uni.showToast({ title: '支付功能开发中', icon: 'none' })
+        } else if (actionType == 'detail') {
+            goDetail(orderId)
+        } else if (actionType == 'review') {
+            uni.showToast({ title: '评价功能开发中', icon: 'none' })
+        }
+    }
+
+    const doCancel = (orderId: number) => {
+        const data: UTSJSONObject = { reason: '用户主动取消' } as UTSJSONObject
+        cancelGroupBuyOrder(orderId, data).then((res: ApiResult) => {
+            if (res.code == 200) {
+                uni.showToast({ title: '已取消', icon: 'success' })
+                loadList(true)
+            } else {
+                uni.showToast({ title: res.message || '取消失败', icon: 'none' })
+            }
+        }).catch(() => {})
+    }
+
+    onLoad(() => {
+        if (!requireLogin()) return
+        loadList(true)
+    })
+
+    onPullDownRefresh(() => {
+        loadList(true)
+    })
+
+    onReachBottom(() => {
+        loadMore()
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .tabs-bar {
+        flex-direction: row;
+        background-color: #FFFFFF;
+        border-bottom-width: 1px;
+        border-bottom-color: #F0F0F0;
+    }
+
+    .tab-item {
+        flex: 1;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    .tab-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .tab-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .tab-item.active {
+        border-bottom-width: 2px;
+        border-bottom-color: #FF6B35;
+    }
+
+    .list-scroll {
+        flex: 1;
+    }
+
+    .list-wrap {
+        padding: 12px;
+    }
+
+    .load-more, .no-more {
+        padding: 16px 0;
+        align-items: center;
+    }
+
+    .load-text, .no-more-text {
+        font-size: 12px;
+        color: #999;
+    }
+</style>

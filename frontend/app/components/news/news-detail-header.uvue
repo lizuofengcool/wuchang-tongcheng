@@ -1,0 +1,286 @@
+<template>
+    <view class="header">
+        <view class="image-wrap" v-if="news.images.length > 0">
+            <swiper class="swiper" :indicator-dots="news.images.length > 1" :autoplay="news.images.length > 1" :circular="true">
+                <swiper-item v-for="(img, idx) in news.images" :key="idx">
+                    <image class="banner-img" :src="img" mode="aspectFill" @click="onPreview(idx)" />
+                </swiper-item>
+            </swiper>
+        </view>
+        <view class="image-wrap" v-else-if="news.cover_image.length > 0">
+            <image class="banner-img" :src="news.cover_image" mode="aspectFill" />
+        </view>
+
+        <view class="info-section">
+            <view class="tag-row" v-if="tags.length > 0">
+                <view class="tag" v-for="(t, idx) in tags" :key="idx" :class="t.type">
+                    <text class="tag-text">{{ t.text }}</text>
+                </view>
+            </view>
+            <text class="title">{{ news.title }}</text>
+            <view class="author-row">
+                <image class="author-avatar" :src="news.author_avatar" mode="aspectFill" v-if="news.author_avatar.length > 0" />
+                <view class="author-avatar-placeholder" v-else>
+                    <text class="author-avatar-text">{{ news.author_name.length > 0 ? news.author_name.charAt(0) : '作' }}</text>
+                </view>
+                <text class="author-name">{{ news.author_name }}</text>
+                <text class="publish-time" v-if="news.published_at.length > 0">{{ news.published_at }}</text>
+            </view>
+            <view class="meta-row">
+                <text class="meta">{{ news.view_count }} 阅读</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ news.like_count }} 点赞</text>
+                <text class="meta-dot">·</text>
+                <text class="meta">{{ news.fav_count }} 收藏</text>
+                <text class="meta-dot" v-if="news.distance > 0">·</text>
+                <text class="meta" v-if="news.distance > 0">{{ distanceText }}</text>
+            </view>
+            <view class="location-row" v-if="news.address.length > 0">
+                <text class="location-icon">📍</text>
+                <text class="location-text">{{ news.address }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Tag = { text: string, type: string }
+
+    type News = {
+        id: number
+        title: string
+        cover_image: string
+        images: string[]
+        author_name: string
+        author_avatar: string
+        published_at: string
+        listing_type: string
+        condition: string
+        is_urgent: boolean
+        view_count: number
+        like_count: number
+        fav_count: number
+        comment_count: number
+        distance: number
+        address: string
+    }
+
+    const props = defineProps<{
+        news: News
+    }>()
+
+    const emit = defineEmits<{
+        (e: 'preview', idx: number): void
+    }>()
+
+    const tags = computed(() : Tag[] => {
+        const list = [] as Tag[]
+        if (props.news.is_urgent) list.push({ text: '置顶', type: 'urgent' } as Tag)
+        if (props.news.listing_type == 'sell') list.push({ text: '出售', type: 'sell' } as Tag)
+        else if (props.news.listing_type == 'buy') list.push({ text: '求购', type: 'buy' } as Tag)
+        else if (props.news.listing_type == 'rent') list.push({ text: '出租', type: 'rent' } as Tag)
+        else if (props.news.listing_type == 'service') list.push({ text: '服务', type: 'service' } as Tag)
+        else if (props.news.listing_type == 'job') list.push({ text: '招聘', type: 'job' } as Tag)
+        if (props.news.condition == 'new') list.push({ text: '全新', type: 'new' } as Tag)
+        else if (props.news.condition == 'used') list.push({ text: '二手', type: 'used' } as Tag)
+        return list
+    })
+
+    const distanceText = computed(() : string => {
+        if (props.news.distance < 1) {
+            return Math.round(props.news.distance * 1000) + 'm'
+        }
+        return props.news.distance.toFixed(1) + 'km'
+    })
+
+    const onPreview = (idx: number) => {
+        emit('preview', idx)
+    }
+</script>
+
+<style>
+    .header {
+        background-color: #FFFFFF;
+    }
+
+    .image-wrap {
+        width: 100%;
+        height: 240px;
+        background-color: #F5F5F5;
+    }
+
+    .swiper {
+        width: 100%;
+        height: 240px;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .info-section {
+        padding: 12px 16px;
+    }
+
+    .tag-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .tag {
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-right: 4px;
+    }
+
+    .tag.urgent {
+        background-color: #FFEEEE;
+    }
+
+    .tag.sell {
+        background-color: #FFF5F0;
+    }
+
+    .tag.buy {
+        background-color: #E5F8FF;
+    }
+
+    .tag.rent {
+        background-color: #F0FFE5;
+    }
+
+    .tag.service {
+        background-color: #FFF0F5;
+    }
+
+    .tag.job {
+        background-color: #F5F0FF;
+    }
+
+    .tag.new {
+        background-color: #E5F8FF;
+    }
+
+    .tag.used {
+        background-color: #FFF5F0;
+    }
+
+    .tag.urgent .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.sell .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag.buy .tag-text {
+        color: #1989FA;
+    }
+
+    .tag.rent .tag-text {
+        color: #07C160;
+    }
+
+    .tag.service .tag-text {
+        color: #EE0A24;
+    }
+
+    .tag.job .tag-text {
+        color: #7232DD;
+    }
+
+    .tag.new .tag-text {
+        color: #1989FA;
+    }
+
+    .tag.used .tag-text {
+        color: #FF6B35;
+    }
+
+    .tag-text {
+        font-size: 10px;
+    }
+
+    .title {
+        font-size: 18px;
+        color: #333;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+
+    .author-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 12px;
+    }
+
+    .author-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 14px;
+        margin-right: 8px;
+        background-color: #F5F5F5;
+    }
+
+    .author-avatar-placeholder {
+        width: 28px;
+        height: 28px;
+        border-radius: 14px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+    }
+
+    .author-avatar-text {
+        font-size: 12px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .author-name {
+        font-size: 13px;
+        color: #576B95;
+    }
+
+    .publish-time {
+        font-size: 12px;
+        color: #BBB;
+        margin-left: 10px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .location-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .location-icon {
+        font-size: 12px;
+        margin-right: 4px;
+    }
+
+    .location-text {
+        font-size: 12px;
+        color: #576B95;
+    }
+</style>

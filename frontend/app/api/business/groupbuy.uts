@@ -1,0 +1,73 @@
+// 团购优惠券模块 API 封装
+// 对应后端 backend/internal/modules/groupbuy/plugin.go 路由清单（12 路由）
+// 路由前缀：/groupbuy（由 request.uts 中 BASE_URL 拼接为 /api/v1/groupbuy）
+// 按场景分组：团购商品 / 优惠券 / 团购订单
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+// 对标美团/大众点评团购
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 通用类型 =====
+export type PageQuery = {
+    page?: number
+    page_size?: number
+}
+
+// ===== 团购商品（公开） =====
+// 团购列表（公开，支持 page/page_size/region_id/category_id/status）
+export const listGroupBuys = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/groupbuy/list', params)
+}
+
+// 团购详情（公开）
+export const getGroupBuyDetail = (id: number) : Promise<ApiResult> => {
+    return get('/groupbuy/' + id)
+}
+
+// 优惠券列表（公开）
+export const listCoupons = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/groupbuy/coupons', params)
+}
+
+// ===== 团购订单（需登录） =====
+// 创建团购订单（body: groupbuy_id/quantity/address_id）
+export const createGroupBuyOrder = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/groupbuy/orders', data)
+}
+
+// 我的团购订单列表
+export const getMyGroupBuyOrders = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/groupbuy/orders/my', params)
+}
+
+// 团购订单详情
+export const getGroupBuyOrderDetail = (id: number) : Promise<ApiResult> => {
+    return get('/groupbuy/orders/' + id)
+}
+
+// 取消团购订单
+export const cancelGroupBuyOrder = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/groupbuy/orders/' + id + '/cancel', data)
+}
+
+// ===== 优惠券（需登录） =====
+// 我的优惠券列表
+export const getMyCoupons = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/groupbuy/coupons/my', params)
+}
+
+// 领取优惠券
+export const receiveCoupon = (id: number) : Promise<ApiResult> => {
+    return post('/groupbuy/coupons/' + id + '/receive', null)
+}
+
+// ===== 商家发布团购（需登录 + 商家权限） =====
+// 商家发布团购商品（后端按商家角色鉴权）
+export const publishGroupBuy = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/groupbuy/admin', data)
+}
+
+// 商家更新团购商品
+export const updateGroupBuy = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/groupbuy/admin/' + id, data)
+}

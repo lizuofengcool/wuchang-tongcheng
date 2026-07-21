@@ -1,0 +1,234 @@
+<template>
+    <view class="detail-header">
+        <view class="banner-wrap" v-if="detail.images.length > 0">
+            <swiper class="swiper" :indicator-dots="true" :autoplay="true" :circular="true">
+                <swiper-item v-for="(img, idx) in detail.images" :key="idx">
+                    <image class="banner-img" :src="img" mode="aspectFill" @click="onPreviewImage(idx)" />
+                </swiper-item>
+            </swiper>
+        </view>
+        <view class="image-banner" v-else-if="detail.cover_image.length > 0">
+            <image class="banner-img" :src="detail.cover_image" mode="aspectFill" />
+        </view>
+        <view class="header-section">
+            <view class="price-row">
+                <text class="price">¥{{ detail.price }}</text>
+                <text class="origin-price" v-if="detail.origin_price > detail.price">¥{{ detail.origin_price }}</text>
+                <text class="discount" v-if="discountText.length > 0">{{ discountText }}</text>
+            </view>
+            <text class="title">{{ detail.title }}</text>
+            <text class="sub-title" v-if="detail.sub_title.length > 0">{{ detail.sub_title }}</text>
+            <view class="meta-row">
+                <text class="meta">已售 {{ detail.sales_count }}</text>
+                <text class="meta-dot" v-if="detail.stock > 0">·</text>
+                <text class="meta" v-if="detail.stock > 0">库存 {{ detail.stock }}</text>
+                <text class="meta-dot" v-if="detail.validity_text.length > 0">·</text>
+                <text class="meta" v-if="detail.validity_text.length > 0">{{ detail.validity_text }}</text>
+            </view>
+        </view>
+        <view class="shop-section" v-if="detail.shop_name.length > 0" @click="onShopClick">
+            <image class="shop-logo" :src="detail.shop_logo" mode="aspectFill" lazy-load="true" v-if="detail.shop_logo.length > 0" />
+            <view class="shop-logo-placeholder" v-else>
+                <text class="shop-logo-text">{{ detail.shop_name.charAt(0) }}</text>
+            </view>
+            <view class="shop-info">
+                <text class="shop-name">{{ detail.shop_name }}</text>
+                <view class="shop-meta-row" v-if="detail.shop_address.length > 0">
+                    <text class="shop-address">{{ detail.shop_address }}</text>
+                </view>
+            </view>
+            <text class="enter-text">进店 ›</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Detail = {
+        id: number
+        title: string
+        sub_title: string
+        cover_image: string
+        images: string[]
+        price: number
+        origin_price: number
+        sales_count: number
+        stock: number
+        validity_text: string
+        shop_name: string
+        shop_logo: string
+        shop_address: string
+    }
+
+    const props = withDefaults(defineProps<{
+        detail: Detail
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'preview', idx: number): void
+        (e: 'shop-click'): void
+    }>()
+
+    const discountText = computed(() : string => {
+        if (props.detail.origin_price <= 0 || props.detail.origin_price <= props.detail.price) return ''
+        const d = Math.round((props.detail.price / props.detail.origin_price) * 10)
+        return d + '折'
+    })
+
+    const onPreviewImage = (idx: number) => {
+        emit('preview', idx)
+    }
+
+    const onShopClick = () => {
+        emit('shop-click')
+    }
+</script>
+
+<style>
+    .detail-header {
+        background-color: #FFFFFF;
+    }
+
+    .banner-wrap {
+        width: 100%;
+        height: 320px;
+        background-color: #FFFFFF;
+    }
+
+    .swiper {
+        width: 100%;
+        height: 320px;
+    }
+
+    .banner-img {
+        width: 100%;
+        height: 100%;
+    }
+
+    .image-banner {
+        width: 100%;
+        height: 280px;
+        background-color: #F5F5F5;
+    }
+
+    .header-section {
+        padding: 12px 16px;
+    }
+
+    .price-row {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .price {
+        font-size: 24px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .origin-price {
+        font-size: 13px;
+        color: #BBB;
+        text-decoration: line-through;
+        margin-left: 8px;
+    }
+
+    .discount {
+        font-size: 11px;
+        color: #FF6B35;
+        background-color: #FFF5F0;
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin-left: 6px;
+    }
+
+    .title {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .sub-title {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .meta {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .meta-dot {
+        font-size: 12px;
+        color: #CCC;
+        margin: 0 6px;
+    }
+
+    .shop-section {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        margin-top: 8px;
+        border-top-width: 8px;
+        border-top-color: #F5F5F5;
+    }
+
+    .shop-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 20px;
+        margin-right: 10px;
+    }
+
+    .shop-logo-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 20px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .shop-logo-text {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .shop-info {
+        flex: 1;
+    }
+
+    .shop-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .shop-meta-row {
+        flex-direction: row;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .shop-address {
+        font-size: 12px;
+        color: #999;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .enter-text {
+        font-size: 12px;
+        color: #FF6B35;
+    }
+</style>

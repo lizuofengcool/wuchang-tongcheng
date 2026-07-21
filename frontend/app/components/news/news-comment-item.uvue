@@ -1,0 +1,139 @@
+<template>
+    <view class="comment-item">
+        <image class="avatar" :src="comment.avatar" mode="aspectFill" v-if="comment.avatar.length > 0" />
+        <view class="avatar-placeholder" v-else>
+            <text class="avatar-text">{{ comment.user_name.length > 0 ? comment.user_name.charAt(0) : '匿' }}</text>
+        </view>
+        <view class="comment-main">
+            <view class="comment-header">
+                <text class="user-name">{{ comment.user_name }}</text>
+                <text class="reply-to" v-if="comment.reply_to.length > 0">回复 {{ comment.reply_to }}</text>
+            </view>
+            <text class="comment-content">{{ comment.content }}</text>
+            <view class="comment-footer">
+                <text class="comment-time">{{ comment.created_at }}</text>
+                <view class="action-row">
+                    <text class="action-text" v-if="canDelete" @click="onDelete">删除</text>
+                    <text class="action-text" @click="onReply">回复</text>
+                </view>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Comment = {
+        id: number
+        news_id: number
+        user_id: number
+        user_name: string
+        avatar: string
+        content: string
+        parent_id: number
+        reply_to: string
+        created_at: string
+    }
+
+    const props = withDefaults(defineProps<{
+        comment: Comment
+        canDelete?: boolean
+    }>(), {
+        canDelete: false
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'reply', id: number): void
+        (e: 'delete', id: number): void
+    }>()
+
+    const onReply = () => {
+        emit('reply', props.comment.id)
+    }
+
+    const onDelete = () => {
+        emit('delete', props.comment.id)
+    }
+</script>
+
+<style>
+    .comment-item {
+        flex-direction: row;
+        padding: 12px 0;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        margin-right: 10px;
+        background-color: #F5F5F5;
+    }
+
+    .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .avatar-text {
+        font-size: 14px;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+
+    .comment-main {
+        flex: 1;
+    }
+
+    .comment-header {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .user-name {
+        font-size: 13px;
+        color: #576B95;
+        font-weight: 500;
+    }
+
+    .reply-to {
+        font-size: 12px;
+        color: #999;
+        margin-left: 8px;
+    }
+
+    .comment-content {
+        font-size: 14px;
+        color: #333;
+        margin-top: 4px;
+        line-height: 1.5;
+    }
+
+    .comment-footer {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+    }
+
+    .comment-time {
+        font-size: 11px;
+        color: #BBB;
+    }
+
+    .action-row {
+        flex-direction: row;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #576B95;
+        margin-left: 16px;
+    }
+</style>

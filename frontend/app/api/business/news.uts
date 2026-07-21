@@ -1,0 +1,104 @@
+// 同城头条模块 API 封装
+// 对应后端 backend/internal/modules/news/plugin.go 路由清单（14 路由）
+// 路由前缀：/news（由 request.uts 中 BASE_URL 拼接为 /api/v1/news）
+// 按场景分组：列表/搜索/附近/详情/评论/点赞/收藏/发布/消息
+// C 端仅调用公开与登录接口，不含 /admin 后台接口
+// 对标 58 同城/今日头条同城头条
+
+import { request, get, post, put, del } from '@/utils/request.uts'
+
+// ===== 列表与搜索（公开）=====
+// 头条列表（公开，支持 page/page_size/region_id/category_id/keyword/status）
+export const listNews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news', params)
+}
+
+// 头条搜索（公开，支持 keyword）
+export const searchNews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news/search', params)
+}
+
+// 附近头条（公开，支持 lat/lng/radius_km）
+export const nearbyNews = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news/nearby', params)
+}
+
+// ===== 详情与评论（公开）=====
+// 头条详情（公开）
+export const getNewsDetail = (id: number) : Promise<ApiResult> => {
+    return get('/news/' + id)
+}
+
+// 评论列表（公开）
+export const listNewsComments = (id: number, params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news/' + id + '/comments', params)
+}
+
+// 点赞状态（公开）
+export const getNewsLikeStatus = (id: number) : Promise<ApiResult> => {
+    return get('/news/' + id + '/like')
+}
+
+// 收藏状态（公开）
+export const getNewsFavStatus = (id: number) : Promise<ApiResult> => {
+    return get('/news/' + id + '/fav')
+}
+
+// ===== 发布与编辑（需登录）=====
+// 发布头条（需登录，body: title/content/category_id/images/region_id 等）
+export const createNews = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/news', data)
+}
+
+// 更新头条（需登录）
+export const updateNews = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/news/' + id, data)
+}
+
+// 删除头条（需登录）
+export const deleteNews = (id: number) : Promise<ApiResult> => {
+    return del('/news/' + id)
+}
+
+// ===== 点赞 / 收藏 / 评论（需登录）=====
+// 点赞头条（需登录）
+export const likeNews = (id: number) : Promise<ApiResult> => {
+    return post('/news/' + id + '/like', null)
+}
+
+// 收藏头条（需登录）
+export const favNews = (id: number) : Promise<ApiResult> => {
+    return post('/news/' + id + '/fav', null)
+}
+
+// 发表评论（需登录，body: content/parent_id/reply_to）
+export const createNewsComment = (id: number, data: UTSJSONObject) : Promise<ApiResult> => {
+    return post('/news/' + id + '/comments', data)
+}
+
+// 删除评论（需登录）
+export const deleteNewsComment = (id: number) : Promise<ApiResult> => {
+    return del('/news/comments/' + id)
+}
+
+// ===== 我的收藏（需登录）=====
+// 我的收藏列表（需登录）
+export const listMyFavorites = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news/favorites', params)
+}
+
+// ===== 消息通知（需登录）=====
+// 消息列表（需登录）
+export const listMessages = (params: UTSJSONObject) : Promise<ApiResult> => {
+    return get('/news/messages', params)
+}
+
+// 未读消息数（需登录）
+export const getUnreadCount = () : Promise<ApiResult> => {
+    return get('/news/messages/unread')
+}
+
+// 标记消息已读（需登录，body: message_ids 或 all）
+export const markRead = (data: UTSJSONObject) : Promise<ApiResult> => {
+    return put('/news/messages/read', data)
+}

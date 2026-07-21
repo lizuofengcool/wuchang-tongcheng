@@ -1,0 +1,236 @@
+<template>
+    <view class="order-card" @click="onClick">
+        <view class="shop-row">
+            <text class="shop-icon">🏪</text>
+            <text class="shop-name">{{ order.shop_name }}</text>
+            <groupbuy-status-tag :status="order.status" type="order" />
+        </view>
+        <view class="product-row">
+            <image class="p-cover" :src="order.cover_image" mode="aspectFill" lazy-load="true" v-if="order.cover_image.length > 0" />
+            <view class="p-cover-placeholder" v-else>
+                <text class="p-cover-text">{{ order.title.length > 0 ? order.title.charAt(0) : '团' }}</text>
+            </view>
+            <view class="p-info">
+                <text class="p-title">{{ order.title }}</text>
+                <text class="p-sub" v-if="order.sub_title.length > 0">{{ order.sub_title }}</text>
+                <view class="p-meta-row">
+                    <text class="p-price">¥{{ order.price }}</text>
+                    <text class="p-qty">x{{ order.quantity }}</text>
+                </view>
+            </view>
+        </view>
+        <view class="footer">
+            <text class="count-text">共 {{ order.quantity }} 件</text>
+            <view class="amount-row">
+                <text class="amount-label">实付：</text>
+                <text class="amount-value">¥{{ order.total_amount }}</text>
+            </view>
+        </view>
+        <view class="action-row" v-if="actions.length > 0">
+            <view class="action-btn" v-for="(a, idx) in actions" :key="idx" :class="{ primary: a.primary }" @click.stop="onAction(a)">
+                <text class="action-text" :class="{ primary: a.primary }">{{ a.text }}</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Action = { text: string, type: string, primary: boolean }
+
+    type Order = {
+        id: number
+        order_no: string
+        shop_name: string
+        title: string
+        sub_title: string
+        cover_image: string
+        price: number
+        quantity: number
+        total_amount: number
+        status: number
+        status_text: string
+    }
+
+    const props = withDefaults(defineProps<{
+        order: Order
+        actions?: Action[]
+    }>(), {
+        actions: [] as Action[]
+    } as any)
+
+    const emit = defineEmits<{
+        (e: 'click', id: number): void
+        (e: 'action', orderId: number, actionType: string): void
+    }>()
+
+    const actions = computed(() : Action[] => {
+        return props.actions ?? ([] as Action[])
+    })
+
+    const onClick = () => {
+        emit('click', props.order.id)
+    }
+
+    const onAction = (a: Action) => {
+        emit('action', props.order.id, a.type)
+    }
+</script>
+
+<style>
+    .order-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .shop-row {
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 8px;
+        border-bottom-width: 1px;
+        border-bottom-color: #F5F5F5;
+    }
+
+    .shop-icon {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .shop-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .product-row {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+
+    .p-cover {
+        width: 80px;
+        height: 80px;
+        border-radius: 6px;
+        margin-right: 10px;
+    }
+
+    .p-cover-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 6px;
+        background-color: #FF6B35;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+    }
+
+    .p-cover-text {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    .p-info {
+        flex: 1;
+    }
+
+    .p-title {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        lines: 2;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .p-sub {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+        lines: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .p-meta-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 6px;
+    }
+
+    .p-price {
+        font-size: 14px;
+        color: #FF6B35;
+        font-weight: 600;
+    }
+
+    .p-qty {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .footer {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top-width: 1px;
+        border-top-color: #F5F5F5;
+    }
+
+    .count-text {
+        font-size: 12px;
+        color: #999;
+        margin-right: 8px;
+    }
+
+    .amount-row {
+        flex-direction: row;
+        align-items: baseline;
+    }
+
+    .amount-label {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .amount-value {
+        font-size: 16px;
+        color: #FF6B35;
+        font-weight: 700;
+    }
+
+    .action-row {
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+
+    .action-btn {
+        border-radius: 14px;
+        padding: 4px 12px;
+        margin-left: 8px;
+        border-width: 1px;
+        border-color: #DDD;
+    }
+
+    .action-text {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .action-text.primary {
+        color: #FFFFFF;
+    }
+
+    .action-btn.primary {
+        background-color: #FF6B35;
+        border-color: #FF6B35;
+    }
+</style>

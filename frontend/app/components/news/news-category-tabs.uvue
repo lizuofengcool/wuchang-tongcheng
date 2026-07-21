@@ -1,0 +1,63 @@
+<template>
+    <view class="category-bar">
+        <scroll-view class="category-scroll" scroll-x>
+            <view class="category-item" v-for="(c, idx) in categories" :key="idx"
+                :class="{ active: currentId == c.id }" @click="onSelect(c)">
+                <text class="category-text" :class="{ active: currentId == c.id }">{{ c.name }}</text>
+            </view>
+        </scroll-view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    type Category = {
+        id: number
+        name: string
+    }
+
+    const props = withDefaults(defineProps<{
+        categories: Category[]
+        currentId: number
+    }>(), {} as any)
+
+    const emit = defineEmits<{
+        (e: 'change', id: number): void
+    }>()
+
+    const onSelect = (c: Category) => {
+        if (props.currentId == c.id) return
+        emit('change', c.id)
+    }
+</script>
+
+<style>
+    .category-bar {
+        background-color: #FFFFFF;
+    }
+
+    .category-scroll {
+        flex-direction: row;
+        padding: 10px 8px;
+    }
+
+    .category-item {
+        padding: 6px 14px;
+        margin-right: 8px;
+        border-radius: 16px;
+        background-color: #F5F5F5;
+    }
+
+    .category-item.active {
+        background-color: #FFF5F0;
+    }
+
+    .category-text {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .category-text.active {
+        color: #FF6B35;
+        font-weight: 600;
+    }
+</style>

@@ -343,9 +343,10 @@ export const constantRoutes = [
             redirect: '/marketing/groupbuy/list',
             meta: { title: '团购管理', icon: 'Present', permission: 'groupbuy:read', menuLevel: 2 },
             children: [
-              { path: 'list', name: 'GroupbuyList', component: () => import('@/views/marketing/groupbuy/index.vue'), meta: { title: '团购商品', icon: 'List', permission: 'groupbuy:read', menuLevel: 3 } },
-              { path: 'orders', name: 'GroupbuyOrders', component: () => import('@/views/marketing/groupbuy/orders.vue'), meta: { title: '订单管理', icon: 'Tickets', permission: 'groupbuy:read', menuLevel: 3 } },
-              { path: 'coupons', name: 'GroupbuyCoupons', component: () => import('@/views/marketing/groupbuy/coupons.vue'), meta: { title: '优惠券', icon: 'Ticket', permission: 'groupbuy:read', menuLevel: 3 } }
+              { path: 'list', name: 'GroupbuyList', component: () => import('@/views/business/groupbuy/index.vue'), meta: { title: '团购商品', icon: 'List', permission: 'groupbuy:read', menuLevel: 3 } },
+              { path: 'detail/:id', name: 'GroupbuyDetail', component: () => import('@/views/business/groupbuy/detail.vue'), meta: { title: '团购详情', icon: 'Document', permission: 'groupbuy:read', menuLevel: 3, hidden: true } },
+              { path: 'orders', name: 'GroupbuyOrders', component: () => import('@/views/business/groupbuy/orders.vue'), meta: { title: '订单管理', icon: 'Tickets', permission: 'groupbuy:read', menuLevel: 3 } },
+              { path: 'coupons', name: 'GroupbuyCoupons', component: () => import('@/views/business/groupbuy/coupons.vue'), meta: { title: '优惠券', icon: 'Ticket', permission: 'groupbuy:read', menuLevel: 3 } }
             ]
           },
           { path: 'coupon', name: 'Coupon', component: () => import('@/views/marketing/coupon/index.vue'), meta: { title: '优惠券系统', icon: 'Ticket', permission: 'coupon:read', menuLevel: 2 } },

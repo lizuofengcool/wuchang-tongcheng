@@ -1,0 +1,305 @@
+<template>
+    <view class="page">
+        <scroll-view class="form-scroll" scroll-y>
+            <view class="form-section">
+                <text class="section-title">基本信息</text>
+                <view class="form-item">
+                    <text class="label">标题<text class="required">*</text></text>
+                    <input class="input" type="text" v-model="form.title" placeholder="请输入团购标题" maxlength="100" />
+                </view>
+                <view class="form-item">
+                    <text class="label">副标题</text>
+                    <input class="input" type="text" v-model="form.sub_title" placeholder="请输入副标题" maxlength="200" />
+                </view>
+                <view class="form-item">
+                    <text class="label">封面图URL<text class="required">*</text></text>
+                    <input class="input" type="text" v-model="form.cover_image" placeholder="请输入封面图URL" />
+                </view>
+                <view class="form-item">
+                    <text class="label">分类ID</text>
+                    <input class="input" type="number" v-model="form.category_id" placeholder="请输入分类ID" />
+                </view>
+                <view class="form-item">
+                    <text class="label">详情描述</text>
+                    <textarea class="textarea" v-model="form.description" placeholder="请输入团购详情描述" maxlength="2000" />
+                </view>
+            </view>
+
+            <view class="form-section">
+                <text class="section-title">价格与库存</text>
+                <view class="form-item">
+                    <text class="label">团购价(元)<text class="required">*</text></text>
+                    <input class="input" type="digit" v-model="form.price" placeholder="0.00" />
+                </view>
+                <view class="form-item">
+                    <text class="label">原价(元)</text>
+                    <input class="input" type="digit" v-model="form.origin_price" placeholder="0.00" />
+                </view>
+                <view class="form-item">
+                    <text class="label">库存<text class="required">*</text></text>
+                    <input class="input" type="number" v-model="form.stock" placeholder="0" />
+                </view>
+                <view class="form-item">
+                    <text class="label">限购数量</text>
+                    <input class="input" type="number" v-model="form.limit_per_user" placeholder="0 表示不限购" />
+                </view>
+            </view>
+
+            <view class="form-section">
+                <text class="section-title">有效期</text>
+                <view class="form-item">
+                    <text class="label">开始时间<text class="required">*</text></text>
+                    <input class="input" type="text" v-model="form.start_time" placeholder="YYYY-MM-DD HH:mm:ss" />
+                </view>
+                <view class="form-item">
+                    <text class="label">结束时间<text class="required">*</text></text>
+                    <input class="input" type="text" v-model="form.end_time" placeholder="YYYY-MM-DD HH:mm:ss" />
+                </view>
+            </view>
+
+            <view class="form-section">
+                <text class="section-title">推广设置</text>
+                <view class="form-item row">
+                    <text class="label">精选推荐</text>
+                    <switch :checked="form.is_featured" @change="onFeaturedChange" />
+                </view>
+                <view class="form-item row">
+                    <text class="label">热门标记</text>
+                    <switch :checked="form.is_hot" @change="onHotChange" />
+                </view>
+            </view>
+
+            <view class="tips">
+                <text class="tips-text">提示：发布后需等待平台审核通过后上架</text>
+            </view>
+        </scroll-view>
+
+        <view class="footer-bar">
+            <text class="submit-btn" :class="{ 'disabled': submitting }" @click="onSubmit">{{ submitting ? '提交中...' : '提交发布' }}</text>
+        </view>
+    </view>
+</template>
+
+<script setup lang="uts">
+    import { requireLogin } from '@/utils/auth.uts'
+    import { isMerchant } from '@/store/index.uts'
+    import { publishGroupBuy } from '@/api/business/groupbuy.uts'
+
+    type PublishForm = {
+        title: string
+        sub_title: string
+        cover_image: string
+        category_id: number
+        description: string
+        price: string
+        origin_price: string
+        stock: string
+        limit_per_user: string
+        start_time: string
+        end_time: string
+        is_featured: boolean
+        is_hot: boolean
+    }
+
+    const form = ref({
+        title: '',
+        sub_title: '',
+        cover_image: '',
+        category_id: 0,
+        description: '',
+        price: '',
+        origin_price: '',
+        stock: '',
+        limit_per_user: '',
+        start_time: '',
+        end_time: '',
+        is_featured: false,
+        is_hot: false
+    } as PublishForm)
+
+    const submitting = ref(false)
+
+    const onFeaturedChange = (e: SwitchChangeEvent) => {
+        form.value.is_featured = e.detail.value
+    }
+
+    const onHotChange = (e: SwitchChangeEvent) => {
+        form.value.is_hot = e.detail.value
+    }
+
+    const validate = () : boolean => {
+        const f = form.value
+        if (f.title.length == 0) {
+            uni.showToast({ title: '请输入标题', icon: 'none' })
+            return false
+        }
+        if (f.cover_image.length == 0) {
+            uni.showToast({ title: '请输入封面图URL', icon: 'none' })
+            return false
+        }
+        if (f.price.length == 0 || parseFloat(f.price) <= 0) {
+            uni.showToast({ title: '请输入正确的团购价', icon: 'none' })
+            return false
+        }
+        if (f.stock.length == 0 || parseInt(f.stock) < 0) {
+            uni.showToast({ title: '请输入正确的库存', icon: 'none' })
+            return false
+        }
+        if (f.start_time.length == 0 || f.end_time.length == 0) {
+            uni.showToast({ title: '请填写有效期', icon: 'none' })
+            return false
+        }
+        return true
+    }
+
+    const onSubmit = () => {
+        if (!requireLogin()) return
+        if (!isMerchant()) {
+            uni.showToast({ title: '仅商家可发布团购', icon: 'none' })
+            return
+        }
+        if (submitting.value) return
+        if (!validate()) return
+
+        submitting.value = true
+        const f = form.value
+        const data: UTSJSONObject = {
+            title: f.title,
+            sub_title: f.sub_title,
+            cover_image: f.cover_image,
+            description: f.description,
+            price: parseFloat(f.price),
+            origin_price: f.origin_price.length > 0 ? parseFloat(f.origin_price) : 0,
+            stock: parseInt(f.stock),
+            limit_per_user: f.limit_per_user.length > 0 ? parseInt(f.limit_per_user) : 0,
+            start_time: f.start_time,
+            end_time: f.end_time,
+            is_featured: f.is_featured ? 1 : 0,
+            is_hot: f.is_hot ? 1 : 0
+        } as UTSJSONObject
+        if (f.category_id > 0) {
+            data['category_id'] = f.category_id
+        }
+
+        publishGroupBuy(data).then((res: ApiResult) => {
+            submitting.value = false
+            if (res.code == 200) {
+                uni.showToast({ title: '发布成功，待审核', icon: 'success' })
+                setTimeout(() => {
+                    uni.navigateBack()
+                }, 1500)
+            } else {
+                uni.showToast({ title: res.message || '发布失败', icon: 'none' })
+            }
+        }).catch(() => {
+            submitting.value = false
+        })
+    }
+
+    onLoad(() => {
+        if (!requireLogin()) return
+        if (!isMerchant()) {
+            uni.showToast({ title: '仅商家可发布团购', icon: 'none' })
+            setTimeout(() => {
+                uni.navigateBack()
+            }, 1500)
+        }
+    })
+</script>
+
+<style>
+    .page {
+        flex: 1;
+        background-color: #F5F5F5;
+    }
+
+    .form-scroll {
+        flex: 1;
+    }
+
+    .form-section {
+        background-color: #FFFFFF;
+        margin: 8px 12px;
+        padding: 16px;
+        border-radius: 8px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        color: #333333;
+        font-weight: bold;
+        margin-bottom: 12px;
+    }
+
+    .form-item {
+        margin-bottom: 14px;
+    }
+
+    .form-item.row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .label {
+        font-size: 14px;
+        color: #555555;
+        margin-bottom: 6px;
+    }
+
+    .form-item.row .label {
+        margin-bottom: 0;
+    }
+
+    .required {
+        color: #FF6B35;
+    }
+
+    .input {
+        height: 40px;
+        background-color: #F8F8F8;
+        border-radius: 6px;
+        padding: 0 12px;
+        font-size: 14px;
+        color: #333333;
+    }
+
+    .textarea {
+        height: 100px;
+        background-color: #F8F8F8;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: #333333;
+    }
+
+    .tips {
+        padding: 12px 16px;
+    }
+
+    .tips-text {
+        font-size: 12px;
+        color: #999999;
+    }
+
+    .footer-bar {
+        padding: 12px 16px;
+        background-color: #FFFFFF;
+        border-top: 1px solid #EEEEEE;
+    }
+
+    .submit-btn {
+        height: 44px;
+        background-color: #FF6B35;
+        color: #FFFFFF;
+        border-radius: 22px;
+        text-align: center;
+        line-height: 44px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .submit-btn.disabled {
+        opacity: 0.6;
+    }
+</style>
