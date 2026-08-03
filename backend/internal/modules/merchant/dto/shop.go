@@ -34,10 +34,10 @@ type CreateShopRequest struct {
 	CategoryID *uint  `json:"category_id"`
 }
 
-// UpdateShopRequest 更新店铺请求
+// UpdateShopRequest 更新店铺请求（指针字段均为可选，部分更新）
 type UpdateShopRequest struct {
 	Name       *string `json:"name" binding:"omitempty,max=100"`
-	Logo       *string `json:"logo" binding:"max=500"`
+	Logo       *string `json:"logo" binding:"omitempty,max=500"`
 	Intro      *string `json:"intro"`
 	CategoryID *uint   `json:"category_id"`
 }

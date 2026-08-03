@@ -37,13 +37,13 @@ type CreateVerificationRequest struct {
 	LegalPersonID string `json:"legal_person_id" binding:"max=32"`
 }
 
-// UpdateVerificationRequest 更新认证请求
+// UpdateVerificationRequest 更新认证请求（指针字段均为可选，部分更新）
 type UpdateVerificationRequest struct {
 	Type          *string `json:"type" binding:"omitempty,oneof=business personal"`
-	LicenseNo     *string `json:"license_no" binding:"max=64"`
-	LicenseImage  *string `json:"license_image" binding:"max=255"`
-	LegalPerson   *string `json:"legal_person" binding:"max=64"`
-	LegalPersonID *string `json:"legal_person_id" binding:"max=32"`
+	LicenseNo     *string `json:"license_no" binding:"omitempty,max=64"`
+	LicenseImage  *string `json:"license_image" binding:"omitempty,max=255"`
+	LegalPerson   *string `json:"legal_person" binding:"omitempty,max=64"`
+	LegalPersonID *string `json:"legal_person_id" binding:"omitempty,max=32"`
 }
 
 // VerificationListRequest 认证列表请求

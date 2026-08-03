@@ -29,11 +29,11 @@ type CreateCategoryRequest struct {
 	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
-// UpdateCategoryRequest 更新类目请求
+// UpdateCategoryRequest 更新类目请求（指针字段均为可选，部分更新）
 type UpdateCategoryRequest struct {
 	ParentID *uint   `json:"parent_id"`
 	Name     *string `json:"name" binding:"omitempty,max=64"`
-	Icon     *string `json:"icon" binding:"max=255"`
+	Icon     *string `json:"icon" binding:"omitempty,max=255"`
 	Sort     *int    `json:"sort"`
 	Status   *int    `json:"status" binding:"omitempty,oneof=0 1"`
 }
